@@ -1,5 +1,10 @@
+# OWASP Juice Shop is cloned locally from target-app/TARGET.lock.
 /target-app/juice-shop/
+
+# Raw scanner reports are generated locally and uploaded as CI artifacts.
 /reports/raw/*
 !/reports/raw/.gitkeep
+
+# Runtime logs may contain environment-specific or sensitive data.
 /logs/*
 !/logs/.gitkeep
