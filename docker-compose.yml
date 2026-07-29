@@ -1,1 +1,27 @@
+services:
+  juice-shop:
+    image: sentinel/juice-shop:v20.1.1
+    build:
+      context: ./target-app/juice-shop
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:${JUICE_SHOP_PORT:-3000}:3000"
+    networks:
+      - security
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          require('http').get('http://127.0.0.1:3000/',
+          response => process.exit(response.statusCode >= 200 && response.statusCode < 400 ? 0 : 1))
+          .on('error', () => process.exit(1))
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 15s
 
+networks:
+  security:
+    name: sentinel-security

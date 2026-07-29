@@ -74,3 +74,15 @@ load_tool_versions() {
   [[ "$SEMGREP_IMAGE" == *":$SEMGREP_VERSION" ]] || die "SEMGREP_IMAGE is not pinned to SEMGREP_VERSION"
   [[ "$ZAP_IMAGE" == *":$ZAP_VERSION" ]] || die "ZAP_IMAGE is not pinned to ZAP_VERSION"
 }
+
+resolve_juice_shop_port() {
+  local project_root="$1"
+  local port="${JUICE_SHOP_PORT:-}"
+
+  if [[ -z "$port" && -f "$project_root/.env" ]]; then
+    port="$(awk -F= '$1 == "JUICE_SHOP_PORT" { value = substr($0, length($1) + 2); count++ } END { if (count == 1) print value }' "$project_root/.env")"
+  fi
+  port="${port:-3000}"
+  [[ "$port" =~ ^[0-9]+$ ]] && ((port >= 1 && port <= 65535)) || die "Invalid JUICE_SHOP_PORT: $port"
+  printf '%s\n' "$port"
+}
