@@ -88,6 +88,8 @@ secret scanning nên là bước riêng trong tương lai.
 `reports/raw/zap.json`. Exit code `1` hoặc `2` biểu thị findings, vẫn được xem là scan hoàn tất;
 exit code `3` hoặc report không hợp lệ làm task thất bại.
 
+Runner truyền `-z "-silent"` cho ZAP Baseline để không tự update hoặc cài add-on trong lúc scan; scanner behavior vì vậy bám theo image đã pin.
+
 Hai scanner chạy container bằng UID/GID của host để raw reports không thuộc sở hữu root.
 
 ## GitHub Actions

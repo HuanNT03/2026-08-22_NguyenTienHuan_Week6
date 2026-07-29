@@ -11,7 +11,7 @@ services:
     healthcheck:
       test:
         - CMD
-        - node
+        - /nodejs/bin/node
         - -e
         - >-
           require('http').get('http://127.0.0.1:3000/',
