@@ -1,0 +1,5 @@
+/target-app/juice-shop/
+/reports/raw/*
+!/reports/raw/.gitkeep
+/logs/*
+!/logs/.gitkeep
