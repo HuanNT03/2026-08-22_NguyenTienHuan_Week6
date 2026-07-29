@@ -29,7 +29,7 @@ done
 
 printf '[sentinel] ERROR: Timed out waiting for %s\n' "$target_url" >&2
 printf '[sentinel] Compose status:\n' >&2
-docker compose --project-directory "$PROJECT_ROOT" ps >&2 || true
+docker compose --project-directory "$PROJECT_ROOT" -f "$PROJECT_ROOT/docker-compose.yml" ps >&2 || true
 printf '[sentinel] Recent Juice Shop logs:\n' >&2
-docker compose --project-directory "$PROJECT_ROOT" logs --tail 50 juice-shop >&2 || true
+docker compose --project-directory "$PROJECT_ROOT" -f "$PROJECT_ROOT/docker-compose.yml" logs --tail 50 juice-shop >&2 || true
 exit 1

@@ -35,7 +35,7 @@ case "$mode" in
     clean_report_directory "$NORMALIZED_DIR" "$PROJECT_ROOT/reports/normalized"
     ;;
   full)
-    docker compose --project-directory "$PROJECT_ROOT" down --volumes --remove-orphans
+    docker compose --project-directory "$PROJECT_ROOT" -f "$PROJECT_ROOT/docker-compose.yml" down --volumes --remove-orphans
     clean_report_directory "$RAW_DIR" "$PROJECT_ROOT/reports/raw"
     clean_report_directory "$NORMALIZED_DIR" "$PROJECT_ROOT/reports/normalized"
     assert_exact_path "$TARGET_DIR" "$PROJECT_ROOT/target-app/juice-shop"

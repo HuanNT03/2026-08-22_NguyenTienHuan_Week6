@@ -17,7 +17,7 @@ NETWORK_NAME="sentinel-security"
 load_tool_versions "$VERSIONS_FILE"
 "$SCRIPT_DIR/verify-target.sh"
 
-container_id="$(docker compose --project-directory "$PROJECT_ROOT" ps -q juice-shop)"
+container_id="$(docker compose --project-directory "$PROJECT_ROOT" -f "$PROJECT_ROOT/docker-compose.yml" ps -q juice-shop)"
 if [[ -z "$container_id" ]] || [[ "$(docker inspect -f '{{.State.Running}}' "$container_id" 2>/dev/null || true)" != "true" ]]; then
   die "Juice Shop is not running. Run: make build && make up && make wait && make smoke && make dast"
 fi

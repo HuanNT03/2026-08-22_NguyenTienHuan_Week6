@@ -7,6 +7,8 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd -P)"
 TEST_TMP="$(mktemp -d "${TMPDIR:-/tmp}/sentinel-contracts.XXXXXX")"
 trap 'rm -rf -- "$TEST_TMP"' EXIT
+# shellcheck source=scripts/common.sh
+source "$PROJECT_ROOT/scripts/common.sh"
 
 pass_count=0
 fail() {
@@ -37,16 +39,14 @@ done
 pass "required Week 1 files exist"
 
 lock_file="$PROJECT_ROOT/target-app/TARGET.lock"
-[[ "$(awk -F= 'NF && $1 ~ /^(REPOSITORY_URL|TAG|COMMIT_SHA)$/ {seen[$1]++} END {for (key in seen) if (seen[key] != 1) exit 1; exit !(length(seen) == 3)}' "$lock_file"; printf '%s' "$?")" == "0" ]] || \
-  fail "TARGET.lock must contain exactly the three supported keys once"
+validate_config_file "$lock_file" REPOSITORY_URL TAG COMMIT_SHA
 commit_sha="$(awk -F= '$1 == "COMMIT_SHA" {print $2}' "$lock_file")"
 [[ "$commit_sha" =~ ^[0-9a-fA-F]{40}$ ]] || fail "TARGET.lock COMMIT_SHA is not 40 hexadecimal characters"
 pass "target lock keys and commit format are valid"
 
 versions_file="$PROJECT_ROOT/configs/tool-versions.env"
-[[ "$(awk -F= 'NF && $1 ~ /^(SEMGREP_VERSION|SEMGREP_IMAGE|ZAP_VERSION|ZAP_IMAGE)$/ {seen[$1]++} END {for (key in seen) if (seen[key] != 1) exit 1; exit !(length(seen) == 4)}' "$versions_file"; printf '%s' "$?")" == "0" ]] || \
-  fail "tool-versions.env must contain exactly the four supported keys once"
-if awk -F= '/_IMAGE=/ && $2 ~ /:(latest|stable|weekly|canary)$/ {exit 0} END {exit 1}' "$versions_file"; then
+validate_config_file "$versions_file" SEMGREP_VERSION SEMGREP_IMAGE ZAP_VERSION ZAP_IMAGE
+if awk -F= '/_IMAGE=/ && $2 ~ /:(latest|stable|weekly|canary)$/ {bad = 1} END {exit !bad}' "$versions_file"; then
   fail "scanner image uses a moving tag"
 fi
 pass "scanner versions are complete and immutable tags are used"
@@ -54,10 +54,30 @@ pass "scanner versions are complete and immutable tags are used"
 git -C "$PROJECT_ROOT" check-ignore -q target-app/juice-shop/package.json || fail "target clone is not ignored"
 git -C "$PROJECT_ROOT" check-ignore -q reports/raw/example.json || fail "raw reports are not ignored"
 git -C "$PROJECT_ROOT" check-ignore -q logs/example.log || fail "runtime logs are not ignored"
-if git -C "$PROJECT_ROOT" check-ignore -q reports/raw/.gitkeep logs/.gitkeep; then
+if git -C "$PROJECT_ROOT" check-ignore -q reports/raw/.gitkeep || \
+  git -C "$PROJECT_ROOT" check-ignore -q logs/.gitkeep; then
   fail ".gitkeep files must not be ignored"
 fi
 pass "generated target, reports and logs have correct ignore rules"
+
+ci_workflow="$PROJECT_ROOT/.github/workflows/ci.yml"
+grep -A2 '^  sast:$' "$ci_workflow" | grep -q 'needs: quality' || fail "SAST job must depend directly on quality"
+grep -A2 '^  dast:$' "$ci_workflow" | grep -q 'needs: quality' || fail "DAST job must depend directly on quality"
+if grep -A2 '^  dast:$' "$ci_workflow" | grep -q 'needs: sast'; then
+  fail "DAST must not wait for SAST"
+fi
+grep -q -- '--user "$HOST_USER"' "$PROJECT_ROOT/scripts/run-sast.sh" || fail "SAST container must use host UID/GID"
+grep -q -- '--user "$HOST_USER"' "$PROJECT_ROOT/scripts/run-dast.sh" || fail "DAST container must use host UID/GID"
+grep -q -- "-w '%{http_code}'" "$PROJECT_ROOT/scripts/wait-for-target.sh" || fail "wait must poll HTTP status"
+grep -q 'touch "$REPORT_DIR/.gitkeep"' "$PROJECT_ROOT/scripts/run-sast.sh" || fail "SAST must restore raw report .gitkeep"
+grep -q 'touch "$REPORT_DIR/.gitkeep"' "$PROJECT_ROOT/scripts/run-dast.sh" || fail "DAST must restore raw report .gitkeep"
+
+setup_line="$(grep -n 'make -C "$PROJECT_ROOT" setup-target' "$PROJECT_ROOT/scripts/run-week1.sh" | cut -d: -f1)"
+sast_line="$(grep -n 'make -C "$PROJECT_ROOT" sast' "$PROJECT_ROOT/scripts/run-week1.sh" | cut -d: -f1)"
+build_line="$(grep -n 'make -C "$PROJECT_ROOT" build' "$PROJECT_ROOT/scripts/run-week1.sh" | cut -d: -f1)"
+[[ -n "$setup_line" && -n "$sast_line" && -n "$build_line" ]] || fail "week1 orchestration steps are missing"
+((setup_line < sast_line && sast_line < build_line)) || fail "week1 must run setup-target, then SAST, then build"
+pass "implementation preserves parallel scans, file ownership, HTTP readiness and optimized ordering"
 
 set +e
 verify_output="$(SENTINEL_TARGET_DIR="$TEST_TMP/missing-target" "$PROJECT_ROOT/scripts/verify-target.sh" 2>&1)"
