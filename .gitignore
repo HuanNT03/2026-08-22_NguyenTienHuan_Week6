@@ -4,6 +4,8 @@
 # Raw scanner reports are generated locally and uploaded as CI artifacts.
 /reports/raw/*
 !/reports/raw/.gitkeep
+!/reports/raw/semgrep.json
+!/reports/raw/zap.json
 
 # Runtime logs may contain environment-specific or sensitive data.
 /logs/*
