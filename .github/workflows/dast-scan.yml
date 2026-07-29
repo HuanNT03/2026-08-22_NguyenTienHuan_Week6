@@ -1,1 +1,56 @@
+name: ZAP Baseline DAST
 
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dast:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out Sentinel
+        uses: actions/checkout@v4
+      - name: Check prerequisites
+        run: make doctor
+      - name: Set up pinned target
+        run: make setup-target
+      - name: Build Juice Shop
+        run: make build
+      - name: Start Juice Shop
+        run: make up
+      - name: Wait for HTTP readiness
+        run: make wait
+      - name: Run host smoke test
+        run: make smoke
+      - name: Run ZAP Baseline
+        run: make dast
+      - name: Validate ZAP report
+        if: always()
+        run: ./scripts/validate-reports.sh zap
+      - name: Capture Compose logs on failure
+        if: failure()
+        run: |
+          mkdir -p logs
+          docker compose logs --no-color juice-shop > logs/juice-shop.log 2>&1 || true
+      - name: Upload raw ZAP report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-raw-${{ github.run_id }}
+          path: reports/raw/zap.json
+          retention-days: 14
+          if-no-files-found: warn
+      - name: Upload failure logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dast-logs-${{ github.run_id }}
+          path: logs/
+          retention-days: 14
+          if-no-files-found: warn
+      - name: Stop Compose resources
+        if: always()
+        run: make down

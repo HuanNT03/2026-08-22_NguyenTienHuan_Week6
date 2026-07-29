@@ -1,1 +1,29 @@
+name: Week 1 CI
 
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out Sentinel
+        uses: actions/checkout@v4
+      - name: Check prerequisites
+        run: make doctor
+      - name: Run repository quality checks
+        run: make quality
+
+  sast:
+    needs: quality
+    uses: ./.github/workflows/sast-scan.yml
+
+  dast:
+    needs: quality
+    uses: ./.github/workflows/dast-scan.yml
