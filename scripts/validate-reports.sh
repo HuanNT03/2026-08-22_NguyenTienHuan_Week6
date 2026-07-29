@@ -8,6 +8,8 @@ PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd -P)"
 # shellcheck source=scripts/common.sh
 source "$SCRIPT_DIR/common.sh"
 
+REPORT_DIR="${SENTINEL_REPORT_DIR:-$PROJECT_ROOT/reports/raw}"
+
 validate_json_file() {
   local report_name="$1"
   local report_path="$2"
@@ -22,12 +24,12 @@ validate_json_file() {
 }
 
 validate_semgrep() {
-  validate_json_file "Semgrep" "$PROJECT_ROOT/reports/raw/semgrep.json" \
+  validate_json_file "Semgrep" "$REPORT_DIR/semgrep.json" \
     'type == "object" and (.results | type == "array")'
 }
 
 validate_zap() {
-  validate_json_file "ZAP" "$PROJECT_ROOT/reports/raw/zap.json" \
+  validate_json_file "ZAP" "$REPORT_DIR/zap.json" \
     'type == "object" and (.site | (type == "array" or type == "object"))'
 }
 

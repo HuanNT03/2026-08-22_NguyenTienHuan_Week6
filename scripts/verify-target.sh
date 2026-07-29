@@ -9,7 +9,7 @@ PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd -P)"
 source "$SCRIPT_DIR/common.sh"
 
 LOCK_FILE="$PROJECT_ROOT/target-app/TARGET.lock"
-TARGET_DIR="$PROJECT_ROOT/target-app/juice-shop"
+TARGET_DIR="${SENTINEL_TARGET_DIR:-$PROJECT_ROOT/target-app/juice-shop}"
 
 load_target_lock "$LOCK_FILE"
 
