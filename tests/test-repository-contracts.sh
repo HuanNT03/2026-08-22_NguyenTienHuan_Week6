@@ -68,6 +68,8 @@ if grep -A2 '^  dast:$' "$ci_workflow" | grep -q 'needs: sast'; then
 fi
 grep -q -- '--user "$HOST_USER"' "$PROJECT_ROOT/scripts/run-sast.sh" || fail "SAST container must use host UID/GID"
 grep -q -- '--user "$HOST_USER"' "$PROJECT_ROOT/scripts/run-dast.sh" || fail "DAST container must use host UID/GID"
+[[ "$(grep -c -- 'JAVA_TOOL_OPTIONS=-Duser.home=/tmp' "$PROJECT_ROOT/scripts/run-dast.sh")" -eq 2 ]] || \
+  fail "DAST must set a writable Java home for both ZAP invocations"
 grep -q -- '-z "-silent"' "$PROJECT_ROOT/scripts/run-dast.sh" || fail "DAST must disable automatic add-on updates"
 grep -q -- '/nodejs/bin/node' "$PROJECT_ROOT/docker-compose.yml" || fail "healthcheck must use the distroless Node executable"
 grep -q -- "-w '%{http_code}'" "$PROJECT_ROOT/scripts/wait-for-target.sh" || fail "wait must poll HTTP status"

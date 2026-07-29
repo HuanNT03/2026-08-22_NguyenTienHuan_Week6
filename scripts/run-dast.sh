@@ -31,12 +31,18 @@ touch "$REPORT_DIR/.gitkeep"
 rm -f -- "$REPORT_FILE"
 
 log "ZAP image: $ZAP_IMAGE"
-docker run --rm --user "$HOST_USER" -e HOME=/tmp "$ZAP_IMAGE" zap.sh -version
+docker run --rm \
+  --user "$HOST_USER" \
+  -e HOME=/tmp \
+  -e JAVA_TOOL_OPTIONS=-Duser.home=/tmp \
+  "$ZAP_IMAGE" \
+  zap.sh -version
 
 set +e
 docker run --rm \
   --user "$HOST_USER" \
   -e HOME=/tmp \
+  -e JAVA_TOOL_OPTIONS=-Duser.home=/tmp \
   --network "$NETWORK_NAME" \
   -v "$REPORT_DIR:/zap/wrk:rw" \
   "$ZAP_IMAGE" \
