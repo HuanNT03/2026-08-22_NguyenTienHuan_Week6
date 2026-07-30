@@ -27,6 +27,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: semgrep-raw-${{ github.run_id }}
-          path: reports/raw/semgrep.json
+          path: |
+            reports/raw/semgrep.json
+            reports/raw/semgrep.sarif
           retention-days: 14
           if-no-files-found: warn

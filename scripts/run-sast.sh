@@ -11,13 +11,14 @@ source "$SCRIPT_DIR/common.sh"
 VERSIONS_FILE="$PROJECT_ROOT/configs/tool-versions.env"
 REPORT_DIR="$PROJECT_ROOT/reports/raw"
 REPORT_FILE="$REPORT_DIR/semgrep.json"
+SARIF_FILE="$REPORT_DIR/semgrep.sarif"
 HOST_USER="$(id -u):$(id -g)"
 
 load_tool_versions "$VERSIONS_FILE"
 "$SCRIPT_DIR/verify-target.sh"
 mkdir -p "$REPORT_DIR"
 touch "$REPORT_DIR/.gitkeep"
-rm -f -- "$REPORT_FILE"
+rm -f -- "$REPORT_FILE" "$SARIF_FILE"
 
 log "Semgrep image: $SEMGREP_IMAGE"
 docker run --rm --user "$HOST_USER" -e HOME=/tmp "$SEMGREP_IMAGE" semgrep --version
@@ -33,7 +34,14 @@ docker run --rm \
   --config p/javascript \
   --config p/nodejs \
   --config p/expressjs \
+  --dataflow-traces \
+  --sarif-output /src/reports/raw/semgrep.sarif \
   --json-output=/src/reports/raw/semgrep.json \
   /src/target-app/juice-shop
 
 "$SCRIPT_DIR/validate-reports.sh" semgrep
+
+[[ -s "$SARIF_FILE" ]] || die "Semgrep SARIF report is missing or empty: $SARIF_FILE"
+jq -e ".version == \"2.1.0\" and (.runs | type == \"array\")" "$SARIF_FILE" >/dev/null || \
+  die "Semgrep SARIF report has an invalid top-level structure: $SARIF_FILE"
+log "Semgrep SARIF report is valid: $SARIF_FILE"
