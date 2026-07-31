@@ -48,6 +48,8 @@ docker run --rm \
   "$ZAP_IMAGE" \
   zap-baseline.py \
   -t http://juice-shop:3000 \
+  -j \
+  --client-spider \
   -J zap.json \
   -z "-silent"
 zap_exit_code=$?

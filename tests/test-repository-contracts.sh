@@ -85,6 +85,10 @@ grep -q -- '--user "$HOST_USER"' "$PROJECT_ROOT/scripts/run-dast.sh" || fail "DA
 [[ "$(grep -c -- 'JAVA_TOOL_OPTIONS=-Duser.home=/tmp' "$PROJECT_ROOT/scripts/run-dast.sh")" -eq 2 ]] || \
   fail "DAST must set a writable Java home for both ZAP invocations"
 grep -q -- '-z "-silent"' "$PROJECT_ROOT/scripts/run-dast.sh" || fail "DAST must disable automatic add-on updates"
+zap_baseline_command="$(sed -n '/zap-baseline.py \\/,/zap_exit_code=/p' "$PROJECT_ROOT/scripts/run-dast.sh")"
+grep -q -- '^  -j \\$' <<<"$zap_baseline_command" || fail "DAST must enable a modern ZAP spider with -j"
+grep -q -- '^  --client-spider \\$' <<<"$zap_baseline_command" || \
+  fail "DAST must select Client Spider when the modern spider is enabled"
 grep -q -- '/nodejs/bin/node' "$PROJECT_ROOT/docker-compose.yml" || fail "healthcheck must use the distroless Node executable"
 grep -q -- "-w '%{http_code}'" "$PROJECT_ROOT/scripts/wait-for-target.sh" || fail "wait must poll HTTP status"
 grep -q 'touch "$REPORT_DIR/.gitkeep"' "$PROJECT_ROOT/scripts/run-sast.sh" || fail "SAST must restore raw report .gitkeep"
