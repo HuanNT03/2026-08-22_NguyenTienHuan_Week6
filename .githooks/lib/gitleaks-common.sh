@@ -4,7 +4,7 @@ GITLEAKS_REQUIRED_VERSION="8.30.1"
 
 gitleaks_warn_and_skip() {
   printf 'WARNING: %s\n' "$1" >&2
-  printf 'WARNING: Gitleaks secret scan was skipped. See README.md#git-hooks-voi-gitleaks for setup instructions.\n' >&2
+  printf 'WARNING: Gitleaks secret scan was skipped. See README.md#gitleaks-git-hooks for setup instructions.\n' >&2
 }
 
 gitleaks_version_is_supported() {

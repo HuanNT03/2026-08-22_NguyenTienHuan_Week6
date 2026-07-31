@@ -79,6 +79,10 @@ grep -q -- '/nodejs/bin/node' "$PROJECT_ROOT/docker-compose.yml" || fail "health
 grep -q -- "-w '%{http_code}'" "$PROJECT_ROOT/scripts/wait-for-target.sh" || fail "wait must poll HTTP status"
 grep -q 'touch "$REPORT_DIR/.gitkeep"' "$PROJECT_ROOT/scripts/run-sast.sh" || fail "SAST must restore raw report .gitkeep"
 grep -q 'touch "$REPORT_DIR/.gitkeep"' "$PROJECT_ROOT/scripts/run-dast.sh" || fail "DAST must restore raw report .gitkeep"
+grep -q '^## Gitleaks Git hooks$' "$PROJECT_ROOT/README.md" || fail "README must document Gitleaks hooks"
+grep -q 'git config --local core.hooksPath .githooks' "$PROJECT_ROOT/README.md" || \
+  fail "README must document tracked hook activation"
+grep -q 'gitleaks version' "$PROJECT_ROOT/README.md" || fail "README must document the version check"
 
 setup_line="$(grep -n 'make -C "$PROJECT_ROOT" setup-target' "$PROJECT_ROOT/scripts/run-week1.sh" | cut -d: -f1)"
 sast_line="$(grep -n 'make -C "$PROJECT_ROOT" sast' "$PROJECT_ROOT/scripts/run-week1.sh" | cut -d: -f1)"

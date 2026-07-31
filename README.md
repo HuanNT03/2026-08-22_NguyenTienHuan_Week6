@@ -11,6 +11,7 @@ và runtime logs không được commit vào repository Sentinel.
 - [Quickstart](#quickstart)
 - [Các lệnh Make](#các-lệnh-make)
 - [SAST và DAST](#sast-và-dast)
+- [Gitleaks Git hooks](#gitleaks-git-hooks)
 - [GitHub Actions](#github-actions)
 - [Cleanup](#cleanup)
 - [Troubleshooting](#troubleshooting)
@@ -26,6 +27,8 @@ ground-truth evaluation và scanner correlation được dành cho các tuần s
 - Linux x86_64, macOS với Docker Desktop, hoặc Windows WSL2 với Docker Desktop;
 - Git, Bash, GNU Make, Docker Engine/Desktop, Docker Compose v2;
 - `curl` và `jq`.
+
+Gitleaks `v8.30.1` trở lên được khuyến nghị để chạy secret-scanning Git hooks.
 
 Không cần cài Node.js, Semgrep hoặc ZAP trên host. Chạy `make doctor` để kiểm tra môi trường.
 
@@ -91,6 +94,153 @@ exit code `3` hoặc report không hợp lệ làm task thất bại.
 Runner truyền `-z "-silent"` cho ZAP Baseline để không tự update hoặc cài add-on trong lúc scan; scanner behavior vì vậy bám theo image đã pin.
 
 Hai scanner chạy container bằng UID/GID của host để raw reports không thuộc sở hữu root.
+
+## Gitleaks Git hooks
+
+Repository cung cấp hai native Git hooks:
+
+- `.githooks/pre-commit` quét chính xác nội dung đang được stage;
+- `.githooks/pre-push` quét các commit sắp được đẩy lên remote. Với branch hoặc tag mới,
+  hook quét toàn bộ lịch sử có thể truy cập từ ref đó.
+
+Hooks yêu cầu Gitleaks `v8.30.1` trở lên. Kiểm tra phiên bản đang có:
+
+```bash
+gitleaks version
+```
+
+Nếu chưa có Gitleaks hoặc phiên bản thấp hơn yêu cầu, hook in cảnh báo nhưng vẫn cho phép
+commit/push. Khi phiên bản hợp lệ, finding hoặc lỗi trong quá trình scan sẽ chặn thao tác.
+
+### Cài Gitleaks trên Linux
+
+Ví dụ sau cài binary chính thức cho Linux x86_64 hoặc ARM64 vào `~/.local/bin` mà không cần
+quyền root:
+
+```bash
+GITLEAKS_VERSION=8.30.1
+case "$(uname -m)" in
+  x86_64) GITLEAKS_ARCH=x64 ;;
+  aarch64 | arm64) GITLEAKS_ARCH=arm64 ;;
+  *) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;;
+esac
+
+GITLEAKS_ASSET="gitleaks_${GITLEAKS_VERSION}_linux_${GITLEAKS_ARCH}.tar.gz"
+GITLEAKS_BASE_URL="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
+
+curl --fail --location --remote-name "$GITLEAKS_BASE_URL/$GITLEAKS_ASSET"
+curl --fail --location --remote-name \
+  "$GITLEAKS_BASE_URL/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+grep " $GITLEAKS_ASSET$" "gitleaks_${GITLEAKS_VERSION}_checksums.txt" | sha256sum --check
+
+tar -xzf "$GITLEAKS_ASSET" gitleaks
+mkdir -p "$HOME/.local/bin"
+install -m 0755 gitleaks "$HOME/.local/bin/gitleaks"
+```
+
+Bảo đảm `~/.local/bin` thuộc `PATH`, mở terminal mới rồi chạy `gitleaks version`. Nếu làm việc
+trong WSL2, hãy chạy toàn bộ bước Linux bên trong distribution WSL đang chứa repository.
+
+### Cài Gitleaks trên macOS
+
+Cài bằng Homebrew rồi kiểm tra phiên bản:
+
+```bash
+brew install gitleaks
+gitleaks version
+```
+
+Nếu đã cài nhưng thấp hơn phiên bản yêu cầu:
+
+```bash
+brew update
+brew upgrade gitleaks
+```
+
+### Cài Gitleaks trên Windows
+
+Với Git for Windows native, mở PowerShell và tải binary chính thức phù hợp với x64 hoặc ARM64:
+
+```powershell
+$Version = "8.30.1"
+$Arch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "x64" }
+$Asset = "gitleaks_${Version}_windows_${Arch}.zip"
+$BaseUrl = "https://github.com/gitleaks/gitleaks/releases/download/v${Version}"
+
+Invoke-WebRequest "$BaseUrl/$Asset" -OutFile $Asset
+Invoke-WebRequest "$BaseUrl/gitleaks_${Version}_checksums.txt" `
+  -OutFile "gitleaks_${Version}_checksums.txt"
+
+$Expected = ((Select-String -Path "gitleaks_${Version}_checksums.txt" `
+  -Pattern " $([regex]::Escape($Asset))$").Line -split '\s+')[0].ToLowerInvariant()
+$Actual = (Get-FileHash $Asset -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($Actual -ne $Expected) { throw "Gitleaks checksum mismatch" }
+
+$InstallDir = Join-Path $env:LOCALAPPDATA "Programs\Gitleaks"
+New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
+Expand-Archive -Path $Asset -DestinationPath $InstallDir -Force
+$UserPath = [Environment]::GetEnvironmentVariable("Path", "User")
+if (($UserPath -split ';') -notcontains $InstallDir) {
+  [Environment]::SetEnvironmentVariable("Path", "$UserPath;$InstallDir", "User")
+}
+```
+
+Mở lại PowerShell và Git Bash, sau đó xác nhận `gitleaks version` hoạt động trong cả hai.
+Nếu repository nằm trong WSL2, cài theo hướng dẫn Linux thay vì cài binary Windows.
+
+Các gói và checksum chính thức nằm trên trang
+[Gitleaks releases](https://github.com/gitleaks/gitleaks/releases/tag/v8.30.1).
+
+### Kích hoạt hooks
+
+Git không tự kích hoạt tracked hooks sau khi clone. Trước tiên, kiểm tra repository có dùng
+hook path khác hay không:
+
+```bash
+git config --local --get core.hooksPath
+```
+
+Nếu lệnh không trả về giá trị, kích hoạt hooks của Sentinel:
+
+```bash
+git config --local core.hooksPath .githooks
+git config --local --get core.hooksPath
+```
+
+Nếu đã có giá trị, không ghi đè ngay: `core.hooksPath` chỉ nhận một thư mục, vì vậy cần hợp nhất
+các hook hiện hữu với `.githooks/` trước. Cấu hình này là local và mỗi clone phải thực hiện lại.
+
+Trước lần push đầu tiên, quét toàn bộ lịch sử hiện tại:
+
+```bash
+gitleaks git --redact --verbose .
+```
+
+Có thể chạy kiểm tra staged changes thủ công bằng:
+
+```bash
+./.githooks/pre-commit
+```
+
+Để tắt hooks khi repository trước đó không có custom hook path:
+
+```bash
+git config --local --unset core.hooksPath
+```
+
+Nếu đã có custom hook path, hãy khôi phục chính xác giá trị cũ thay vì dùng `--unset`.
+
+### Xử lý finding và giới hạn bảo vệ
+
+- Không thêm allowlist chỉ để vượt qua lỗi. Trước tiên xác minh finding có phải credential thật
+  hay không; fake/test value chỉ được ignore ở phạm vi nhỏ nhất và phải qua code review.
+- Nếu secret thật mới chỉ được stage, bỏ nó khỏi commit, chuyển sang secret manager hoặc biến môi
+  trường và cân nhắc rotate. Nếu đã từng được commit/push, revoke hoặc rotate ngay trước khi làm
+  sạch Git history; xóa ở commit mới không loại secret khỏi lịch sử.
+- `git commit --no-verify` và `git push --no-verify` có thể bỏ qua local hooks. Chỉ sử dụng khi có
+  phê duyệt bảo mật và thực hiện scan thủ công tương đương.
+- Hooks không thay thế secret scanning trong CI hoặc push protection phía Git hosting. Đây là lớp
+  kiểm tra sớm trên máy developer; CI/server-side enforcement nên được bổ sung ở task riêng.
 
 ## GitHub Actions
 
