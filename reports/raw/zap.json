@@ -1,15 +1,39 @@
 {
 	"@programName": "ZAP",
 	"@version": "2.17.0",
-	"@generated": "Wed, 29 Jul 2026 07:53:50",
-	"created": "2026-07-29T07:53:50.755778754Z",
-	"site":[ 
+	"@generated": "Fri, 31 Jul 2026 09:00:39",
+	"created": "2026-07-31T09:00:39.099973126Z",
+	"site":[
+		{
+			"@name": "https://content-signature-2.cdn.mozilla.net",
+			"@host": "content-signature-2.cdn.mozilla.net",
+			"@port": "443",
+			"@ssl": "true",
+			"alerts": [
+			]
+		},
+		{
+			"@name": "https://firefox-settings-attachments.cdn.mozilla.net",
+			"@host": "firefox-settings-attachments.cdn.mozilla.net",
+			"@port": "443",
+			"@ssl": "true",
+			"alerts": [
+			]
+		},
+		{
+			"@name": "https://firefox.settings.services.mozilla.com",
+			"@host": "firefox.settings.services.mozilla.com",
+			"@port": "443",
+			"@ssl": "true",
+			"alerts": [
+			]
+		},
 		{
 			"@name": "http://juice-shop:3000",
 			"@host": "juice-shop",
 			"@port": "3000",
 			"@ssl": "false",
-			"alerts": [ 
+			"alerts": [
 				{
 					"pluginid": "10038",
 					"alertRef": "10038-1",
@@ -19,7 +43,7 @@
 					"confidence": "3",
 					"riskdesc": "Medium (High)",
 					"desc": "<p>Content Security Policy (CSP) is an added layer of security that helps to detect and mitigate certain types of attacks, including Cross Site Scripting (XSS) and data injection attacks. These attacks are used for everything from data theft to site defacement or distribution of malware. CSP provides a set of standard HTTP headers that allow website owners to declare approved sources of content that browsers should be allowed to load on that page \u2014 covered types are JavaScript, CSS, HTML frames, fonts, images and embeddable objects such as Java applets, ActiveX, audio and video files.</p>",
-					"instances":[ 
+					"instances":[
 						{
 							"id": "5",
 							"uri": "http://juice-shop:3000",
@@ -31,7 +55,17 @@
 							"otherinfo": ""
 						},
 						{
-							"id": "50",
+							"id": "44",
+							"uri": "http://juice-shop:3000/ftp/coupons_2013.md.bak",
+							"nodeName": "http:\/\/juice-shop:3000\/ftp\/coupons_2013.md.bak",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": ""
+						},
+						{
+							"id": "47",
 							"uri": "http://juice-shop:3000/ftp/eastere.gg",
 							"nodeName": "http:\/\/juice-shop:3000\/ftp\/eastere.gg",
 							"method": "GET",
@@ -41,7 +75,7 @@
 							"otherinfo": ""
 						},
 						{
-							"id": "51",
+							"id": "46",
 							"uri": "http://juice-shop:3000/ftp/package.json.bak",
 							"nodeName": "http:\/\/juice-shop:3000\/ftp\/package.json.bak",
 							"method": "GET",
@@ -51,17 +85,7 @@
 							"otherinfo": ""
 						},
 						{
-							"id": "53",
-							"uri": "http://juice-shop:3000/ftp/suspicious_errors.yml",
-							"nodeName": "http:\/\/juice-shop:3000\/ftp\/suspicious_errors.yml",
-							"method": "GET",
-							"param": "",
-							"attack": "",
-							"evidence": "",
-							"otherinfo": ""
-						},
-						{
-							"id": "3",
+							"id": "7",
 							"uri": "http://juice-shop:3000/sitemap.xml",
 							"nodeName": "http:\/\/juice-shop:3000\/sitemap.xml",
 							"method": "GET",
@@ -89,9 +113,9 @@
 					"confidence": "2",
 					"riskdesc": "Medium (Medium)",
 					"desc": "<p>Web browser data loading may be possible, due to a Cross Origin Resource Sharing (CORS) misconfiguration on the web server.</p>",
-					"instances":[ 
+					"instances":[
 						{
-							"id": "0",
+							"id": "1",
 							"uri": "http://juice-shop:3000/assets/public/favicon_js.ico",
 							"nodeName": "http:\/\/juice-shop:3000\/assets\/public\/favicon_js.ico",
 							"method": "GET",
@@ -101,9 +125,9 @@
 							"otherinfo": "The CORS misconfiguration on the web server permits cross-domain read requests from arbitrary third party domains, using unauthenticated APIs on this domain. Web browser implementations do not permit arbitrary third parties to read the response from authenticated APIs, however. This reduces the risk somewhat. This misconfiguration could be used by an attacker to access data that is available in an unauthenticated manner, but which uses some other form of security, such as IP address white-listing."
 						},
 						{
-							"id": "2",
-							"uri": "http://juice-shop:3000/chunk-PX7UKXVL.js",
-							"nodeName": "http:\/\/juice-shop:3000\/chunk-PX7UKXVL.js",
+							"id": "4",
+							"uri": "http://juice-shop:3000/chunk-6EGSYZCA.js",
+							"nodeName": "http:\/\/juice-shop:3000\/chunk-6EGSYZCA.js",
 							"method": "GET",
 							"param": "",
 							"attack": "",
@@ -111,9 +135,9 @@
 							"otherinfo": "The CORS misconfiguration on the web server permits cross-domain read requests from arbitrary third party domains, using unauthenticated APIs on this domain. Web browser implementations do not permit arbitrary third parties to read the response from authenticated APIs, however. This reduces the risk somewhat. This misconfiguration could be used by an attacker to access data that is available in an unauthenticated manner, but which uses some other form of security, such as IP address white-listing."
 						},
 						{
-							"id": "7",
-							"uri": "http://juice-shop:3000/chunk-ZSZVIPVM.js",
-							"nodeName": "http:\/\/juice-shop:3000\/chunk-ZSZVIPVM.js",
+							"id": "0",
+							"uri": "http://juice-shop:3000/chunk-NBP6SWQR.js",
+							"nodeName": "http:\/\/juice-shop:3000\/chunk-NBP6SWQR.js",
 							"method": "GET",
 							"param": "",
 							"attack": "",
@@ -121,7 +145,7 @@
 							"otherinfo": "The CORS misconfiguration on the web server permits cross-domain read requests from arbitrary third party domains, using unauthenticated APIs on this domain. Web browser implementations do not permit arbitrary third parties to read the response from authenticated APIs, however. This reduces the risk somewhat. This misconfiguration could be used by an attacker to access data that is available in an unauthenticated manner, but which uses some other form of security, such as IP address white-listing."
 						},
 						{
-							"id": "1",
+							"id": "3",
 							"uri": "http://juice-shop:3000/robots.txt",
 							"nodeName": "http:\/\/juice-shop:3000\/robots.txt",
 							"method": "GET",
@@ -129,26 +153,146 @@
 							"attack": "",
 							"evidence": "Access-Control-Allow-Origin: *",
 							"otherinfo": "The CORS misconfiguration on the web server permits cross-domain read requests from arbitrary third party domains, using unauthenticated APIs on this domain. Web browser implementations do not permit arbitrary third parties to read the response from authenticated APIs, however. This reduces the risk somewhat. This misconfiguration could be used by an attacker to access data that is available in an unauthenticated manner, but which uses some other form of security, such as IP address white-listing."
-						},
-						{
-							"id": "4",
-							"uri": "http://juice-shop:3000/sitemap.xml",
-							"nodeName": "http:\/\/juice-shop:3000\/sitemap.xml",
-							"method": "GET",
-							"param": "",
-							"attack": "",
-							"evidence": "Access-Control-Allow-Origin: *",
-							"otherinfo": "The CORS misconfiguration on the web server permits cross-domain read requests from arbitrary third party domains, using unauthenticated APIs on this domain. Web browser implementations do not permit arbitrary third parties to read the response from authenticated APIs, however. This reduces the risk somewhat. This misconfiguration could be used by an attacker to access data that is available in an unauthenticated manner, but which uses some other form of security, such as IP address white-listing."
 						}
 					],
-					"count": "5",
+					"count": "4",
 					"systemic": true,
 					"solution": "<p>Ensure that sensitive data is not available in an unauthenticated manner (using IP address white-listing, for instance).</p><p>Configure the \"Access-Control-Allow-Origin\" HTTP header to a more restrictive set of domains, or remove all CORS headers entirely, to allow the web browser to enforce the Same Origin Policy (SOP) in a more restrictive manner.</p>",
 					"otherinfo": "<p>The CORS misconfiguration on the web server permits cross-domain read requests from arbitrary third party domains, using unauthenticated APIs on this domain. Web browser implementations do not permit arbitrary third parties to read the response from authenticated APIs, however. This reduces the risk somewhat. This misconfiguration could be used by an attacker to access data that is available in an unauthenticated manner, but which uses some other form of security, such as IP address white-listing.</p>",
 					"reference": "<p>https://vulncat.fortify.com/en/detail?category=HTML5&subcategory=Overly%20Permissive%20CORS%20Policy</p>",
 					"cweid": "264",
 					"wascid": "14",
-					"sourceid": "27"
+					"sourceid": "17"
+				},
+				{
+					"pluginid": "10020",
+					"alertRef": "10020-1",
+					"alert": "Missing Anti-clickjacking Header",
+					"name": "Missing Anti-clickjacking Header",
+					"riskcode": "2",
+					"confidence": "2",
+					"riskdesc": "Medium (Medium)",
+					"desc": "<p>The response does not protect against 'ClickJacking' attacks. It should include either Content-Security-Policy with 'frame-ancestors' directive or X-Frame-Options.</p>",
+					"instances":[
+						{
+							"id": "70",
+							"uri": "http://juice-shop:3000/socket.io/?EIO=4&transport=polling&t=P-tPZXR&sid=azU4poUsHwQOOyCFAAAE",
+							"nodeName": "http:\/\/juice-shop:3000\/socket.io\/ (EIO,sid,t,transport)(40)",
+							"method": "POST",
+							"param": "x-frame-options",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": ""
+						}
+					],
+					"count": "1",
+					"systemic": false,
+					"solution": "<p>Modern Web browsers support the Content-Security-Policy and X-Frame-Options HTTP headers. Ensure one of them is set on all web pages returned by your site/app.</p><p>If you expect the page to be framed only by pages on your server (e.g. it's part of a FRAMESET) then you'll want to use SAMEORIGIN, otherwise if you never expect the page to be framed, you should use DENY. Alternatively consider implementing Content Security Policy's \"frame-ancestors\" directive.</p>",
+					"otherinfo": "",
+					"reference": "<p>https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Frame-Options</p>",
+					"cweid": "1021",
+					"wascid": "15",
+					"sourceid": "341"
+				},
+				{
+					"pluginid": "3",
+					"alertRef": "3-1",
+					"alert": "Session ID in URL Rewrite",
+					"name": "Session ID in URL Rewrite",
+					"riskcode": "2",
+					"confidence": "3",
+					"riskdesc": "Medium (High)",
+					"desc": "<p>URL rewrite is used to track user session ID. The session ID may be disclosed via cross-site referer header. In addition, the session ID might be stored in browser history or server logs.</p>",
+					"instances":[
+						{
+							"id": "84",
+							"uri": "http://juice-shop:3000/socket.io/?EIO=4&transport=polling&t=P-tPdMf&sid=JVSX6Ecgq1jSyIE2AAAG",
+							"nodeName": "http:\/\/juice-shop:3000\/socket.io\/ (EIO,sid,t,transport)",
+							"method": "GET",
+							"param": "sid",
+							"attack": "",
+							"evidence": "JVSX6Ecgq1jSyIE2AAAG",
+							"otherinfo": ""
+						},
+						{
+							"id": "68",
+							"uri": "http://juice-shop:3000/socket.io/?EIO=4&transport=polling&t=P-tPZXU&sid=azU4poUsHwQOOyCFAAAE",
+							"nodeName": "http:\/\/juice-shop:3000\/socket.io\/ (EIO,sid,t,transport)",
+							"method": "GET",
+							"param": "sid",
+							"attack": "",
+							"evidence": "azU4poUsHwQOOyCFAAAE",
+							"otherinfo": ""
+						},
+						{
+							"id": "82",
+							"uri": "http://juice-shop:3000/socket.io/?EIO=4&transport=websocket&sid=JVSX6Ecgq1jSyIE2AAAG",
+							"nodeName": "http:\/\/juice-shop:3000\/socket.io\/ (EIO,sid,transport)",
+							"method": "GET",
+							"param": "sid",
+							"attack": "",
+							"evidence": "JVSX6Ecgq1jSyIE2AAAG",
+							"otherinfo": ""
+						},
+						{
+							"id": "71",
+							"uri": "http://juice-shop:3000/socket.io/?EIO=4&transport=websocket&sid=azU4poUsHwQOOyCFAAAE",
+							"nodeName": "http:\/\/juice-shop:3000\/socket.io\/ (EIO,sid,transport)",
+							"method": "GET",
+							"param": "sid",
+							"attack": "",
+							"evidence": "azU4poUsHwQOOyCFAAAE",
+							"otherinfo": ""
+						},
+						{
+							"id": "72",
+							"uri": "http://juice-shop:3000/socket.io/?EIO=4&transport=polling&t=P-tPZXR&sid=azU4poUsHwQOOyCFAAAE",
+							"nodeName": "http:\/\/juice-shop:3000\/socket.io\/ (EIO,sid,t,transport)(40)",
+							"method": "POST",
+							"param": "sid",
+							"attack": "",
+							"evidence": "azU4poUsHwQOOyCFAAAE",
+							"otherinfo": ""
+						}
+					],
+					"count": "5",
+					"systemic": true,
+					"solution": "<p>For secure content, put session ID in a cookie. To be even more secure consider using a combination of cookie and URL rewrite.</p>",
+					"otherinfo": "",
+					"reference": "<p>https://seclists.org/webappsec/2002/q4/111</p>",
+					"cweid": "598",
+					"wascid": "13",
+					"sourceid": "432"
+				},
+				{
+					"pluginid": "2",
+					"alertRef": "2",
+					"alert": "Private IP Disclosure",
+					"name": "Private IP Disclosure",
+					"riskcode": "1",
+					"confidence": "2",
+					"riskdesc": "Low (Medium)",
+					"desc": "<p>A private IP (such as 10.x.x.x, 172.x.x.x, 192.168.x.x) or an Amazon EC2 private hostname (for example, ip-10-0-56-78) has been found in the HTTP response body. This information might be helpful for further attacks targeting internal systems.</p>",
+					"instances":[
+						{
+							"id": "63",
+							"uri": "http://juice-shop:3000/rest/admin/application-configuration",
+							"nodeName": "http:\/\/juice-shop:3000\/rest\/admin\/application-configuration",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "192.168.99.100:3000",
+							"otherinfo": "192.168.99.100:3000\n192.168.99.100:4200\n"
+						}
+					],
+					"count": "1",
+					"systemic": false,
+					"solution": "<p>Remove the private IP address from the HTTP response body. For comments, use JSP/ASP/PHP comment instead of HTML/JavaScript comment which can be seen by client browsers.</p>",
+					"otherinfo": "<p>192.168.99.100:3000</p><p>192.168.99.100:4200</p><p></p>",
+					"reference": "<p>https://datatracker.ietf.org/doc/html/rfc1918</p>",
+					"cweid": "497",
+					"wascid": "13",
+					"sourceid": "329"
 				},
 				{
 					"pluginid": "10096",
@@ -159,49 +303,9 @@
 					"confidence": "1",
 					"riskdesc": "Low (Low)",
 					"desc": "<p>A timestamp was disclosed by the application/web server. - Unix</p>",
-					"instances":[ 
+					"instances":[
 						{
-							"id": "16",
-							"uri": "http://juice-shop:3000",
-							"nodeName": "http:\/\/juice-shop:3000",
-							"method": "GET",
-							"param": "",
-							"attack": "",
-							"evidence": "1666666667",
-							"otherinfo": "1666666667, which evaluates to: 2022-10-25 02:57:47."
-						},
-						{
-							"id": "17",
-							"uri": "http://juice-shop:3000",
-							"nodeName": "http:\/\/juice-shop:3000",
-							"method": "GET",
-							"param": "",
-							"attack": "",
-							"evidence": "1839622642",
-							"otherinfo": "1839622642, which evaluates to: 2028-04-17 22:17:22."
-						},
-						{
-							"id": "18",
-							"uri": "http://juice-shop:3000/sitemap.xml",
-							"nodeName": "http:\/\/juice-shop:3000\/sitemap.xml",
-							"method": "GET",
-							"param": "",
-							"attack": "",
-							"evidence": "1666666667",
-							"otherinfo": "1666666667, which evaluates to: 2022-10-25 02:57:47."
-						},
-						{
-							"id": "21",
-							"uri": "http://juice-shop:3000/sitemap.xml",
-							"nodeName": "http:\/\/juice-shop:3000\/sitemap.xml",
-							"method": "GET",
-							"param": "",
-							"attack": "",
-							"evidence": "1839622642",
-							"otherinfo": "1839622642, which evaluates to: 2028-04-17 22:17:22."
-						},
-						{
-							"id": "24",
+							"id": "13",
 							"uri": "http://juice-shop:3000/styles.css",
 							"nodeName": "http:\/\/juice-shop:3000\/styles.css",
 							"method": "GET",
@@ -209,16 +313,106 @@
 							"attack": "",
 							"evidence": "1528301887",
 							"otherinfo": "1528301887, which evaluates to: 2018-06-06 16:18:07."
+						},
+						{
+							"id": "14",
+							"uri": "http://juice-shop:3000/styles.css",
+							"nodeName": "http:\/\/juice-shop:3000\/styles.css",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "1578947368",
+							"otherinfo": "1578947368, which evaluates to: 2020-01-13 20:29:28."
+						},
+						{
+							"id": "16",
+							"uri": "http://juice-shop:3000/styles.css",
+							"nodeName": "http:\/\/juice-shop:3000\/styles.css",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "1602209945",
+							"otherinfo": "1602209945, which evaluates to: 2020-10-09 02:19:05."
+						},
+						{
+							"id": "20",
+							"uri": "http://juice-shop:3000/styles.css",
+							"nodeName": "http:\/\/juice-shop:3000\/styles.css",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "1636363636",
+							"otherinfo": "1636363636, which evaluates to: 2021-11-08 09:27:16."
+						},
+						{
+							"id": "21",
+							"uri": "http://juice-shop:3000/styles.css",
+							"nodeName": "http:\/\/juice-shop:3000\/styles.css",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "1818181818",
+							"otherinfo": "1818181818, which evaluates to: 2027-08-13 18:30:18."
 						}
 					],
 					"count": "5",
 					"systemic": true,
 					"solution": "<p>Manually confirm that the timestamp data is not sensitive, and that the data cannot be aggregated to disclose exploitable patterns.</p>",
-					"otherinfo": "<p>1666666667, which evaluates to: 2022-10-25 02:57:47.</p>",
+					"otherinfo": "<p>1528301887, which evaluates to: 2018-06-06 16:18:07.</p>",
 					"reference": "<p>https://cwe.mitre.org/data/definitions/200.html</p>",
 					"cweid": "497",
 					"wascid": "13",
-					"sourceid": "8"
+					"sourceid": "30"
+				},
+				{
+					"pluginid": "10021",
+					"alertRef": "10021",
+					"alert": "X-Content-Type-Options Header Missing",
+					"name": "X-Content-Type-Options Header Missing",
+					"riskcode": "1",
+					"confidence": "2",
+					"riskdesc": "Low (Medium)",
+					"desc": "<p>The Anti-MIME-Sniffing header X-Content-Type-Options was not set to 'nosniff'. This allows older versions of Internet Explorer and Chrome to perform MIME-sniffing on the response body, potentially causing the response body to be interpreted and displayed as a content type other than the declared content type. Current (early 2014) and legacy versions of Firefox will use the declared content type (if one is set), rather than performing MIME-sniffing.</p>",
+					"instances":[
+						{
+							"id": "69",
+							"uri": "http://juice-shop:3000/socket.io/?EIO=4&transport=polling&t=P-tPZXU&sid=azU4poUsHwQOOyCFAAAE",
+							"nodeName": "http:\/\/juice-shop:3000\/socket.io\/ (EIO,sid,t,transport)",
+							"method": "GET",
+							"param": "x-content-type-options",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": "This issue still applies to error type pages (401, 403, 500, etc.) as those pages are often still affected by injection issues, in which case there is still concern for browsers sniffing pages away from their actual content type.\nAt \"High\" threshold this scan rule will not alert on client or server error responses."
+						},
+						{
+							"id": "62",
+							"uri": "http://juice-shop:3000/socket.io/?EIO=4&transport=polling&t=P-tPZNi",
+							"nodeName": "http:\/\/juice-shop:3000\/socket.io\/ (EIO,t,transport)",
+							"method": "GET",
+							"param": "x-content-type-options",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": "This issue still applies to error type pages (401, 403, 500, etc.) as those pages are often still affected by injection issues, in which case there is still concern for browsers sniffing pages away from their actual content type.\nAt \"High\" threshold this scan rule will not alert on client or server error responses."
+						},
+						{
+							"id": "73",
+							"uri": "http://juice-shop:3000/socket.io/?EIO=4&transport=polling&t=P-tPZXR&sid=azU4poUsHwQOOyCFAAAE",
+							"nodeName": "http:\/\/juice-shop:3000\/socket.io\/ (EIO,sid,t,transport)(40)",
+							"method": "POST",
+							"param": "x-content-type-options",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": "This issue still applies to error type pages (401, 403, 500, etc.) as those pages are often still affected by injection issues, in which case there is still concern for browsers sniffing pages away from their actual content type.\nAt \"High\" threshold this scan rule will not alert on client or server error responses."
+						}
+					],
+					"count": "3",
+					"systemic": false,
+					"solution": "<p>Ensure that the application/web server sets the Content-Type header appropriately, and that it sets the X-Content-Type-Options header to 'nosniff' for all web pages.</p><p>If possible, ensure that the end user uses a standards-compliant and modern web browser that does not perform MIME-sniffing at all, or that can be directed by the web application/web server to not perform MIME-sniffing.</p>",
+					"otherinfo": "<p>This issue still applies to error type pages (401, 403, 500, etc.) as those pages are often still affected by injection issues, in which case there is still concern for browsers sniffing pages away from their actual content type.</p><p>At \"High\" threshold this scan rule will not alert on client or server error responses.</p>",
+					"reference": "<p>https://learn.microsoft.com/en-us/previous-versions/windows/internet-explorer/ie-developer/compatibility/gg622941(v=vs.85)</p><p>https://owasp.org/www-community/Security_Headers</p>",
+					"cweid": "693",
+					"wascid": "15",
+					"sourceid": "340"
 				},
 				{
 					"pluginid": "10109",
@@ -229,9 +423,9 @@
 					"confidence": "2",
 					"riskdesc": "Informational (Medium)",
 					"desc": "<p>The application appears to be a modern web application. If you need to explore it automatically then the Ajax Spider may well be more effective than the standard one.</p>",
-					"instances":[ 
+					"instances":[
 						{
-							"id": "14",
+							"id": "18",
 							"uri": "http://juice-shop:3000",
 							"nodeName": "http:\/\/juice-shop:3000",
 							"method": "GET",
@@ -241,7 +435,7 @@
 							"otherinfo": "No links have been found while there are scripts, which is an indication that this is a modern web application."
 						},
 						{
-							"id": "61",
+							"id": "51",
 							"uri": "http://juice-shop:3000/",
 							"nodeName": "http:\/\/juice-shop:3000\/",
 							"method": "GET",
@@ -251,9 +445,9 @@
 							"otherinfo": "No links have been found while there are scripts, which is an indication that this is a modern web application."
 						},
 						{
-							"id": "58",
-							"uri": "http://juice-shop:3000/juice-shop/build/routes/fileServer.js:53:13",
-							"nodeName": "http:\/\/juice-shop:3000\/juice-shop\/build\/routes\/fileServer.js:53:13",
+							"id": "54",
+							"uri": "http://juice-shop:3000/juice-shop/build/routes/fileServer.js:69:18",
+							"nodeName": "http:\/\/juice-shop:3000\/juice-shop\/build\/routes\/fileServer.js:69:18",
 							"method": "GET",
 							"param": "",
 							"attack": "",
@@ -261,9 +455,9 @@
 							"otherinfo": "No links have been found while there are scripts, which is an indication that this is a modern web application."
 						},
 						{
-							"id": "60",
-							"uri": "http://juice-shop:3000/juice-shop/node_modules/express/lib/router/index.js:328:13",
-							"nodeName": "http:\/\/juice-shop:3000\/juice-shop\/node_modules\/express\/lib\/router\/index.js:328:13",
+							"id": "55",
+							"uri": "http://juice-shop:3000/juice-shop/node_modules/express/lib/router/index.js:365:14",
+							"nodeName": "http:\/\/juice-shop:3000\/juice-shop\/node_modules\/express\/lib\/router\/index.js:365:14",
 							"method": "GET",
 							"param": "",
 							"attack": "",
@@ -271,7 +465,7 @@
 							"otherinfo": "No links have been found while there are scripts, which is an indication that this is a modern web application."
 						},
 						{
-							"id": "13",
+							"id": "28",
 							"uri": "http://juice-shop:3000/sitemap.xml",
 							"nodeName": "http:\/\/juice-shop:3000\/sitemap.xml",
 							"method": "GET",
@@ -288,7 +482,7 @@
 					"reference": "",
 					"cweid": "-1",
 					"wascid": "-1",
-					"sourceid": "1"
+					"sourceid": "8"
 				}
 			]
 		}
