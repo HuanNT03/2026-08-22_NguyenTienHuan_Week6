@@ -23,6 +23,8 @@ jobs:
   sast:
     needs: quality
     uses: ./.github/workflows/sast-scan.yml
+    secrets:
+      SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
 
   dast:
     needs: quality

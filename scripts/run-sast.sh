@@ -15,6 +15,8 @@ SARIF_FILE="$REPORT_DIR/semgrep.sarif"
 HOST_USER="$(id -u):$(id -g)"
 
 load_tool_versions "$VERSIONS_FILE"
+SEMGREP_APP_TOKEN="$(resolve_semgrep_app_token "$PROJECT_ROOT")"
+export SEMGREP_APP_TOKEN
 "$SCRIPT_DIR/verify-target.sh"
 mkdir -p "$REPORT_DIR"
 touch "$REPORT_DIR/.gitkeep"
@@ -26,6 +28,7 @@ docker run --rm --user "$HOST_USER" -e HOME=/tmp "$SEMGREP_IMAGE" semgrep --vers
 docker run --rm \
   --user "$HOST_USER" \
   -e HOME=/tmp \
+  -e SEMGREP_APP_TOKEN \
   -v "$PROJECT_ROOT:/src:ro" \
   -v "$REPORT_DIR:/src/reports/raw:rw" \
   "$SEMGREP_IMAGE" \
@@ -40,6 +43,10 @@ docker run --rm \
   /src/target-app/juice-shop
 
 "$SCRIPT_DIR/validate-reports.sh" semgrep
+
+jq -e 'all(.results[]; (.extra.fingerprint // "") != "requires login" and (.extra.lines // "") != "requires login")' \
+  "$REPORT_FILE" >/dev/null || die "Semgrep report contains metadata that requires login"
+log "Semgrep report contains authenticated finding metadata."
 
 [[ -s "$SARIF_FILE" ]] || die "Semgrep SARIF report is missing or empty: $SARIF_FILE"
 jq -e ".version == \"2.1.0\" and (.runs | type == \"array\")" "$SARIF_FILE" >/dev/null || \

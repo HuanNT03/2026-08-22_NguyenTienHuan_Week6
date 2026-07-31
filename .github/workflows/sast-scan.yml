@@ -2,6 +2,9 @@ name: Semgrep SAST
 
 on:
   workflow_call:
+    secrets:
+      SEMGREP_APP_TOKEN:
+        required: true
   workflow_dispatch:
 
 permissions:
@@ -19,6 +22,8 @@ jobs:
         run: make setup-target
       - name: Run Semgrep
         run: make sast
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
       - name: Validate Semgrep report
         if: always()
         run: ./scripts/validate-reports.sh semgrep

@@ -86,3 +86,23 @@ resolve_juice_shop_port() {
   [[ "$port" =~ ^[0-9]+$ ]] && ((port >= 1 && port <= 65535)) || die "Invalid JUICE_SHOP_PORT: $port"
   printf '%s\n' "$port"
 }
+
+resolve_semgrep_app_token() {
+  local project_root="$1"
+  local env_file="$project_root/.env"
+  local token="${SEMGREP_APP_TOKEN:-}"
+  local token_count
+
+  if [[ -z "$token" && -f "$env_file" ]]; then
+    token_count="$(awk -F= '$1 == "SEMGREP_APP_TOKEN" { count++ } END { print count + 0 }' "$env_file")"
+    ((token_count <= 1)) || die "Duplicate SEMGREP_APP_TOKEN entries in $env_file"
+    token="$(config_value "$env_file" SEMGREP_APP_TOKEN)"
+  fi
+
+  [[ -n "$token" ]] || \
+    die "SEMGREP_APP_TOKEN is required. Export it or set it in $env_file"
+  [[ "$token" != "your-semgrep-app-token-here" ]] || \
+    die "Replace the SEMGREP_APP_TOKEN placeholder in $env_file"
+
+  printf '%s\n' "$token"
+}

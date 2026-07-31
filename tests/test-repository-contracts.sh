@@ -70,7 +70,17 @@ fi
 grep -q -- '--user "$HOST_USER"' "$PROJECT_ROOT/scripts/run-sast.sh" || fail "SAST container must use host UID/GID"
 grep -q -- '--dataflow-traces' "$PROJECT_ROOT/scripts/run-sast.sh" || fail "SAST must emit dataflow traces"
 grep -q -- '--sarif-output /src/reports/raw/semgrep.sarif' "$PROJECT_ROOT/scripts/run-sast.sh" || fail "SAST must emit a SARIF report"
+grep -q -- '-e SEMGREP_APP_TOKEN' "$PROJECT_ROOT/scripts/run-sast.sh" || fail "SAST container must receive SEMGREP_APP_TOKEN"
+grep -q -- 'contains metadata that requires login' "$PROJECT_ROOT/scripts/run-sast.sh" || \
+  fail "SAST must reject unauthenticated finding metadata"
 grep -q -- 'reports/raw/semgrep.sarif' "$PROJECT_ROOT/.github/workflows/sast-scan.yml" || fail "SAST workflow must upload the SARIF report"
+grep -A3 '^  workflow_call:$' "$PROJECT_ROOT/.github/workflows/sast-scan.yml" | \
+  grep -q 'SEMGREP_APP_TOKEN:' || fail "SAST reusable workflow must declare SEMGREP_APP_TOKEN"
+grep -A5 '^  sast:$' "$ci_workflow" | grep -q 'SEMGREP_APP_TOKEN:.*secrets.SEMGREP_APP_TOKEN' || \
+  fail "CI must pass SEMGREP_APP_TOKEN explicitly to the SAST workflow"
+grep -A3 'name: Run Semgrep' "$PROJECT_ROOT/.github/workflows/sast-scan.yml" | \
+  grep -q 'SEMGREP_APP_TOKEN:.*secrets.SEMGREP_APP_TOKEN' || \
+  fail "SAST workflow must expose the GitHub secret only to the scan step"
 grep -q -- '--user "$HOST_USER"' "$PROJECT_ROOT/scripts/run-dast.sh" || fail "DAST container must use host UID/GID"
 [[ "$(grep -c -- 'JAVA_TOOL_OPTIONS=-Duser.home=/tmp' "$PROJECT_ROOT/scripts/run-dast.sh")" -eq 2 ]] || \
   fail "DAST must set a writable Java home for both ZAP invocations"
@@ -136,6 +146,55 @@ printf '{"site":[]}\n' >"$report_dir/zap.json"
 SENTINEL_REPORT_DIR="$report_dir" "$PROJECT_ROOT/scripts/validate-reports.sh" zap >/dev/null || \
   fail "validator rejected a valid ZAP report"
 pass "report validator distinguishes missing, empty, malformed, invalid-structure and valid reports"
+
+semgrep_env_root="$TEST_TMP/semgrep-env"
+mkdir -p "$semgrep_env_root"
+printf 'SEMGREP_APP_TOKEN=file-token\n' >"$semgrep_env_root/.env"
+
+resolved_token="$(
+  SEMGREP_APP_TOKEN=exported-token resolve_semgrep_app_token "$semgrep_env_root"
+)"
+[[ "$resolved_token" == "exported-token" ]] || fail "exported Semgrep token must take precedence over .env"
+
+resolved_token="$(
+  unset SEMGREP_APP_TOKEN
+  resolve_semgrep_app_token "$semgrep_env_root"
+)"
+[[ "$resolved_token" == "file-token" ]] || fail "Semgrep token must fall back to .env"
+
+: >"$semgrep_env_root/.env"
+set +e
+missing_token_output="$(
+  unset SEMGREP_APP_TOKEN
+  resolve_semgrep_app_token "$semgrep_env_root" 2>&1
+)"
+missing_token_status=$?
+set -e
+((missing_token_status != 0)) && [[ "$missing_token_output" == *"SEMGREP_APP_TOKEN is required"* ]] || \
+  fail "missing Semgrep token must fail clearly"
+
+printf 'SEMGREP_APP_TOKEN=your-semgrep-app-token-here\n' >"$semgrep_env_root/.env"
+set +e
+placeholder_token_output="$(
+  unset SEMGREP_APP_TOKEN
+  resolve_semgrep_app_token "$semgrep_env_root" 2>&1
+)"
+placeholder_token_status=$?
+set -e
+((placeholder_token_status != 0)) && [[ "$placeholder_token_output" == *"placeholder"* ]] || \
+  fail "Semgrep token placeholder must be rejected"
+
+printf 'SEMGREP_APP_TOKEN=first\nSEMGREP_APP_TOKEN=second\n' >"$semgrep_env_root/.env"
+set +e
+duplicate_token_output="$(
+  unset SEMGREP_APP_TOKEN
+  resolve_semgrep_app_token "$semgrep_env_root" 2>&1
+)"
+duplicate_token_status=$?
+set -e
+((duplicate_token_status != 0)) && [[ "$duplicate_token_output" == *"Duplicate SEMGREP_APP_TOKEN"* ]] || \
+  fail "duplicate Semgrep token entries must be rejected"
+pass "Semgrep token resolution is deterministic and fails safely"
 
 [[ -x "$PROJECT_ROOT/.githooks/pre-commit" ]] || fail "pre-commit hook must be executable"
 
