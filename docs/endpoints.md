@@ -1,8 +1,7 @@
 # Juice Shop endpoints — Week 1
 
 Các endpoint dưới đây được đối chiếu từ source đúng commit
-`f915bddd82790d0f3018902d36ae9b4241a5f51f`. Trạng thái DAST vẫn để chưa xác minh vì ZAP
-chưa thể chạy khi Docker daemon không khả dụng. Không suy đoán endpoint từ phiên bản khác.
+`f915bddd82790d0f3018902d36ae9b4241a5f51f`. 
 
 | Method | Path | Chức năng | Authentication | Nguồn xác minh | DAST reachable |
 | --- | --- | --- | --- | --- | --- |

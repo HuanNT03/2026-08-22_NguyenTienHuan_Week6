@@ -4363,12 +4363,12 @@
     },
     "time": {
         "rules": [],
-        "rules_parse_time": 0.25135302543640137,
+        "rules_parse_time": 0.32561397552490234,
         "profiling_times": {
-            "config_time": 1.378566026687622,
-            "core_time": 24.10346007347107,
-            "ignores_time": 0.0023229122161865234,
-            "total_time": 25.49665594100952
+            "config_time": 4.051854848861694,
+            "core_time": 24.323120594024658,
+            "ignores_time": 0.001310586929321289,
+            "total_time": 28.38837242126465
         },
         "parsing_time": {
             "total_time": 0.0,
@@ -4383,55 +4383,55 @@
             "very_slow_files": []
         },
         "scanning_time": {
-            "total_time": 150.27437329292297,
+            "total_time": 150.45649480819702,
             "per_file_time": {
-                "mean": 0.05326989482202157,
-                "std_dev": 0.07247490667304456
+                "mean": 0.05333445402630169,
+                "std_dev": 0.0716808012976526
             },
             "very_slow_stats": {
-                "time_ratio": 0.4051548096645101,
-                "count_ratio": 0.009925558312655087
+                "time_ratio": 0.43536023352748565,
+                "count_ratio": 0.01098901098901099
             },
             "very_slow_files": [
                 {
-                    "fpath": "/src/target-app/juice-shop/data/static/i18n/hu_HU.json",
-                    "ftime": 1.9817938804626465
+                    "fpath": "/src/target-app/juice-shop/data/static/i18n/bn_BD.json",
+                    "ftime": 2.005526065826416
                 },
                 {
-                    "fpath": "/src/target-app/juice-shop/data/static/i18n/nl_NL.json",
-                    "ftime": 1.995959997177124
+                    "fpath": "/src/target-app/juice-shop/data/static/i18n/ro_RO.json",
+                    "ftime": 2.0127689838409424
+                },
+                {
+                    "fpath": "/src/target-app/juice-shop/data/static/i18n/bg_BG.json",
+                    "ftime": 2.0370562076568604
                 },
                 {
                     "fpath": "/src/target-app/juice-shop/data/static/i18n/pl_PL.json",
-                    "ftime": 2.1104440689086914
+                    "ftime": 2.1119298934936523
                 },
                 {
-                    "fpath": "/src/target-app/juice-shop/data/static/i18n/az_AZ.json",
-                    "ftime": 2.2256739139556885
-                },
-                {
-                    "fpath": "/src/target-app/juice-shop/data/static/i18n/fa_IR.json",
-                    "ftime": 2.2590079307556152
+                    "fpath": "/src/target-app/juice-shop/data/static/i18n/ru_RU.json",
+                    "ftime": 2.206526041030884
                 },
                 {
                     "fpath": "/src/target-app/juice-shop/data/static/i18n/zh_TW.json",
-                    "ftime": 2.465341091156006
+                    "ftime": 2.342000961303711
                 },
                 {
-                    "fpath": "/src/target-app/juice-shop/server.ts",
-                    "ftime": 2.8152410984039307
+                    "fpath": "/src/target-app/juice-shop/ftp/package-lock.json.bak",
+                    "ftime": 2.541175127029419
                 },
                 {
                     "fpath": "/src/target-app/juice-shop/data/static/i18n/zh_CN.json",
-                    "ftime": 3.0931649208068848
+                    "ftime": 2.573002815246582
                 },
                 {
                     "fpath": "/src/target-app/juice-shop/data/static/i18n/ja_JP.json",
-                    "ftime": 5.042102098464966
+                    "ftime": 5.024731874465942
                 },
                 {
                     "fpath": "/src/target-app/juice-shop/frontend/src/assets/private/three.js",
-                    "ftime": 6.377254009246826
+                    "ftime": 6.26679801940918
                 }
             ]
         },
@@ -4470,7 +4470,7 @@
         },
         "targets": [],
         "total_bytes": 0,
-        "max_memory_bytes": 1906520384
+        "max_memory_bytes": 1866150656
     },
     "engine_requested": "OSS",
     "skipped_rules": [],

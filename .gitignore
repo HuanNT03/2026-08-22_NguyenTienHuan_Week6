@@ -10,3 +10,8 @@
 # Runtime logs may contain environment-specific or sensitive data.
 /logs/*
 !/logs/.gitkeep
+
+# Environment variables
+.env
+.env.*
+!.env.example
