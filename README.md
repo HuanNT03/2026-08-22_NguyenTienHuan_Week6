@@ -26,7 +26,8 @@ ground-truth evaluation và scanner correlation được dành cho các tuần s
 
 - Linux x86_64, macOS với Docker Desktop, hoặc Windows WSL2 với Docker Desktop;
 - Git, Bash, GNU Make, Docker Engine/Desktop, Docker Compose v2;
-- `curl` và `jq`.
+- `curl` và `jq`;
+- ít nhất 4 GiB memory cho Docker Engine/Desktop khi chạy ZAP Client Spider.
 
 Gitleaks `v8.30.1` trở lên được khuyến nghị để chạy secret-scanning Git hooks.
 
@@ -36,6 +37,8 @@ Không cần cài Node.js, Semgrep hoặc ZAP trên host. Chạy `make doctor` �
 
 ```bash
 make doctor
+cp .env.example .env
+# Thay SEMGREP_APP_TOKEN placeholder trong .env bằng token thật.
 make setup-target
 make build
 make up
@@ -56,8 +59,9 @@ make week1
 Thứ tự của `week1` là `doctor → quality → setup-target → sast → build → up → wait →
 smoke → dast → validate-reports → down`. SAST chạy trước build vì không phụ thuộc runtime.
 
-Port host mặc định là `127.0.0.1:3000`. Copy `.env.example` thành `.env` để đổi
-`JUICE_SHOP_PORT`. Container vẫn lắng nghe port `3000` trên network `sentinel-security`.
+Port host mặc định là `127.0.0.1:3000`. File `.env` dùng để cấu hình
+`JUICE_SHOP_PORT` và token Semgrep local; file này đã được ignore và không được commit.
+Container vẫn lắng nghe port `3000` trên network `sentinel-security`.
 
 ## Các lệnh Make
 
@@ -81,17 +85,41 @@ yêu cầu HTTP 2xx/3xx và response body không rỗng.
 `target-app/juice-shop/`, dùng các Registry ruleset `p/owasp-top-ten`, `p/javascript`,
 `p/nodejs` và `p/expressjs`. Report được ghi tại `reports/raw/semgrep.json`.
 
+Scan SAST yêu cầu `SEMGREP_APP_TOKEN` hợp lệ. Local runner ưu tiên biến đã export, sau đó đọc
+đúng khóa này từ `.env` mà không thực thi toàn bộ file:
+
+```bash
+export SEMGREP_APP_TOKEN='<token>'
+make sast
+```
+
+Có thể thay bằng cách điền token vào `.env`. Không echo, truyền token trên command line hoặc
+commit `.env`. Scanner chỉ truyền tên biến vào container và sẽ fail trước khi scan nếu token
+thiếu, rỗng hoặc còn là placeholder. Sau scan, task cũng từ chối report nếu metadata finding
+vẫn chứa `"requires login"`.
+
+Đăng nhập Registry cho phép Semgrep trả metadata đầy đủ và các rule/tính năng bổ sung tùy theo
+entitlement của deployment. Luồng này vẫn dùng `semgrep scan`, không upload kết quả bằng
+`semgrep ci` và không tự thay đổi sản phẩm đã bật trên Semgrep AppSec Platform.
+
 Scanner image được pin version, nhưng Semgrep Registry là cấu hình remote: nội dung ruleset
 có thể thay đổi dù image không đổi. Đây là giới hạn được chấp nhận trong Week 1. Ruleset mở
 rộng chưa bật mặc định gồm `p/typescript`, `p/security-audit`, `p/cwe-top-25`, `p/docker`;
 secret scanning nên là bước riêng trong tương lai.
 
 `make dast` chỉ scan; nó không build, start hoặc stop target. Hãy chạy `make build`, `make up`,
-`make wait` và `make smoke` trước. ZAP Baseline chỉ spider/passive scan và ghi
-`reports/raw/zap.json`. Exit code `1` hoặc `2` biểu thị findings, vẫn được xem là scan hoàn tất;
-exit code `3` hoặc report không hợp lệ làm task thất bại.
+`make wait` và `make smoke` trước. Image được pin tại
+`ghcr.io/zaproxy/zaproxy:2.17.0`. ZAP Baseline chạy Traditional Spider và Client Spider rồi
+thực hiện passive scan, ghi `reports/raw/zap.json`. Client Spider render JavaScript để khám phá
+Angular routes/endpoints mà Traditional Spider chỉ đọc HTML và `<a href>` không nhìn thấy.
 
-Runner truyền `-z "-silent"` cho ZAP Baseline để không tự update hoặc cài add-on trong lúc scan; scanner behavior vì vậy bám theo image đã pin.
+Invocation bắt buộc dùng đồng thời `-j --client-spider`: `-j` bật modern spider và
+`--client-spider` chọn Client Spider thay cho Ajax Spider. Nếu thiếu `-j`, option
+`--client-spider` bị wrapper bỏ qua. Exit code `1` hoặc `2` biểu thị findings, vẫn được xem là
+scan hoàn tất; exit code `3` hoặc report không hợp lệ làm task thất bại.
+
+Runner truyền `-z "-silent"` để không tự update hoặc cài add-on trong lúc scan; scanner
+behavior vì vậy bám theo image đã pin.
 
 Hai scanner chạy container bằng UID/GID của host để raw reports không thuộc sở hữu root.
 
@@ -247,6 +275,12 @@ Nếu đã có custom hook path, hãy khôi phục chính xác giá trị cũ th
 Workflow chính chạy `quality`, sau đó khởi chạy SAST và DAST song song trên hai runner
 `ubuntu-24.04`. Mỗi job tự setup target vì filesystem và container không được chia sẻ.
 
+Trước khi chạy workflow, vào **Settings → Secrets and variables → Actions**, tạo repository
+secret `SEMGREP_APP_TOKEN` chứa token từ Semgrep AppSec Platform. Workflow chính chỉ truyền
+named secret này vào reusable SAST workflow, và reusable workflow chỉ expose nó cho bước
+`make sast`. Secret là bắt buộc: pull request từ fork hoặc Dependabot không được GitHub cấp
+repository secret sẽ fail SAST rõ ràng thay vì tạo report anonymous thiếu metadata.
+
 Trong trang GitHub Actions, mở workflow run và tải artifact:
 
 - `semgrep-raw-<run_id>`;
@@ -269,6 +303,11 @@ Artifacts được giữ 14 ngày.
 - Port 3000 bận: đặt `JUICE_SHOP_PORT` khác trong `.env`, rồi chạy lại `up`, `wait`, `smoke`.
 - Docker daemon/permission: chạy `make doctor`, khởi động Docker Desktop/daemon và bảo đảm user
   có quyền dùng Docker.
+- Semgrep báo thiếu token hoặc `requires login`: thay placeholder trong `.env` hoặc export
+  `SEMGREP_APP_TOKEN` hợp lệ; không commit hay in token ra log.
+- ZAP code 3 kèm `Failed to access summary file /tmp/zap_out.json`: kiểm tra Docker OOM events
+  và cấp ít nhất 4 GiB memory cho Docker Engine/Desktop; Client Spider chạy browser thật nên
+  cần nhiều memory hơn Traditional Spider.
 - Target dirty: không reset tự động; chạy `git -C target-app/juice-shop status`, review thay đổi,
   rồi dùng `make clean && make setup-target` nếu muốn tải lại hoàn toàn.
 - Sai commit/remote/tag: `make verify-target` in expected/actual; dùng full reset nếu clone không đúng.
