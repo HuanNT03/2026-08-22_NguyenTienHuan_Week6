@@ -1,0 +1,16 @@
+#!/usr/bin/env sh
+
+set -eu
+
+HOOK_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)"
+# shellcheck source=.githooks/lib/gitleaks-common.sh
+. "$HOOK_DIR/lib/gitleaks-common.sh"
+
+REPOSITORY_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPOSITORY_ROOT"
+
+if ! gitleaks_is_ready; then
+  exit 0
+fi
+
+exec gitleaks git --pre-commit --redact --staged --verbose

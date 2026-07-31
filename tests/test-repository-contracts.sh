@@ -26,7 +26,8 @@ assert_file() {
 }
 
 required_files=(
-  .dockerignore .env.example .gitattributes .gitignore Makefile README.md docker-compose.yml
+  .dockerignore .env.example .gitattributes .gitignore .githooks/pre-commit
+  .githooks/lib/gitleaks-common.sh Makefile README.md docker-compose.yml
   configs/tool-versions.env target-app/TARGET.lock target-app/README.md
   scripts/setup-target.sh scripts/verify-target.sh scripts/wait-for-target.sh scripts/smoke-test.sh
   scripts/run-sast.sh scripts/run-dast.sh scripts/validate-reports.sh scripts/clean.sh
@@ -131,5 +132,74 @@ printf '{"site":[]}\n' >"$report_dir/zap.json"
 SENTINEL_REPORT_DIR="$report_dir" "$PROJECT_ROOT/scripts/validate-reports.sh" zap >/dev/null || \
   fail "validator rejected a valid ZAP report"
 pass "report validator distinguishes missing, empty, malformed, invalid-structure and valid reports"
+
+[[ -x "$PROJECT_ROOT/.githooks/pre-commit" ]] || fail "pre-commit hook must be executable"
+
+hook_repo="$TEST_TMP/hook-repo"
+fake_bin="$TEST_TMP/fake-bin"
+missing_bin="$TEST_TMP/missing-bin"
+mkdir -p "$hook_repo" "$fake_bin" "$missing_bin"
+git -C "$hook_repo" init -q
+git -C "$hook_repo" config user.name "Sentinel Hook Test"
+git -C "$hook_repo" config user.email "sentinel-hook-test@example.invalid"
+
+cat >"$fake_bin/gitleaks" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${1:-}" == "version" ]]; then
+  printf '%s\n' "${FAKE_GITLEAKS_VERSION:-8.30.1}"
+  exit "${FAKE_GITLEAKS_VERSION_STATUS:-0}"
+fi
+
+printf '%s\n' "$*" >>"${FAKE_GITLEAKS_LOG:?}"
+exit "${FAKE_GITLEAKS_SCAN_STATUS:-0}"
+EOF
+chmod +x "$fake_bin/gitleaks"
+
+for required_command in sh dirname git; do
+  ln -s "$(command -v "$required_command")" "$missing_bin/$required_command"
+done
+
+set +e
+missing_output="$(cd "$hook_repo" && PATH="$missing_bin" "$PROJECT_ROOT/.githooks/pre-commit" 2>&1)"
+missing_status=$?
+set -e
+((missing_status == 0)) || fail "pre-commit must allow commits when Gitleaks is missing"
+[[ "$missing_output" == *"secret scan was skipped"* ]] || \
+  fail "pre-commit did not warn when Gitleaks was missing"
+
+hook_log="$TEST_TMP/pre-commit-gitleaks.log"
+set +e
+old_version_output="$(
+  cd "$hook_repo" &&
+    PATH="$fake_bin:$PATH" FAKE_GITLEAKS_VERSION=8.29.0 FAKE_GITLEAKS_LOG="$hook_log" \
+      "$PROJECT_ROOT/.githooks/pre-commit" 2>&1
+)"
+old_version_status=$?
+set -e
+((old_version_status == 0)) || fail "pre-commit must allow commits when Gitleaks is outdated"
+[[ "$old_version_output" == *"secret scan was skipped"* ]] || \
+  fail "pre-commit did not warn when Gitleaks was outdated"
+[[ ! -e "$hook_log" ]] || fail "pre-commit invoked an outdated Gitleaks binary"
+
+(
+  cd "$hook_repo"
+  PATH="$fake_bin:$PATH" FAKE_GITLEAKS_VERSION=8.30.1 FAKE_GITLEAKS_LOG="$hook_log" \
+    "$PROJECT_ROOT/.githooks/pre-commit" >/dev/null
+)
+grep -Fxq 'git --pre-commit --redact --staged --verbose' "$hook_log" || \
+  fail "pre-commit invoked Gitleaks with unexpected arguments"
+
+set +e
+(
+  cd "$hook_repo" &&
+    PATH="$fake_bin:$PATH" FAKE_GITLEAKS_VERSION=8.30.1 FAKE_GITLEAKS_LOG="$hook_log" \
+      FAKE_GITLEAKS_SCAN_STATUS=1 "$PROJECT_ROOT/.githooks/pre-commit" >/dev/null 2>&1
+)
+scan_status=$?
+set -e
+((scan_status == 1)) || fail "pre-commit did not propagate a Gitleaks finding"
+pass "pre-commit skips unavailable Gitleaks and blocks on scan findings"
 
 printf '1..%d\n' "$pass_count"
