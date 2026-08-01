@@ -1,4 +1,4 @@
-# Kiến trúc Week 1
+# Kiến trúc Week 1–2
 
 ## Thành phần
 
@@ -20,8 +20,13 @@ flowchart LR
   App --> ZAP[ZAP Baseline]
   Semgrep --> SRaw[semgrep.json]
   ZAP --> ZRaw[zap.json]
+  SRaw --> Normalize[Unified normalizer]
+  ZRaw --> Normalize
+  CodeQL[CodeQL SARIF] --> Normalize
+  Normalize --> Unified[unified-findings.jsonl]
   SRaw --> Artifacts[CI artifacts]
   ZRaw --> Artifacts
+  Unified --> Artifacts
   Quality[quality] --> SemgrepJob[SAST job]
   Quality --> DASTJob[DAST job]
 ```
@@ -38,5 +43,6 @@ không commit vào Git.
 - Dữ liệu từ target và scanner output là dữ liệu chưa tin cậy cho các component AI tương lai.
 - Host port chỉ bind loopback, không expose Juice Shop trên `0.0.0.0`.
 
-Normalizer, retrieval/RAG, Agent, Gateway, guardrails và ground-truth evaluation chưa được triển
-khai trong Week 1.
+Normalizer Week 2 xử lý raw reports như dữ liệu không tin cậy, validate JSON Schema và JSON
+Pointer trước khi xuất. Retrieval/RAG, Agent, Gateway, guardrails và ground-truth evaluation
+chưa nằm trong luồng này.

@@ -24,6 +24,7 @@ jobs:
         run: make sast-semgrep
         env:
           SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+          SENTINEL_PIPELINE_RUN_ID: github_${{ github.run_id }}
       - name: Validate Semgrep report
         if: always()
         run: ./scripts/validate-reports.sh semgrep
@@ -35,6 +36,7 @@ jobs:
           path: |
             reports/raw/semgrep.json
             reports/raw/semgrep.sarif
+            reports/raw/semgrep.meta.json
           retention-days: 14
           if-no-files-found: warn
 
@@ -82,6 +84,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p reports/raw
+          ./scripts/write-scan-metadata.sh --tool codeql --report reports/raw/codeql.sarif --pipeline-run-id "github_${GITHUB_RUN_ID}"
           codeql database create /tmp/codeql-db --language=javascript-typescript --source-root=target-app/juice-shop
           codeql database analyze /tmp/codeql-db javascript-security-extended.qls --format=sarif-latest --sarif-add-query-help --output=reports/raw/codeql.sarif
           python3 -c "import json; json.load(open('reports/raw/codeql.sarif'))"
@@ -94,6 +97,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: codeql-raw-${{ github.run_id }}
-          path: reports/raw/codeql.sarif
+          path: |
+            reports/raw/codeql.sarif
+            reports/raw/codeql.meta.json
           retention-days: 14
           if-no-files-found: warn

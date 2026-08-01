@@ -1,4 +1,4 @@
-# Project Sentinel — Week 1
+# Project Sentinel — Week 2
 
 Môi trường DevSecOps có thể tái lập để chạy OWASP Juice Shop `v20.1.1`, quét mã nguồn
 bằng Semgrep cùng CodeQL, và quét web thụ động bằng OWASP ZAP Baseline. Source Juice Shop,
@@ -19,8 +19,8 @@ raw reports và runtime logs không được commit vào repository Sentinel.
 ## Phạm vi
 
 Week 1 triển khai target pinning, Docker lifecycle, Semgrep/CodeQL SAST, ZAP Baseline DAST,
-raw report validation và CI artifacts. Normalization, RAG, AI Agent, Gateway, guardrails,
-ground-truth evaluation và scanner correlation được dành cho các tuần sau.
+raw report validation và CI artifacts. Week 2 bổ sung unified findings normalizer cho Semgrep, ZAP và CodeQL. RAG search, AI Agent,
+Gateway, guardrails, ground-truth evaluation và correlation nâng cao được dành cho các task sau.
 
 ## Yêu cầu hệ thống
 
@@ -47,6 +47,10 @@ make smoke
 make sast
 make dast
 make validate-reports
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install '.[dev]'
+make normalize
 make down
 ```
 
@@ -81,6 +85,7 @@ Chạy `make help` để xem danh sách đầy đủ. Các nhóm lệnh chính:
 | Target | `setup-target`, `verify-target` |
 | Runtime | `build`, `up`, `wait`, `smoke`, `status`, `logs`, `down` |
 | Scanner | `sast`, `sast-semgrep`, `sast-codeql`, `dast`, `validate-reports` |
+| Normalization | `normalize` |
 | Orchestration | `week1` |
 | Cleanup | `clean-reports`, `clean` |
 
@@ -146,6 +151,13 @@ Runner truyền `-z "-silent"` để không tự update hoặc cài add-on trong
 behavior vì vậy bám theo image đã pin.
 
 Các scanner container chạy bằng UID/GID của host để raw reports không thuộc sở hữu root.
+
+## Unified findings normalization
+
+Mỗi scanner tạo raw report cùng sidecar metadata tại scan boundary. Sau khi chạy đủ SAST và
+DAST, `make normalize` ghi `reports/normalized/unified-findings.jsonl` và
+`normalization-summary.json`. Chi tiết data contract, failure policy và CLI nằm tại
+[`docs/week-2-normalization.md`](docs/week-2-normalization.md).
 
 ## Gitleaks Git hooks
 
@@ -311,6 +323,7 @@ Trong trang GitHub Actions, mở workflow run và tải artifact:
 - `semgrep-raw-<run_id>`;
 - `codeql-raw-<run_id>`;
 - `zap-raw-<run_id>`;
+- `normalized-findings-<run_id>` chứa unified JSONL và normalization summary;
 - `dast-logs-<run_id>` nếu DAST thất bại.
 
 Ngoài artifact raw, `reports/raw/codeql.sarif` được upload bằng

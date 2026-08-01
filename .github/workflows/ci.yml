@@ -1,4 +1,4 @@
-name: Week 1 CI
+name: Project Sentinel CI
 
 on:
   push:
@@ -17,6 +17,13 @@ jobs:
         uses: actions/checkout@v4
       - name: Check prerequisites
         run: make doctor
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install Python development dependencies
+        run: python -m pip install '.[dev]'
       - name: Run repository quality checks
         run: make quality
 
@@ -33,3 +40,38 @@ jobs:
   dast:
     needs: quality
     uses: ./.github/workflows/dast-scan.yml
+
+
+  normalize:
+    needs: [sast, dast]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out Sentinel
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install normalizer
+        run: python -m pip install .
+      - name: Remove checked-in and stale reports
+        run: make clean-reports
+      - name: Download raw scanner artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: '*-raw-${{ github.run_id }}'
+          path: reports/raw
+          merge-multiple: true
+      - name: Normalize scanner findings
+        run: make normalize
+      - name: Upload unified findings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: normalized-findings-${{ github.run_id }}
+          path: |
+            reports/normalized/unified-findings.jsonl
+            reports/normalized/normalization-summary.json
+          retention-days: 14
+          if-no-files-found: warn

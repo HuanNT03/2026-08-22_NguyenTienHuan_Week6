@@ -33,11 +33,19 @@ required_files=(
   scripts/run-sast.sh scripts/run-dast.sh scripts/validate-reports.sh scripts/clean.sh docker/codeql/Dockerfile
   docs/architecture.md docs/endpoints.md docs/week-1-findings.md
   .github/workflows/ci.yml .github/workflows/sast-scan.yml .github/workflows/dast-scan.yml
+  pyproject.toml schemas/unified_findings.schema.json scripts/write-scan-metadata.sh
+  src/normalizers/cli.py src/normalizers/semgrep.py src/normalizers/zap.py src/normalizers/codeql.py
 )
 for required_file in "${required_files[@]}"; do
   assert_file "$required_file"
 done
-pass "required Week 1 files exist"
+pass "required Week 1 and Week 2 files exist"
+
+jq -e '."$schema" == "https://json-schema.org/draft/2020-12/schema" and .properties.fingerprint.pattern' \
+  "$PROJECT_ROOT/schemas/unified_findings.schema.json" >/dev/null || fail "unified finding schema is invalid or incomplete"
+grep -q '^normalize:' "$PROJECT_ROOT/Makefile" || fail "Makefile normalize target is missing"
+grep -q 'normalize-all' "$PROJECT_ROOT/Makefile" || fail "Makefile does not invoke aggregate normalization"
+pass "normalizer schema and local entrypoint are present"
 
 lock_file="$PROJECT_ROOT/target-app/TARGET.lock"
 validate_config_file "$lock_file" REPOSITORY_URL TAG COMMIT_SHA
@@ -149,7 +157,13 @@ sast_line="$(grep -n 'make -C "$PROJECT_ROOT" sast' "$PROJECT_ROOT/scripts/run-w
 build_line="$(grep -n 'make -C "$PROJECT_ROOT" build' "$PROJECT_ROOT/scripts/run-week1.sh" | cut -d: -f1)"
 [[ -n "$setup_line" && -n "$sast_line" && -n "$build_line" ]] || fail "week1 orchestration steps are missing"
 ((setup_line < sast_line && sast_line < build_line)) || fail "week1 must run setup-target, then SAST, then build"
-pass "implementation preserves parallel scans, file ownership, HTTP readiness and optimized ordering"
+grep -q 'semgrep.meta.json' "$sast_workflow" || fail "Semgrep artifact must include scan metadata"
+grep -q 'codeql.meta.json' "$sast_workflow" || fail "CodeQL artifact must include scan metadata"
+grep -q 'zap.meta.json' "$PROJECT_ROOT/.github/workflows/dast-scan.yml" || fail "ZAP artifact must include scan metadata"
+grep -q '^  normalize:$' "$ci_workflow" || fail "CI normalize job is missing"
+grep -A3 '^  normalize:$' "$ci_workflow" | grep -q 'needs: \[sast, dast\]' || fail "normalize must wait for SAST and DAST"
+grep -q 'normalized-findings-.*github.run_id' "$ci_workflow" || fail "CI unified findings artifact is missing"
+pass "implementation preserves parallel scans, metadata provenance and normalized artifacts"
 
 set +e
 verify_output="$(SENTINEL_TARGET_DIR="$TEST_TMP/missing-target" "$PROJECT_ROOT/scripts/verify-target.sh" 2>&1)"
@@ -301,7 +315,7 @@ set -e
   PATH="$fake_bin:$PATH" FAKE_GITLEAKS_VERSION=8.30.1 FAKE_GITLEAKS_LOG="$hook_log" \
     "$PROJECT_ROOT/.githooks/pre-commit" >/dev/null
 )
-grep -Fxq 'git --pre-commit --redact --staged --verbose' "$hook_log" || \
+grep -Fxq -- 'git --pre-commit --redact --staged --verbose' "$hook_log" || \
   fail "pre-commit invoked Gitleaks with unexpected arguments"
 
 set +e

@@ -11,7 +11,7 @@ source "$SCRIPT_DIR/common.sh"
 tool=""
 report_path=""
 base_url=""
-pipeline_run_id=""
+pipeline_run_id="${SENTINEL_PIPELINE_RUN_ID:-}"
 
 while (($#)); do
   case "$1" in

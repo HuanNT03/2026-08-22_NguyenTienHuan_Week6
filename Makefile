@@ -1,9 +1,10 @@
 .DEFAULT_GOAL := help
 
 SHELL := /usr/bin/env bash
+PYTHON ?= python3
 
 .PHONY: help doctor setup-target verify-target build up wait smoke down logs status \
-	lint test quality sast sast-semgrep sast-codeql dast validate-reports week1 normalize clean-reports clean
+	lint test test-contracts test-python quality sast sast-semgrep sast-codeql dast validate-reports week1 normalize clean-reports clean
 
 help: ## Show available commands.
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -42,8 +43,13 @@ lint: ## Syntax-check scripts and validate Compose configuration.
 	bash -n scripts/*.sh
 	docker compose config --quiet
 
-test: ## Run repository contract tests.
+test: test-contracts test-python ## Run repository and Python tests.
+
+test-contracts: ## Run repository contract tests.
 	@./tests/test-repository-contracts.sh
+
+test-python: ## Run normalizer unit and integration tests.
+	@$(PYTHON) -m pytest tests/unit tests/integration
 
 quality: ## Run lint followed by repository contract tests.
 	@$(MAKE) lint

@@ -27,6 +27,8 @@ jobs:
         run: make smoke
       - name: Run ZAP Baseline
         run: make dast
+        env:
+          SENTINEL_PIPELINE_RUN_ID: github_${{ github.run_id }}
       - name: Validate ZAP report
         if: always()
         run: ./scripts/validate-reports.sh zap
@@ -40,7 +42,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: zap-raw-${{ github.run_id }}
-          path: reports/raw/zap.json
+          path: |
+            reports/raw/zap.json
+            reports/raw/zap.meta.json
           retention-days: 14
           if-no-files-found: warn
       - name: Upload failure logs
