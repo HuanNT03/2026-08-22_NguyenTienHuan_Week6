@@ -1,10 +1,17 @@
 import html
 import re
+from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urlparse
 
 
 _URL_PATTERN = re.compile(r"https?://[^\s<>'\"\)]+", flags=re.IGNORECASE)
+
+
+@dataclass(frozen=True)
+class UrlParseResult:
+    urls: list[str]
+    had_error: bool
 
 
 def canonicalize_endpoint(raw_uri: str | None) -> str | None:
@@ -20,12 +27,12 @@ def canonicalize_endpoint(raw_uri: str | None) -> str | None:
     return parsed.path or "/"
 
 
-def extract_urls(value: Any) -> list[str]:
+def extract_urls_with_status(value: Any) -> UrlParseResult:
     if value is None or not isinstance(value, str):
-        return []
+        return UrlParseResult([], False)
     value = value.strip()
     if not value:
-        return []
+        return UrlParseResult([], False)
     try:
         candidates = _URL_PATTERN.findall(html.unescape(value))
         urls: set[str] = set()
@@ -37,6 +44,10 @@ def extract_urls(value: Any) -> list[str]:
                 continue
             if parsed.scheme.lower() in {"http", "https"} and parsed.netloc:
                 urls.add(cleaned)
-        return sorted(urls)
+        return UrlParseResult(sorted(urls), False)
     except Exception:
-        return []
+        return UrlParseResult([], True)
+
+
+def extract_urls(value: Any) -> list[str]:
+    return extract_urls_with_status(value).urls
