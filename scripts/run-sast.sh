@@ -12,6 +12,7 @@ VERSIONS_FILE="$PROJECT_ROOT/configs/tool-versions.env"
 REPORT_DIR="$PROJECT_ROOT/reports/raw"
 REPORT_FILE="$REPORT_DIR/semgrep.json"
 SARIF_FILE="$REPORT_DIR/semgrep.sarif"
+META_FILE="$REPORT_DIR/semgrep.meta.json"
 HOST_USER="$(id -u):$(id -g)"
 
 load_tool_versions "$VERSIONS_FILE"
@@ -20,7 +21,8 @@ export SEMGREP_APP_TOKEN
 "$SCRIPT_DIR/verify-target.sh"
 mkdir -p "$REPORT_DIR"
 touch "$REPORT_DIR/.gitkeep"
-rm -f -- "$REPORT_FILE" "$SARIF_FILE"
+rm -f -- "$REPORT_FILE" "$SARIF_FILE" "$META_FILE"
+"$SCRIPT_DIR/write-scan-metadata.sh" --tool semgrep --report reports/raw/semgrep.json
 
 log "Semgrep image: $SEMGREP_IMAGE"
 docker run --rm --user "$HOST_USER" -e HOME=/tmp "$SEMGREP_IMAGE" semgrep --version

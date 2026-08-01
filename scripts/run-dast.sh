@@ -11,6 +11,7 @@ source "$SCRIPT_DIR/common.sh"
 VERSIONS_FILE="$PROJECT_ROOT/configs/tool-versions.env"
 REPORT_DIR="$PROJECT_ROOT/reports/raw"
 REPORT_FILE="$REPORT_DIR/zap.json"
+META_FILE="$REPORT_DIR/zap.meta.json"
 HOST_USER="$(id -u):$(id -g)"
 NETWORK_NAME="sentinel-security"
 
@@ -28,7 +29,8 @@ docker network inspect "$NETWORK_NAME" >/dev/null 2>&1 || \
 "$SCRIPT_DIR/smoke-test.sh"
 mkdir -p "$REPORT_DIR"
 touch "$REPORT_DIR/.gitkeep"
-rm -f -- "$REPORT_FILE"
+rm -f -- "$REPORT_FILE" "$META_FILE"
+"$SCRIPT_DIR/write-scan-metadata.sh" --tool zap --report reports/raw/zap.json --base-url http://juice-shop:3000
 
 log "ZAP image: $ZAP_IMAGE"
 docker run --rm \
