@@ -15,6 +15,17 @@ META_FILE="$REPORT_DIR/zap.meta.json"
 HOST_USER="$(id -u):$(id -g)"
 NETWORK_NAME="sentinel-security"
 
+readonly ZAP_MODERN_SPIDER_MIN_BYTES=$((4 * 1024 * 1024 * 1024))
+docker_memory_bytes="$(docker info --format '{{.MemTotal}}')"
+zap_spider_args=()
+
+if (( docker_memory_bytes >= ZAP_MODERN_SPIDER_MIN_BYTES )); then
+  zap_spider_args=(-j --client-spider)
+  log "ZAP modern spider enabled (${docker_memory_bytes} bytes available)."
+else
+  log "ZAP modern spider disabled: ${docker_memory_bytes} bytes available; using traditional spider."
+fi
+
 load_tool_versions "$VERSIONS_FILE"
 "$SCRIPT_DIR/verify-target.sh"
 
@@ -50,8 +61,7 @@ docker run --rm \
   "$ZAP_IMAGE" \
   zap-baseline.py \
   -t http://juice-shop:3000 \
-  -j \
-  --client-spider \
+  "${zap_spider_args[@]}" \
   -J zap.json \
   -z "-silent"
 zap_exit_code=$?

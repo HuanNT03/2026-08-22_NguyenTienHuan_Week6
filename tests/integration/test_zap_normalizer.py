@@ -30,7 +30,7 @@ def test_zap_report_normalizes_one_finding_per_instance():
         report_path="reports/raw/zap.json",
     )
     result = normalize_zap_report(report, context, normalized_at="2026-08-01T01:00:00Z")
-    assert len(result.findings) == expected_count == 29
+    assert len(result.findings) == expected_count
     assert result.warnings["text_parse_errors"] == 0
     validator = build_validator(load_schema(ROOT / "schemas/unified_findings.schema.json"))
     for finding in result.findings:

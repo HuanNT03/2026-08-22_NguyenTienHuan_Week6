@@ -77,7 +77,7 @@ week1: ## Run the complete Week 1 flow with guaranteed runtime cleanup.
 	@./scripts/run-week1.sh
 
 normalize: ## Normalize all raw scanner reports into unified JSONL.
-	@python3 -m src.normalizers.cli normalize-all --raw-dir reports/raw --output reports/normalized/unified-findings.jsonl
+	@$(PYTHON) -m src.normalizers.cli normalize-all --raw-dir reports/raw --output reports/normalized/unified-findings.jsonl
 
 clean-reports: ## Remove generated reports while preserving tracked directories.
 	@./scripts/clean.sh reports
