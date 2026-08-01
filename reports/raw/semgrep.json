@@ -19776,14 +19776,6 @@
             "code": 2,
             "level": "warn",
             "type": "Timeout",
-            "rule_id": "generic.secrets.security.detected-username-and-password-in-uri.detected-username-and-password-in-uri",
-            "message": "Timeout when running generic.secrets.security.detected-username-and-password-in-uri.detected-username-and-password-in-uri on /src/target-app/juice-shop/data/static/i18n/ja_JP.json:\n ",
-            "path": "/src/target-app/juice-shop/data/static/i18n/ja_JP.json"
-        },
-        {
-            "code": 2,
-            "level": "warn",
-            "type": "Timeout",
             "rule_id": "javascript.express.net.request-url-express.request-url-express",
             "message": "Timeout when running javascript.express.net.request-url-express.request-url-express on /src/target-app/juice-shop/frontend/src/assets/private/three.js:\n ",
             "path": "/src/target-app/juice-shop/frontend/src/assets/private/three.js"
@@ -22087,12 +22079,12 @@
     },
     "time": {
         "rules": [],
-        "rules_parse_time": 2.9913740158081055,
+        "rules_parse_time": 2.984889030456543,
         "profiling_times": {
-            "config_time": 20.90255045890808,
-            "core_time": 106.05358099937439,
-            "ignores_time": 0.005617618560791016,
-            "total_time": 127.04375314712524
+            "config_time": 14.219882726669312,
+            "core_time": 96.85722279548645,
+            "ignores_time": 0.004250764846801758,
+            "total_time": 111.20983052253723
         },
         "parsing_time": {
             "total_time": 0.0,
@@ -22107,55 +22099,55 @@
             "very_slow_files": []
         },
         "scanning_time": {
-            "total_time": 685.0773253440857,
+            "total_time": 613.8416657447815,
             "per_file_time": {
-                "mean": 0.24284910504930377,
-                "std_dev": 0.6687767562953094
+                "mean": 0.21759718743168446,
+                "std_dev": 0.5898932681254511
             },
             "very_slow_stats": {
-                "time_ratio": 0.5398439677319636,
-                "count_ratio": 0.03970223325062035
+                "time_ratio": 0.5242893799220254,
+                "count_ratio": 0.034384969868840834
             },
             "very_slow_files": [
                 {
-                    "fpath": "/src/target-app/juice-shop/frontend/src/app/coding-challenge-page/coding-challenge-page.component.spec.ts",
-                    "ftime": 5.953568935394287
-                },
-                {
-                    "fpath": "/src/target-app/juice-shop/frontend/src/app/score-board/components/challenge-card/challenge-card.component.spec.ts",
-                    "ftime": 6.090906858444214
-                },
-                {
-                    "fpath": "/src/target-app/juice-shop/frontend/src/app/payment/payment.component.spec.ts",
-                    "ftime": 7.319808006286621
+                    "fpath": "/src/target-app/juice-shop/frontend/src/app/search-result/search-result.component.spec.ts",
+                    "ftime": 6.0782928466796875
                 },
                 {
                     "fpath": "/src/target-app/juice-shop/routes/chat.ts",
-                    "ftime": 7.387394905090332
+                    "ftime": 6.339554071426392
+                },
+                {
+                    "fpath": "/src/target-app/juice-shop/frontend/src/app/coding-challenge-page/coding-challenge-page.component.spec.ts",
+                    "ftime": 6.400218963623047
+                },
+                {
+                    "fpath": "/src/target-app/juice-shop/frontend/src/app/payment/payment.component.spec.ts",
+                    "ftime": 7.018996000289917
                 },
                 {
                     "fpath": "/src/target-app/juice-shop/frontend/src/app/sidenav/sidenav.component.spec.ts",
-                    "ftime": 8.452032804489136
-                },
-                {
-                    "fpath": "/src/target-app/juice-shop/frontend/src/assets/private/three.js",
-                    "ftime": 9.171710014343262
-                },
-                {
-                    "fpath": "/src/target-app/juice-shop/data/datacreator.ts",
-                    "ftime": 9.287286996841431
+                    "ftime": 7.34252405166626
                 },
                 {
                     "fpath": "/src/target-app/juice-shop/routes/verify.ts",
-                    "ftime": 9.301968097686768
+                    "ftime": 8.421025991439819
+                },
+                {
+                    "fpath": "/src/target-app/juice-shop/frontend/src/assets/private/three.js",
+                    "ftime": 8.716773986816406
                 },
                 {
                     "fpath": "/src/target-app/juice-shop/frontend/src/app/navbar/navbar.component.spec.ts",
-                    "ftime": 9.636533975601196
+                    "ftime": 8.9895339012146
+                },
+                {
+                    "fpath": "/src/target-app/juice-shop/data/datacreator.ts",
+                    "ftime": 9.578971147537231
                 },
                 {
                     "fpath": "/src/target-app/juice-shop/server.ts",
-                    "ftime": 17.397173166275024
+                    "ftime": 17.537598848342896
                 }
             ]
         },
@@ -22187,25 +22179,7 @@
             {
                 "error_type": "Fixpoint timeout",
                 "severity": "warn",
-                "message": "Fixpoint timeout while performing taint analysis at /src/target-app/juice-shop/frontend/src/assets/private/OrbitControls.js:1:0 [rules: 1, first: javascript.express.security.require-request.require-request]",
-                "location": {
-                    "path": "/src/target-app/juice-shop/frontend/src/assets/private/OrbitControls.js",
-                    "start": {
-                        "line": 1,
-                        "col": 1,
-                        "offset": 0
-                    },
-                    "end": {
-                        "line": 1,
-                        "col": 1,
-                        "offset": 0
-                    }
-                }
-            },
-            {
-                "error_type": "Fixpoint timeout",
-                "severity": "warn",
-                "message": "Fixpoint timeout while performing taint analysis at /src/target-app/juice-shop/routes/chat.ts:114:16 [rules: 20, first: javascript.express.net.request-url-express.request-url-express]",
+                "message": "Fixpoint timeout while performing taint analysis at /src/target-app/juice-shop/routes/chat.ts:114:16 [rules: 9, first: javascript.express.net.request-url-express.request-url-express]",
                 "location": {
                     "path": "/src/target-app/juice-shop/routes/chat.ts",
                     "start": {
@@ -22223,7 +22197,7 @@
             {
                 "error_type": "Fixpoint timeout",
                 "severity": "warn",
-                "message": "Fixpoint timeout while performing taint analysis at /src/target-app/juice-shop/server.ts:170:9 [rules: 11, first: javascript.hapi.net.axios-url-hapi.axios-url-hapi]",
+                "message": "Fixpoint timeout while performing taint analysis at /src/target-app/juice-shop/server.ts:170:9 [rules: 13, first: javascript.hapi.net.axios-url-hapi.axios-url-hapi]",
                 "location": {
                     "path": "/src/target-app/juice-shop/server.ts",
                     "start": {
@@ -22249,7 +22223,7 @@
         },
         "targets": [],
         "total_bytes": 0,
-        "max_memory_bytes": 7792796032
+        "max_memory_bytes": 8632914688
     },
     "engine_requested": "OSS",
     "interfile_languages_used": [],
