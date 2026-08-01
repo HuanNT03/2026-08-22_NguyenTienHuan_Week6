@@ -11,6 +11,7 @@ raw reports và runtime logs không được commit vào repository Sentinel.
 - [Quickstart](#quickstart)
 - [Các lệnh Make](#các-lệnh-make)
 - [SAST và DAST](#sast-và-dast)
+- [Tìm kiếm tài liệu bảo mật bằng từ khóa](#tìm-kiếm-tài-liệu-bảo-mật-bằng-từ-khóa)
 - [Gitleaks Git hooks](#gitleaks-git-hooks)
 - [GitHub Actions](#github-actions)
 - [Cleanup](#cleanup)
@@ -19,8 +20,10 @@ raw reports và runtime logs không được commit vào repository Sentinel.
 ## Phạm vi
 
 Week 1 triển khai target pinning, Docker lifecycle, Semgrep/CodeQL SAST, ZAP Baseline DAST,
-raw report validation và CI artifacts. Week 2 bổ sung unified findings normalizer cho Semgrep, ZAP và CodeQL. RAG search, AI Agent,
-Gateway, guardrails, ground-truth evaluation và correlation nâng cao được dành cho các task sau.
+raw report validation và CI artifacts. Week 2 bổ sung unified findings normalizer cho Semgrep,
+ZAP và CodeQL, cùng Security Knowledge Base hỗ trợ keyword search bằng SQLite FTS5. Semantic
+Search, RAG, AI Agent, Gateway, guardrails, ground-truth evaluation và correlation nâng cao được
+dành cho các task sau.
 
 ## Yêu cầu hệ thống
 
@@ -86,8 +89,10 @@ Chạy `make help` để xem danh sách đầy đủ. Các nhóm lệnh chính:
 | Runtime | `build`, `up`, `wait`, `smoke`, `status`, `logs`, `down` |
 | Scanner | `sast`, `sast-semgrep`, `sast-codeql`, `dast`, `validate-reports` |
 | Normalization | `normalize` |
+| Knowledge Base | `kb-validate`, `kb-build-documents`, `kb-build-index`, `kb-build`, `kb-rebuild` |
+| Knowledge Search | `kb-search`, `kb-inspect`, `kb-stats`, `kb-test`, `kb-lint` |
 | Orchestration | `week1` |
-| Cleanup | `clean-reports`, `clean` |
+| Cleanup | `kb-clean`, `clean-reports`, `clean` |
 
 `wait` polling HTTP cho đến khi ứng dụng thực sự ready. `smoke` là kiểm tra riêng từ host,
 yêu cầu HTTP 2xx/3xx và response body không rỗng.
@@ -161,6 +166,70 @@ DAST, `make normalize` ghi `reports/normalized/unified-findings.jsonl` và
 
 Inventory và quyết định thiết kế cho Security Knowledge Base được theo dõi tại
 [`docs/week-2-knowledgebase.md`](docs/week-2-knowledgebase.md).
+
+## Tìm kiếm tài liệu bảo mật bằng từ khóa
+
+Cài dependency và build Knowledge Base trước lần tìm kiếm đầu tiên:
+
+```bash
+make install
+make kb-validate
+make kb-build
+```
+
+Tìm tài liệu bằng từ khóa hoặc security identifier qua Make:
+
+```bash
+make kb-search QUERY="SQL Injection"
+make kb-search QUERY="SQLi"
+make kb-search QUERY="XSS" TOP_K=5
+make kb-search QUERY="CWE89"
+make kb-search QUERY="Broken Access Control"
+```
+
+`TOP_K` mặc định là `5` và nhận giá trị từ `1` đến `50`. Có thể giới hạn kết quả theo
+`doc_type`:
+
+```bash
+make kb-search QUERY="IDOR" DOC_TYPE=cwe
+make kb-search QUERY="SQL Injection" DOC_TYPE=vulnerability_example
+```
+
+Các giá trị `DOC_TYPE` hợp lệ gồm:
+
+- `owasp_category`;
+- `cwe`;
+- `scanner_document`;
+- `scanner_rule`;
+- `vulnerability_example`.
+
+Để tích hợp với script hoặc Agent, gọi CLI trực tiếp với output JSON:
+
+```bash
+.venv/bin/python -m src.retrieval.cli search "CWE89" --json
+.venv/bin/python -m src.retrieval.cli search "XSS" --top-k 10 --doc-type cwe --json
+```
+
+Query được chuẩn hóa tự động, vì vậy `CWE89`, `cwe 89`, `cwe_89` và `CWE-89` có cùng ý nghĩa;
+`A01-2025`, `a01 2025`, `a1:2025` và `A01:2025` cũng tương đương. Các token được quote trước
+khi truyền vào SQLite FTS5, nên toán tử hoặc ký tự đặc biệt trong input không điều khiển cú pháp
+`MATCH`.
+
+Xem đầy đủ một tài liệu canonical hoặc thống kê dataset/index:
+
+```bash
+make kb-inspect DOC_ID=cwe-89
+make kb-stats
+```
+
+Nếu `knowledge-base/index/knowledge.db` chưa tồn tại hoặc canonical data đã thay đổi, chạy lại:
+
+```bash
+make kb-rebuild
+```
+
+Python code không cần gọi CLI bằng subprocess; dùng trực tiếp `KnowledgeSearchService` theo hướng
+dẫn trong [`knowledge-base/README.md`](knowledge-base/README.md).
 
 ## Gitleaks Git hooks
 
