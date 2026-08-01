@@ -1,0 +1,16 @@
+id: example-authentication-bypass
+title: Authentication Bypass Through Missing Middleware
+aliases: [Authentication Bypass, Missing Authentication, CWE-306]
+description: A sensitive endpoint is registered without the authentication middleware used by peer routes.
+root_cause: [Authentication enforcement is inconsistent, Sensitive functions fail open]
+vulnerable_example: |
+  app.post('/api/password/reset-admin', resetAdminPassword);
+safe_example: |
+  app.post('/api/password/reset-admin', requireAuthentication, requireRole('admin'), resetAdminPassword);
+impact: [Account takeover, Unauthorized privileged operations]
+remediation: [Apply authentication at a router boundary, Add negative authorization tests]
+identifiers:
+  cwe: [CWE-306]
+  owasp: [A07:2025]
+tags: [authentication, bypass, middleware, access-control]
+detectability: {sast: medium, dast: medium, manual: high}

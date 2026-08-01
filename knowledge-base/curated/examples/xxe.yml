@@ -1,0 +1,16 @@
+id: example-xxe
+title: XML External Entity Injection
+aliases: [XXE, XML External Entity, CWE-611]
+description: An XML parser resolves attacker-defined external entities with access to local or network resources.
+root_cause: [DTD or external entity processing is enabled, Untrusted XML is parsed with an unsafe configuration]
+vulnerable_example: |
+  const doc = libxmljs.parseXml(req.body);
+safe_example: |
+  const doc = parseXml(req.body, { dtd: false, externalEntities: false, network: false });
+impact: [Local file disclosure, Server-side request forgery, Denial of service]
+remediation: [Disable DTD and external entity resolution, Prefer simpler data formats, Patch XML libraries]
+identifiers:
+  cwe: [CWE-611]
+  owasp: [A05:2025]
+tags: [xxe, xml, entity, file-disclosure]
+detectability: {sast: medium, dast: high, manual: high}

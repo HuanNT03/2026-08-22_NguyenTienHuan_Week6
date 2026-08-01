@@ -1,0 +1,17 @@
+id: example-unrestricted-file-upload
+title: Unrestricted Upload of a Dangerous File
+aliases: [Unrestricted File Upload, Malicious File Upload, CWE-434]
+description: Uploaded content is stored under an executable web path without validating type or behavior.
+root_cause: [Extension and content controls are missing, Uploaded files are served from an executable origin]
+vulnerable_example: |
+  upload.single('file')(req, res, () => res.send(req.file.path));
+safe_example: |
+  validateMagicBytes(req.file.buffer, ALLOWED_IMAGE_TYPES);
+  await objectStore.put(randomName(), req.file.buffer, { executable: false });
+impact: [Remote code execution, Stored malware, Persistent XSS]
+remediation: [Allowlist required types, Validate file signatures, Store outside the web root, Generate server-side names]
+identifiers:
+  cwe: [CWE-434]
+  owasp: [A08:2025]
+tags: [file-upload, validation, storage]
+detectability: {sast: medium, dast: high, manual: high}

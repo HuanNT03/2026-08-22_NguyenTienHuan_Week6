@@ -1,0 +1,17 @@
+id: example-ssrf
+title: Server-Side Request Forgery
+aliases: [SSRF, Server-Side Request Forgery, CWE-918]
+description: The server fetches a user-supplied URL without restricting destination hosts or address ranges.
+root_cause: [An untrusted URL controls a server-side request, Redirects and resolved addresses are not validated]
+vulnerable_example: |
+  const response = await fetch(req.body.url);
+safe_example: |
+  const target = validateAllowedHttpsDestination(req.body.url);
+  const response = await fetch(target, { redirect: 'error' });
+impact: [Cloud metadata access, Internal service access, Network reconnaissance]
+remediation: [Allowlist destinations, Block private and link-local addresses after DNS resolution, Restrict egress]
+identifiers:
+  cwe: [CWE-918]
+  owasp: [A01:2025]
+tags: [ssrf, network, url, cloud-metadata]
+detectability: {sast: medium, dast: medium, manual: high}

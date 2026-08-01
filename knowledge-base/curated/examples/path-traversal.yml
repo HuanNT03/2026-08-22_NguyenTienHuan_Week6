@@ -1,0 +1,18 @@
+id: example-path-traversal
+title: Path Traversal in File Download
+aliases: [Path Traversal, Directory Traversal, CWE-22]
+description: A user-controlled filename is joined to a trusted directory without containment validation.
+root_cause: [Path segments are not canonicalized, The resolved path is not constrained to an allowed root]
+vulnerable_example: |
+  res.sendFile(path.join(downloadRoot, req.query.file));
+safe_example: |
+  const candidate = path.resolve(downloadRoot, req.query.file);
+  if (!candidate.startsWith(path.resolve(downloadRoot) + path.sep)) return res.sendStatus(400);
+  res.sendFile(candidate);
+impact: [Arbitrary file read, Exposure of application secrets]
+remediation: [Map opaque IDs to files, Resolve and enforce directory containment]
+identifiers:
+  cwe: [CWE-22]
+  owasp: [A01:2025]
+tags: [path-traversal, filesystem, file-read]
+detectability: {sast: high, dast: high, manual: high}

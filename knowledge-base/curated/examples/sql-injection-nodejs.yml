@@ -1,0 +1,22 @@
+id: example-sql-injection-nodejs
+title: SQL Injection in Node.js
+aliases: [SQL Injection, SQLi, CWE-89]
+description: User-controlled input is concatenated directly into an SQL query.
+root_cause:
+  - Untrusted input reaches the SQL interpreter.
+  - The application constructs queries using string concatenation.
+vulnerable_example: |
+  const query = `SELECT * FROM users WHERE email = '${req.body.email}'`;
+  db.query(query);
+safe_example: |
+  const query = "SELECT * FROM users WHERE email = ?";
+  db.query(query, [req.body.email]);
+impact: [Unauthorized data access, Authentication bypass, Data modification]
+remediation:
+  - Use parameterized queries.
+  - Apply least-privilege database permissions.
+identifiers:
+  cwe: [CWE-89]
+  owasp: [A05:2025]
+tags: [sql, injection, database, nodejs]
+detectability: {sast: high, dast: high, manual: medium}

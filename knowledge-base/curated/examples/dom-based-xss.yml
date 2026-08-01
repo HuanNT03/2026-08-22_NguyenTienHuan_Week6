@@ -1,0 +1,16 @@
+id: example-dom-based-xss
+title: DOM-Based Cross-Site Scripting
+aliases: [DOM XSS, DOM-Based XSS, CWE-79]
+description: Client-side code writes attacker-controlled URL data into an executable DOM sink.
+root_cause: [A browser-controlled source reaches innerHTML, No safe DOM API or sanitization is used]
+vulnerable_example: |
+  document.querySelector('#message').innerHTML = location.hash.slice(1);
+safe_example: |
+  document.querySelector('#message').textContent = location.hash.slice(1);
+impact: [Script execution in the victim origin, Credential or token theft]
+remediation: [Use textContent for text, Avoid dangerous DOM sinks, Apply Trusted Types where supported]
+identifiers:
+  cwe: [CWE-79]
+  owasp: [A05:2025]
+tags: [xss, dom, browser, javascript]
+detectability: {sast: high, dast: medium, manual: high}

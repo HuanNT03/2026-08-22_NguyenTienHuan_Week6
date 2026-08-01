@@ -1,0 +1,16 @@
+id: example-os-command-injection
+title: OS Command Injection
+aliases: [Command Injection, Shell Injection, CWE-78]
+description: User input is interpolated into a shell command executed by the application.
+root_cause: [Data and shell syntax share one string, Input validation is relied on instead of safe process APIs]
+vulnerable_example: |
+  exec(`convert ${req.body.filename} output.png`);
+safe_example: |
+  execFile('convert', [validatedFilename, 'output.png']);
+impact: [Remote code execution, Host compromise]
+remediation: [Avoid shell invocation, Pass fixed executable arguments as an array, Allowlist expected values]
+identifiers:
+  cwe: [CWE-78]
+  owasp: [A05:2025]
+tags: [command-injection, shell, rce, os]
+detectability: {sast: high, dast: medium, manual: high}

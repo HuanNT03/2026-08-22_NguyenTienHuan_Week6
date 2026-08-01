@@ -1,0 +1,17 @@
+id: example-stored-xss
+title: Stored Cross-Site Scripting
+aliases: [Stored XSS, Persistent XSS, CWE-79]
+description: Attacker-controlled markup is stored and later rendered to other users without encoding.
+root_cause: [Stored untrusted content is treated as trusted HTML, Output encoding is missing]
+vulnerable_example: |
+  comments.insert({ body: req.body.comment });
+  res.send(`<article>${comment.body}</article>`);
+safe_example: |
+  res.render('comment', { body: comment.body }); // template auto-escapes
+impact: [Persistent session theft, Privileged actions in moderator browsers]
+remediation: [Encode on output for the HTML context, Sanitize only when rich HTML is required]
+identifiers:
+  cwe: [CWE-79]
+  owasp: [A05:2025]
+tags: [xss, stored, persistent, html]
+detectability: {sast: medium, dast: medium, manual: high}

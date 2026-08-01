@@ -1,0 +1,16 @@
+id: example-missing-function-level-authorization
+title: Missing Function-Level Authorization
+aliases: [Missing Authorization, Broken Function Level Authorization, CWE-862]
+description: A privileged route is reachable without a server-side role or permission check.
+root_cause: [The UI hides an action but the API does not authorize it, Deny-by-default is absent]
+vulnerable_example: |
+  app.delete('/api/admin/users/:id', deleteUser);
+safe_example: |
+  app.delete('/api/admin/users/:id', requireRole('admin'), deleteUser);
+impact: [Privilege escalation, Unauthorized administrative actions]
+remediation: [Authorize every protected function server-side, Centralize reusable permission checks]
+identifiers:
+  cwe: [CWE-862]
+  owasp: [A01:2025]
+tags: [authorization, privilege-escalation, api, access-control]
+detectability: {sast: medium, dast: medium, manual: high}
