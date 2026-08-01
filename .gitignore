@@ -20,5 +20,12 @@
 /reports/normalized/*
 !/reports/normalized/.gitkeep
 __pycache__/
+*.py[cod]
+*.egg-info/
 .pytest_cache/
+.ruff_cache/
 .venv/
+
+# Generated knowledge-base index.
+/knowledge-base/index/*
+!/knowledge-base/index/.gitkeep

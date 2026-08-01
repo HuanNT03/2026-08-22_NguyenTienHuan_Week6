@@ -5,16 +5,31 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "sentinel-normalizers"
 version = "1.0.0"
-description = "Unified security scanner findings normalizer for Project Sentinel"
+description = "Security scanner normalization and knowledge retrieval for Project Sentinel"
 requires-python = ">=3.11"
-dependencies = ["jsonschema[format]>=4.23,<5"]
+dependencies = [
+    "beautifulsoup4>=4.12,<5.0",
+    "jsonschema[format]>=4.23,<5.0",
+    "markdown-it-py>=3.0,<5.0",
+    "pydantic>=2.7,<3.0",
+    "PyYAML>=6.0,<7.0",
+    "rich>=13.7,<15.0",
+    "typer>=0.12,<1.0",
+]
 
 [project.optional-dependencies]
-dev = ["pytest>=8,<9"]
+dev = [
+    "pytest>=8.0,<9.0",
+    "ruff>=0.6,<1.0",
+]
 
 [tool.setuptools.packages.find]
 include = ["src*"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests/unit", "tests/integration"]
+testpaths = ["tests/unit", "tests/integration", "tests/retrieval"]
 addopts = "-ra"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120

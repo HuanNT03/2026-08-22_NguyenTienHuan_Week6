@@ -2,12 +2,23 @@
 
 SHELL := /usr/bin/env bash
 PYTHON ?= python3
+VENV ?= .venv
 
-.PHONY: help doctor setup-target verify-target build up wait smoke down logs status \
+VENV_PYTHON := $(VENV)/bin/python
+VENV_PIP := $(VENV)/bin/pip
+
+.PHONY: help venv install doctor setup-target verify-target build up wait smoke down logs status \
 	lint test test-contracts test-python quality sast sast-semgrep sast-codeql dast validate-reports week1 normalize clean-reports clean
 
 help: ## Show available commands.
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+venv: ## Create the local Python virtual environment.
+	$(PYTHON) -m venv $(VENV)
+
+install: venv ## Install runtime and development Python dependencies.
+	$(VENV_PIP) install --upgrade pip
+	$(VENV_PIP) install -e '.[dev]'
 
 doctor: ## Check host prerequisites and Docker daemon access.
 	@./scripts/doctor.sh
