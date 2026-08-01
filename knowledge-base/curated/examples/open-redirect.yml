@@ -1,6 +1,6 @@
 id: example-open-redirect
 title: Open Redirect Through Return URL
-aliases: [Open Redirect, Unvalidated Redirect, CWE-601]
+aliases: [Open Redirect, Unvalidated Redirect]
 description: A redirect target is taken from request input without restricting it to trusted local destinations.
 root_cause: [The redirect destination crosses a trust boundary, URL parsing and origin checks are absent]
 vulnerable_example: |

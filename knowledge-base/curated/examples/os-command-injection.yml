@@ -1,6 +1,6 @@
 id: example-os-command-injection
 title: OS Command Injection
-aliases: [Command Injection, Shell Injection, CWE-78]
+aliases: [Command Injection, Shell Injection]
 description: User input is interpolated into a shell command executed by the application.
 root_cause: [Data and shell syntax share one string, Input validation is relied on instead of safe process APIs]
 vulnerable_example: |

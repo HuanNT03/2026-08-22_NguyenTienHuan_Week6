@@ -2,7 +2,7 @@
 id: semgrep-rule-javascript-express-security-injection-tainted-sql-string-tainted-sql-string
 doc_type: scanner_rule
 title: Semgrep Tainted SQL String Rule
-aliases: [Tainted SQL String, SQL Injection Rule, SQLi]
+aliases: [Tainted SQL String, SQL Injection Rule]
 summary: Detects Express request data used to construct an SQL string, which can permit SQL injection.
 identifiers:
   cwe: [CWE-89]

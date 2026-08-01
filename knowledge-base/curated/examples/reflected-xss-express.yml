@@ -1,6 +1,6 @@
 id: example-reflected-xss-express
 title: Reflected XSS in Express
-aliases: [Reflected XSS, Non-Persistent XSS, CWE-79]
+aliases: [Reflected XSS, Non-Persistent XSS]
 description: A request parameter is reflected into HTML without context-aware output encoding.
 root_cause: [Untrusted input is inserted into an HTML response, Output encoding is missing]
 vulnerable_example: |

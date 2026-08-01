@@ -1,6 +1,6 @@
 id: example-unrestricted-file-upload
 title: Unrestricted Upload of a Dangerous File
-aliases: [Unrestricted File Upload, Malicious File Upload, CWE-434]
+aliases: [Unrestricted File Upload, Malicious File Upload]
 description: Uploaded content is stored under an executable web path without validating type or behavior.
 root_cause: [Extension and content controls are missing, Uploaded files are served from an executable origin]
 vulnerable_example: |

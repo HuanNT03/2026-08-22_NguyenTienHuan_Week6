@@ -1,6 +1,6 @@
 id: example-authentication-bypass
 title: Authentication Bypass Through Missing Middleware
-aliases: [Authentication Bypass, Missing Authentication, CWE-306]
+aliases: [Authentication Bypass, Missing Authentication]
 description: A sensitive endpoint is registered without the authentication middleware used by peer routes.
 root_cause: [Authentication enforcement is inconsistent, Sensitive functions fail open]
 vulnerable_example: |

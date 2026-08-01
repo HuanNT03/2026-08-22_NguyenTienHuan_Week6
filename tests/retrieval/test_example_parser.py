@@ -17,7 +17,7 @@ def test_all_fifteen_examples_are_valid_and_unique() -> None:
 def test_sql_injection_example_preserves_multiline_code() -> None:
     document = parse_example_file(EXAMPLES_DIR / "sql-injection-nodejs.yml")
     assert document.doc_id == "example-sql-injection-nodejs"
-    assert "SQLi" in document.aliases
+    assert "Node.js SQL Injection" in document.aliases
     assert document.identifiers.cwe == ["CWE-89"]
     assert "const query = `SELECT" in document.content
     assert "db.query(query);" in document.content

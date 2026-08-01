@@ -1,6 +1,6 @@
 id: example-missing-function-level-authorization
 title: Missing Function-Level Authorization
-aliases: [Missing Authorization, Broken Function Level Authorization, CWE-862]
+aliases: [Missing Authorization, Broken Function Level Authorization]
 description: A privileged route is reachable without a server-side role or permission check.
 root_cause: [The UI hides an action but the API does not authorize it, Deny-by-default is absent]
 vulnerable_example: |

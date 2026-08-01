@@ -1,6 +1,6 @@
 id: example-sql-injection-nodejs
 title: SQL Injection in Node.js
-aliases: [SQL Injection, SQLi, CWE-89]
+aliases: [SQL Injection, Node.js SQL Injection]
 description: User-controlled input is concatenated directly into an SQL query.
 root_cause:
   - Untrusted input reaches the SQL interpreter.

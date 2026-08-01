@@ -1,6 +1,6 @@
 id: example-stored-xss
 title: Stored Cross-Site Scripting
-aliases: [Stored XSS, Persistent XSS, CWE-79]
+aliases: [Stored XSS, Persistent XSS]
 description: Attacker-controlled markup is stored and later rendered to other users without encoding.
 root_cause: [Stored untrusted content is treated as trusted HTML, Output encoding is missing]
 vulnerable_example: |

@@ -1,6 +1,6 @@
 id: example-path-traversal
 title: Path Traversal in File Download
-aliases: [Path Traversal, Directory Traversal, CWE-22]
+aliases: [Path Traversal, Directory Traversal]
 description: A user-controlled filename is joined to a trusted directory without containment validation.
 root_cause: [Path segments are not canonicalized, The resolved path is not constrained to an allowed root]
 vulnerable_example: |

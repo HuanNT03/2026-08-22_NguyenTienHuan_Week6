@@ -1,6 +1,6 @@
 id: example-xxe
 title: XML External Entity Injection
-aliases: [XXE, XML External Entity, CWE-611]
+aliases: [XXE, XML External Entity]
 description: An XML parser resolves attacker-defined external entities with access to local or network resources.
 root_cause: [DTD or external entity processing is enabled, Untrusted XML is parsed with an unsafe configuration]
 vulnerable_example: |

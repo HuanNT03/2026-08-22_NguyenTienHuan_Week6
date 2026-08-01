@@ -1,6 +1,6 @@
 id: example-cors-misconfiguration
 title: Permissive CORS Misconfiguration
-aliases: [CORS Misconfiguration, Cross-Origin Misconfiguration, CWE-942]
+aliases: [CORS Misconfiguration, Cross-Origin Misconfiguration]
 description: The server reflects arbitrary origins while allowing credentialed cross-origin requests.
 root_cause: [Untrusted Origin values are accepted, Credentialed responses are exposed cross-origin]
 vulnerable_example: |

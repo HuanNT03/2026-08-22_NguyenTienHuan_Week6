@@ -1,6 +1,6 @@
 id: example-ssrf
 title: Server-Side Request Forgery
-aliases: [SSRF, Server-Side Request Forgery, CWE-918]
+aliases: [SSRF, Server-Side Request Forgery]
 description: The server fetches a user-supplied URL without restricting destination hosts or address ranges.
 root_cause: [An untrusted URL controls a server-side request, Redirects and resolved addresses are not validated]
 vulnerable_example: |

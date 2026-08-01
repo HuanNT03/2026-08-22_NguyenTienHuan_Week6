@@ -1,6 +1,6 @@
 id: example-idor
 title: Insecure Direct Object Reference
-aliases: [IDOR, Broken Object Level Authorization, BOLA, CWE-639]
+aliases: [IDOR, Broken Object Level Authorization, BOLA]
 description: An endpoint trusts a user-controlled object identifier without enforcing ownership.
 root_cause: [Authorization is checked only at login, Record ownership is not verified]
 vulnerable_example: |
