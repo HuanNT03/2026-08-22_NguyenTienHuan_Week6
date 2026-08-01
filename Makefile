@@ -3,7 +3,7 @@
 SHELL := /usr/bin/env bash
 
 .PHONY: help doctor setup-target verify-target build up wait smoke down logs status \
-	lint test quality sast dast validate-reports week1 clean-reports clean
+	lint test quality sast sast-semgrep sast-codeql dast validate-reports week1 clean-reports clean
 
 help: ## Show available commands.
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -49,8 +49,16 @@ quality: ## Run lint followed by repository contract tests.
 	@$(MAKE) lint
 	@$(MAKE) test
 
-sast: ## Run Semgrep SAST against the pinned target.
+sast: ## Run Semgrep and CodeQL SAST sequentially against the pinned target.
+	@$(MAKE) sast-semgrep
+	@$(MAKE) sast-codeql
+
+sast-semgrep: ## Run Semgrep SAST against the pinned target.
 	@./scripts/run-sast.sh
+
+sast-codeql: verify-target ## Build and run CodeQL SAST against the pinned target.
+	docker compose --env-file configs/tool-versions.env --profile scan build codeql-scan
+	HOST_UID="$$(id -u)" HOST_GID="$$(id -g)" docker compose --env-file configs/tool-versions.env --profile scan run --rm codeql-scan
 
 dast: ## Run ZAP Baseline against the already-running target.
 	@./scripts/run-dast.sh

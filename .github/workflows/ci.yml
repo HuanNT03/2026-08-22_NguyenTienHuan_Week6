@@ -22,6 +22,10 @@ jobs:
 
   sast:
     needs: quality
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
     uses: ./.github/workflows/sast-scan.yml
     secrets:
       SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}

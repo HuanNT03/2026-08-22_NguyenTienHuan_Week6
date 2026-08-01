@@ -30,7 +30,7 @@ required_files=(
   .githooks/pre-push .githooks/lib/gitleaks-common.sh Makefile README.md docker-compose.yml
   configs/tool-versions.env target-app/TARGET.lock target-app/README.md
   scripts/setup-target.sh scripts/verify-target.sh scripts/wait-for-target.sh scripts/smoke-test.sh
-  scripts/run-sast.sh scripts/run-dast.sh scripts/validate-reports.sh scripts/clean.sh
+  scripts/run-sast.sh scripts/run-dast.sh scripts/validate-reports.sh scripts/clean.sh docker/codeql/Dockerfile
   docs/architecture.md docs/endpoints.md docs/week-1-findings.md
   .github/workflows/ci.yml .github/workflows/sast-scan.yml .github/workflows/dast-scan.yml
 )
@@ -46,9 +46,15 @@ commit_sha="$(awk -F= '$1 == "COMMIT_SHA" {print $2}' "$lock_file")"
 pass "target lock keys and commit format are valid"
 
 versions_file="$PROJECT_ROOT/configs/tool-versions.env"
-validate_config_file "$versions_file" SEMGREP_VERSION SEMGREP_IMAGE ZAP_VERSION ZAP_IMAGE
+validate_config_file "$versions_file" SEMGREP_VERSION SEMGREP_IMAGE ZAP_VERSION ZAP_IMAGE CODEQL_VERSION
 if awk -F= '/_IMAGE=/ && $2 ~ /:(latest|stable|weekly|canary)$/ {bad = 1} END {exit !bad}' "$versions_file"; then
   fail "scanner image uses a moving tag"
+fi
+codeql_version="$(config_value "$versions_file" CODEQL_VERSION)"
+[[ "$codeql_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "CODEQL_VERSION is not semantic version"
+[[ "$(grep -c '^CODEQL_VERSION=' "$versions_file")" -eq 1 ]] || fail "CODEQL_VERSION must be declared once"
+if grep -q '^CODEQL_BUNDLE_URL=' "$versions_file"; then
+  fail "CodeQL bundle URL must be derived from CODEQL_VERSION by each installer"
 fi
 pass "scanner versions are complete and immutable tags are used"
 
@@ -76,11 +82,51 @@ grep -q -- 'contains metadata that requires login' "$PROJECT_ROOT/scripts/run-sa
 grep -q -- 'reports/raw/semgrep.sarif' "$PROJECT_ROOT/.github/workflows/sast-scan.yml" || fail "SAST workflow must upload the SARIF report"
 grep -A3 '^  workflow_call:$' "$PROJECT_ROOT/.github/workflows/sast-scan.yml" | \
   grep -q 'SEMGREP_APP_TOKEN:' || fail "SAST reusable workflow must declare SEMGREP_APP_TOKEN"
-grep -A5 '^  sast:$' "$ci_workflow" | grep -q 'SEMGREP_APP_TOKEN:.*secrets.SEMGREP_APP_TOKEN' || \
+grep -A9 '^  sast:$' "$ci_workflow" | grep -q 'SEMGREP_APP_TOKEN:.*secrets.SEMGREP_APP_TOKEN' || \
   fail "CI must pass SEMGREP_APP_TOKEN explicitly to the SAST workflow"
 grep -A3 'name: Run Semgrep' "$PROJECT_ROOT/.github/workflows/sast-scan.yml" | \
   grep -q 'SEMGREP_APP_TOKEN:.*secrets.SEMGREP_APP_TOKEN' || \
   fail "SAST workflow must expose the GitHub secret only to the scan step"
+codeql_dockerfile="$PROJECT_ROOT/docker/codeql/Dockerfile"
+grep -q '^FROM ubuntu:24.04$' "$codeql_dockerfile" || fail "CodeQL image must use Ubuntu 24.04"
+grep -q '^ARG CODEQL_VERSION$' "$codeql_dockerfile" || fail "CodeQL image must receive the pinned version"
+grep -q 'github/codeql-action/releases/download/codeql-bundle-v${CODEQL_VERSION}' "$codeql_dockerfile" || \
+  fail "CodeQL image must derive the official bundle URL from CODEQL_VERSION"
+grep -q 'sha256sum -c' "$codeql_dockerfile" || fail "CodeQL image must verify the official checksum"
+grep -q 'install.*nodejs' "$codeql_dockerfile" || fail "CodeQL image must provide Node.js for TypeScript extraction"
+grep -q 'chmod -R a+rX /opt/codeql' "$codeql_dockerfile" || fail "Non-root scanner must read precompiled CodeQL queries"
+grep -q 'ln -s /opt/codeql/codeql /usr/local/bin/codeql' "$codeql_dockerfile" || \
+  fail "CodeQL image must expose the CLI on PATH"
+
+compose_file="$PROJECT_ROOT/docker-compose.yml"
+grep -q '^  codeql-scan:$' "$compose_file" || fail "Compose must define codeql-scan"
+grep -A3 '^  codeql-scan:$' "$compose_file" | grep -q 'profiles: \["scan"\]' || \
+  fail "CodeQL service must be opt-in through the scan profile"
+grep -q './target-app/juice-shop:/workspace/target-app/juice-shop:ro' "$compose_file" || \
+  fail "CodeQL source mount must be read-only"
+grep -q './reports/raw:/workspace/reports/raw:rw' "$compose_file" || fail "CodeQL report mount must be writable"
+grep -q 'javascript-typescript' "$compose_file" || fail "CodeQL must scan JavaScript and TypeScript"
+grep -q 'javascript-security-extended.qls' "$compose_file" || fail "CodeQL must use security-extended queries"
+grep -q -- '--sarif-add-query-help' "$compose_file" || fail "CodeQL SARIF must contain query help"
+grep -q -- '--output=reports/raw/codeql.sarif' "$compose_file" || fail "CodeQL output path is incorrect"
+
+codeql_build_line="$(grep -n -- '--profile scan build codeql-scan' "$PROJECT_ROOT/Makefile" | cut -d: -f1)"
+codeql_run_line="$(grep -n -- '--profile scan run --rm codeql-scan' "$PROJECT_ROOT/Makefile" | cut -d: -f1)"
+[[ -n "$codeql_build_line" && -n "$codeql_run_line" ]] || fail "CodeQL Make commands are missing"
+((codeql_build_line < codeql_run_line)) || fail "CodeQL image must always build before scan"
+grep -q '@$(MAKE) sast-semgrep' "$PROJECT_ROOT/Makefile" || fail "aggregate SAST must run Semgrep"
+grep -q '@$(MAKE) sast-codeql' "$PROJECT_ROOT/Makefile" || fail "aggregate SAST must run CodeQL"
+
+sast_workflow="$PROJECT_ROOT/.github/workflows/sast-scan.yml"
+grep -q '^  codeql:$' "$sast_workflow" || fail "SAST workflow must define an independent CodeQL job"
+grep -q 'CODEQL_VERSION=.*grep.*configs/tool-versions.env' "$sast_workflow" || fail "CI must read the pinned CodeQL version"
+grep -q 'sha256sum -c' "$sast_workflow" || fail "CI must verify the CodeQL checksum"
+grep -q 'sudo chmod -R a+rX /opt/codeql' "$sast_workflow" || fail "CI runner must read precompiled CodeQL queries"
+grep -q 'github/codeql-action/upload-sarif@v4' "$sast_workflow" || fail "CI must upload CodeQL SARIF"
+grep -q 'reports/raw/codeql.sarif' "$sast_workflow" || fail "CI must retain the CodeQL report"
+if grep -q 'github/codeql-action/init' "$sast_workflow"; then fail "CI must not use CodeQL init"; fi
+grep -A5 '^  sast:$' "$ci_workflow" | grep -q 'security-events: write' || fail "SAST caller must grant SARIF upload permission"
+grep -A5 '^  sast:$' "$ci_workflow" | grep -q 'actions: read' || fail "SAST caller must allow private-repository SARIF upload"
 grep -q -- '--user "$HOST_USER"' "$PROJECT_ROOT/scripts/run-dast.sh" || fail "DAST container must use host UID/GID"
 [[ "$(grep -c -- 'JAVA_TOOL_OPTIONS=-Duser.home=/tmp' "$PROJECT_ROOT/scripts/run-dast.sh")" -eq 2 ]] || \
   fail "DAST must set a writable Java home for both ZAP invocations"

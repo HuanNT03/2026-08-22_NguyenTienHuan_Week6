@@ -22,6 +22,28 @@ services:
       retries: 24
       start_period: 15s
 
+  codeql-scan:
+    profiles: ["scan"]
+    build:
+      context: ./docker/codeql
+      args:
+        CODEQL_VERSION: ${CODEQL_VERSION:-}
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    environment:
+      HOME: /tmp
+    working_dir: /workspace
+    volumes:
+      - ./target-app/juice-shop:/workspace/target-app/juice-shop:ro
+      - ./reports/raw:/workspace/reports/raw:rw
+    command:
+      - /bin/bash
+      - -euo
+      - pipefail
+      - -c
+      - |
+        codeql database create /tmp/codeql-db --language=javascript-typescript --source-root=target-app/juice-shop
+        codeql database analyze /tmp/codeql-db javascript-security-extended.qls --format=sarif-latest --sarif-add-query-help --output=reports/raw/codeql.sarif
+
 networks:
   security:
     name: sentinel-security

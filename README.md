@@ -1,8 +1,8 @@
 # Project Sentinel — Week 1
 
 Môi trường DevSecOps có thể tái lập để chạy OWASP Juice Shop `v20.1.1`, quét mã nguồn
-bằng Semgrep và quét web thụ động bằng OWASP ZAP Baseline. Source Juice Shop, raw reports
-và runtime logs không được commit vào repository Sentinel.
+bằng Semgrep cùng CodeQL, và quét web thụ động bằng OWASP ZAP Baseline. Source Juice Shop,
+raw reports và runtime logs không được commit vào repository Sentinel.
 
 ## Mục lục
 
@@ -18,8 +18,8 @@ và runtime logs không được commit vào repository Sentinel.
 
 ## Phạm vi
 
-Week 1 triển khai target pinning, Docker lifecycle, Semgrep SAST, ZAP Baseline DAST,
-raw JSON validation và CI artifacts. Normalization, RAG, AI Agent, Gateway, guardrails,
+Week 1 triển khai target pinning, Docker lifecycle, Semgrep/CodeQL SAST, ZAP Baseline DAST,
+raw report validation và CI artifacts. Normalization, RAG, AI Agent, Gateway, guardrails,
 ground-truth evaluation và scanner correlation được dành cho các tuần sau.
 
 ## Yêu cầu hệ thống
@@ -27,11 +27,11 @@ ground-truth evaluation và scanner correlation được dành cho các tuần s
 - Linux x86_64, macOS với Docker Desktop, hoặc Windows WSL2 với Docker Desktop;
 - Git, Bash, GNU Make, Docker Engine/Desktop, Docker Compose v2;
 - `curl` và `jq`;
-- ít nhất 4 GiB memory cho Docker Engine/Desktop khi chạy ZAP Client Spider.
+- ít nhất 4 GiB memory cho Docker Engine/Desktop khi chạy CodeQL hoặc ZAP Client Spider.
 
 Gitleaks `v8.30.1` trở lên được khuyến nghị để chạy secret-scanning Git hooks.
 
-Không cần cài Node.js, Semgrep hoặc ZAP trên host. Chạy `make doctor` để kiểm tra môi trường.
+Không cần cài Node.js, Semgrep, CodeQL hoặc ZAP trên host. Chạy `make doctor` để kiểm tra môi trường.
 
 ## Quickstart
 
@@ -50,6 +50,13 @@ make validate-reports
 make down
 ```
 
+`make sast` chạy Semgrep rồi CodeQL theo thứ tự. Có thể chạy riêng từng scanner khi cần:
+
+```bash
+make sast-semgrep
+make sast-codeql
+```
+
 Hoặc chạy toàn bộ luồng với cleanup runtime tự động:
 
 ```bash
@@ -57,7 +64,8 @@ make week1
 ```
 
 Thứ tự của `week1` là `doctor → quality → setup-target → sast → build → up → wait →
-smoke → dast → validate-reports → down`. SAST chạy trước build vì không phụ thuộc runtime.
+smoke → dast → validate-reports → down`. Bước SAST chạy Semgrep rồi CodeQL trước khi build
+runtime vì hai scanner chỉ cần source code.
 
 Port host mặc định là `127.0.0.1:3000`. File `.env` dùng để cấu hình
 `JUICE_SHOP_PORT` và token Semgrep local; file này đã được ignore và không được commit.
@@ -72,7 +80,7 @@ Chạy `make help` để xem danh sách đầy đủ. Các nhóm lệnh chính:
 | Môi trường | `doctor`, `lint`, `test`, `quality` |
 | Target | `setup-target`, `verify-target` |
 | Runtime | `build`, `up`, `wait`, `smoke`, `status`, `logs`, `down` |
-| Scanner | `sast`, `dast`, `validate-reports` |
+| Scanner | `sast`, `sast-semgrep`, `sast-codeql`, `dast`, `validate-reports` |
 | Orchestration | `week1` |
 | Cleanup | `clean-reports`, `clean` |
 
@@ -81,7 +89,8 @@ yêu cầu HTTP 2xx/3xx và response body không rỗng.
 
 ## SAST và DAST
 
-`make sast` chạy image `semgrep/semgrep:1.171.0` trên duy nhất
+`make sast-semgrep` chạy Semgrep theo đúng luồng hiện có; `make sast` gọi target này trước rồi
+gọi `make sast-codeql`. Semgrep chạy image `semgrep/semgrep:1.171.0` trên duy nhất
 `target-app/juice-shop/`, dùng các Registry ruleset `p/owasp-top-ten`, `p/javascript`,
 `p/nodejs` và `p/expressjs`. Report được ghi tại `reports/raw/semgrep.json`.
 
@@ -90,7 +99,7 @@ Scan SAST yêu cầu `SEMGREP_APP_TOKEN` hợp lệ. Local runner ưu tiên bi�
 
 ```bash
 export SEMGREP_APP_TOKEN='<token>'
-make sast
+make sast-semgrep
 ```
 
 Có thể thay bằng cách điền token vào `.env`. Không echo, truyền token trên command line hoặc
@@ -107,6 +116,21 @@ có thể thay đổi dù image không đổi. Đây là giới hạn được c
 rộng chưa bật mặc định gồm `p/typescript`, `p/security-audit`, `p/cwe-top-25`, `p/docker`;
 secret scanning nên là bước riêng trong tương lai.
 
+`make sast-codeql` build image nội bộ từ `ubuntu:24.04` và CodeQL bundle chính thức. Version
+được đọc duy nhất từ `CODEQL_VERSION` trong `configs/tool-versions.env`; Dockerfile và CI tự
+dựng URL release tương ứng. Bundle cùng file `.checksum.txt` được tải từ
+`github/codeql-action/releases` và phải vượt qua `sha256sum -c` trước khi giải nén.
+
+CodeQL tạo database JavaScript/TypeScript tại `/tmp/codeql-db` trong container, sau đó chạy
+suite `javascript-security-extended.qls` với query help và ghi SARIF tại
+`reports/raw/codeql.sarif`. Database không được mount nên tự mất khi container `--rm` kết thúc.
+Source Juice Shop được mount read-only; report được ghi bằng UID/GID của host để tránh file
+thuộc sở hữu root. Target luôn gọi `docker compose build` trước scan và dựa vào Docker layer
+cache, vì vậy lần chạy sau chỉ rebuild khi version hoặc Dockerfile thay đổi.
+
+Service `codeql-scan` thuộc Compose profile `scan`, nên không chạy theo `docker compose up`.
+Không cần cài CodeQL trên host; cần chạy `make setup-target` trước khi scan.
+
 `make dast` chỉ scan; nó không build, start hoặc stop target. Hãy chạy `make build`, `make up`,
 `make wait` và `make smoke` trước. Image được pin tại
 `ghcr.io/zaproxy/zaproxy:2.17.0`. ZAP Baseline chạy Traditional Spider và Client Spider rồi
@@ -121,7 +145,7 @@ scan hoàn tất; exit code `3` hoặc report không hợp lệ làm task thất
 Runner truyền `-z "-silent"` để không tự update hoặc cài add-on trong lúc scan; scanner
 behavior vì vậy bám theo image đã pin.
 
-Hai scanner chạy container bằng UID/GID của host để raw reports không thuộc sở hữu root.
+Các scanner container chạy bằng UID/GID của host để raw reports không thuộc sở hữu root.
 
 ## Gitleaks Git hooks
 
@@ -272,21 +296,25 @@ Nếu đã có custom hook path, hãy khôi phục chính xác giá trị cũ th
 
 ## GitHub Actions
 
-Workflow chính chạy `quality`, sau đó khởi chạy SAST và DAST song song trên hai runner
-`ubuntu-24.04`. Mỗi job tự setup target vì filesystem và container không được chia sẻ.
+Workflow chính chạy `quality`, sau đó khởi chạy SAST và DAST song song. Bên trong reusable
+SAST workflow, Semgrep và CodeQL tiếp tục chạy ở hai job độc lập để không chờ nhau. Mỗi job
+tự setup target vì filesystem và container không được chia sẻ giữa các runner.
 
 Trước khi chạy workflow, vào **Settings → Secrets and variables → Actions**, tạo repository
 secret `SEMGREP_APP_TOKEN` chứa token từ Semgrep AppSec Platform. Workflow chính chỉ truyền
 named secret này vào reusable SAST workflow, và reusable workflow chỉ expose nó cho bước
-`make sast`. Secret là bắt buộc: pull request từ fork hoặc Dependabot không được GitHub cấp
+`make sast-semgrep`. Secret là bắt buộc: pull request từ fork hoặc Dependabot không được GitHub cấp
 repository secret sẽ fail SAST rõ ràng thay vì tạo report anonymous thiếu metadata.
 
 Trong trang GitHub Actions, mở workflow run và tải artifact:
 
 - `semgrep-raw-<run_id>`;
+- `codeql-raw-<run_id>`;
 - `zap-raw-<run_id>`;
 - `dast-logs-<run_id>` nếu DAST thất bại.
 
+Ngoài artifact raw, `reports/raw/codeql.sarif` được upload bằng
+`github/codeql-action/upload-sarif@v4` để hiển thị trong tab **Security** của repository.
 Artifacts được giữ 14 ngày.
 
 ## Cleanup
@@ -305,6 +333,10 @@ Artifacts được giữ 14 ngày.
   có quyền dùng Docker.
 - Semgrep báo thiếu token hoặc `requires login`: thay placeholder trong `.env` hoặc export
   `SEMGREP_APP_TOKEN` hợp lệ; không commit hay in token ra log.
+- CodeQL checksum mismatch: không bỏ qua kiểm tra; xóa Docker build cache liên quan và xác minh
+  version/asset trên release chính thức trước khi thử lại.
+- CodeQL báo `out of Java heap`: tăng memory Docker Engine/Desktop lên ít nhất 4 GiB rồi chạy
+  lại; không giảm query suite hoặc bỏ qua query bị lỗi.
 - ZAP code 3 kèm `Failed to access summary file /tmp/zap_out.json`: kiểm tra Docker OOM events
   và cấp ít nhất 4 GiB memory cho Docker Engine/Desktop; Client Spider chạy browser thật nên
   cần nhiều memory hơn Traditional Spider.

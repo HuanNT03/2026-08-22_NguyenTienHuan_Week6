@@ -62,15 +62,18 @@ load_target_lock() {
 
 load_tool_versions() {
   local versions_file="$1"
-  validate_config_file "$versions_file" SEMGREP_VERSION SEMGREP_IMAGE ZAP_VERSION ZAP_IMAGE
+  validate_config_file "$versions_file" \
+    SEMGREP_VERSION SEMGREP_IMAGE ZAP_VERSION ZAP_IMAGE CODEQL_VERSION
 
   SEMGREP_VERSION="$(config_value "$versions_file" SEMGREP_VERSION)"
   SEMGREP_IMAGE="$(config_value "$versions_file" SEMGREP_IMAGE)"
   ZAP_VERSION="$(config_value "$versions_file" ZAP_VERSION)"
   ZAP_IMAGE="$(config_value "$versions_file" ZAP_IMAGE)"
+  CODEQL_VERSION="$(config_value "$versions_file" CODEQL_VERSION)"
 
   [[ "$SEMGREP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "Invalid SEMGREP_VERSION: $SEMGREP_VERSION"
   [[ "$ZAP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "Invalid ZAP_VERSION: $ZAP_VERSION"
+  [[ "$CODEQL_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "Invalid CODEQL_VERSION: $CODEQL_VERSION"
   [[ "$SEMGREP_IMAGE" == *":$SEMGREP_VERSION" ]] || die "SEMGREP_IMAGE is not pinned to SEMGREP_VERSION"
   [[ "$ZAP_IMAGE" == *":$ZAP_VERSION" ]] || die "ZAP_IMAGE is not pinned to ZAP_VERSION"
 }

@@ -21,7 +21,7 @@ jobs:
       - name: Set up pinned target
         run: make setup-target
       - name: Run Semgrep
-        run: make sast
+        run: make sast-semgrep
         env:
           SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
       - name: Validate Semgrep report
@@ -35,5 +35,65 @@ jobs:
           path: |
             reports/raw/semgrep.json
             reports/raw/semgrep.sarif
+          retention-days: 14
+          if-no-files-found: warn
+
+  codeql:
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - name: Check out Sentinel
+        uses: actions/checkout@v4
+      - name: Set up pinned target
+        run: make setup-target
+      - name: Read pinned CodeQL version
+        shell: bash
+        run: |
+          CODEQL_VERSION="$(grep '^CODEQL_VERSION=' configs/tool-versions.env | cut -d= -f2-)"
+          if [[ ! "$CODEQL_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid CODEQL_VERSION: $CODEQL_VERSION" >&2
+            exit 1
+          fi
+          echo "CODEQL_VERSION=$CODEQL_VERSION" >> "$GITHUB_ENV"
+      - name: Install pinned CodeQL CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          asset="codeql-bundle-linux64.tar.gz"
+          release_url="https://github.com/github/codeql-action/releases/download/codeql-bundle-v${CODEQL_VERSION}"
+          download_dir="$RUNNER_TEMP/codeql-$CODEQL_VERSION"
+          mkdir -p "$download_dir"
+          curl --fail --location --retry 3 --output "$download_dir/$asset" "$release_url/$asset"
+          curl --fail --location --retry 3 --output "$download_dir/$asset.checksum.txt" "$release_url/$asset.checksum.txt"
+          (
+            cd "$download_dir"
+            sha256sum -c "$asset.checksum.txt"
+          )
+          sudo tar -xzf "$download_dir/$asset" -C /opt
+          sudo chmod -R a+rX /opt/codeql
+          echo "/opt/codeql" >> "$GITHUB_PATH"
+      - name: Verify CodeQL version
+        run: codeql version
+      - name: Run CodeQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/raw
+          codeql database create /tmp/codeql-db --language=javascript-typescript --source-root=target-app/juice-shop
+          codeql database analyze /tmp/codeql-db javascript-security-extended.qls --format=sarif-latest --sarif-add-query-help --output=reports/raw/codeql.sarif
+          python3 -c "import json; json.load(open('reports/raw/codeql.sarif'))"
+      - name: Upload CodeQL SARIF to code scanning
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: reports/raw/codeql.sarif
+      - name: Upload raw CodeQL report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codeql-raw-${{ github.run_id }}
+          path: reports/raw/codeql.sarif
           retention-days: 14
           if-no-files-found: warn
