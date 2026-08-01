@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sentinel.local/schemas/knowledge_document.schema.json",
+  "title": "Project Sentinel Knowledge Document",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "doc_id", "doc_type", "title", "aliases", "summary",
+    "content", "identifiers", "tags", "source"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "doc_id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "doc_type": {
+      "enum": [
+        "owasp_category", "cwe", "scanner_document", "scanner_rule",
+        "vulnerability_example"
+      ]
+    },
+    "title": {"$ref": "#/$defs/non_empty_string"},
+    "aliases": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/non_empty_string"},
+      "uniqueItems": true
+    },
+    "summary": {"$ref": "#/$defs/non_empty_string"},
+    "content": {"$ref": "#/$defs/non_empty_string"},
+    "identifiers": {"$ref": "#/$defs/identifiers"},
+    "tags": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/non_empty_string"},
+      "uniqueItems": true
+    },
+    "detectability": {"$ref": "#/$defs/detectability"},
+    "source": {"$ref": "#/$defs/source"}
+  },
+  "$defs": {
+    "non_empty_string": {"type": "string", "minLength": 1},
+    "identifier_array": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/non_empty_string"},
+      "uniqueItems": true
+    },
+    "identifiers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cwe", "owasp", "semgrep", "zap"],
+      "properties": {
+        "cwe": {"$ref": "#/$defs/identifier_array"},
+        "owasp": {"$ref": "#/$defs/identifier_array"},
+        "semgrep": {"$ref": "#/$defs/identifier_array"},
+        "zap": {"$ref": "#/$defs/identifier_array"}
+      }
+    },
+    "detectability_value": {"enum": ["high", "medium", "low", "unknown"]},
+    "detectability": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "sast": {"$ref": "#/$defs/detectability_value"},
+        "dast": {"$ref": "#/$defs/detectability_value"},
+        "manual": {"$ref": "#/$defs/detectability_value"}
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "raw_path"],
+      "properties": {
+        "name": {"$ref": "#/$defs/non_empty_string"},
+        "version": {"$ref": "#/$defs/non_empty_string"},
+        "raw_path": {"$ref": "#/$defs/non_empty_string"},
+        "source_locator": {"$ref": "#/$defs/non_empty_string"}
+      }
+    }
+  }
+}
