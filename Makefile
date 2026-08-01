@@ -95,3 +95,47 @@ clean-reports: ## Remove generated reports while preserving tracked directories.
 
 clean: ## Stop runtime and remove generated reports and target clone.
 	@./scripts/clean.sh full
+
+.PHONY: kb-validate kb-build-documents kb-build-index kb-build kb-rebuild kb-search \
+	kb-inspect kb-stats kb-test kb-lint kb-clean
+
+kb-validate: ## Validate all knowledge sources and SQLite capabilities.
+	@$(VENV_PYTHON) -m src.retrieval.cli validate
+
+kb-build-documents: ## Build deterministic canonical knowledge documents.
+	@$(VENV_PYTHON) -m src.retrieval.cli build-documents
+
+kb-build-index: ## Build the generated SQLite FTS5 index.
+	@$(VENV_PYTHON) -m src.retrieval.cli build-index
+
+kb-build: ## Validate and build knowledge documents and index.
+	@$(VENV_PYTHON) -m src.retrieval.cli build
+
+kb-rebuild: ## Remove generated knowledge artifacts and rebuild them.
+	@$(VENV_PYTHON) -m src.retrieval.cli clean
+	@$(VENV_PYTHON) -m src.retrieval.cli build
+
+kb-search: ## Search knowledge; for example QUERY="SQL Injection".
+	@test -n "$(QUERY)" || \
+		(echo 'Usage: make kb-search QUERY="SQL Injection"' && exit 1)
+	@$(VENV_PYTHON) -m src.retrieval.cli search \
+		"$(QUERY)" \
+		--top-k "$(or $(TOP_K),5)" \
+		$(if $(DOC_TYPE),--doc-type "$(DOC_TYPE)",)
+
+kb-inspect: ## Inspect a canonical document by DOC_ID.
+	@test -n "$(DOC_ID)" || \
+		(echo 'Usage: make kb-inspect DOC_ID="cwe-89"' && exit 1)
+	@$(VENV_PYTHON) -m src.retrieval.cli inspect "$(DOC_ID)"
+
+kb-stats: ## Display canonical knowledge and index statistics.
+	@$(VENV_PYTHON) -m src.retrieval.cli stats
+
+kb-test: ## Run knowledge-base unit and integration tests.
+	@$(VENV_PYTHON) -m pytest tests/retrieval -q
+
+kb-lint: ## Lint knowledge-base source and tests.
+	@$(VENV_PYTHON) -m ruff check src/retrieval tests/retrieval
+
+kb-clean: ## Remove only generated knowledge-base artifacts.
+	@$(VENV_PYTHON) -m src.retrieval.cli clean
