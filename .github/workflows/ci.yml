@@ -27,6 +27,32 @@ jobs:
       - name: Run repository quality checks
         run: make quality
 
+  knowledge-base:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out Sentinel
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install knowledge-base dependencies
+        run: make install
+      - name: Validate knowledge base
+        run: make kb-validate
+      - name: Build knowledge base
+        run: make kb-build
+      - name: Run knowledge-base tests
+        run: make kb-test
+      - name: Lint retrieval code
+        run: make kb-lint
+      - name: Verify generated knowledge documents are committed
+        run: |
+          git diff --exit-code -- \
+            knowledge-base/processed/documents.jsonl \
+            knowledge-base/processed/manifest.json
+
   sast:
     needs: quality
     permissions:
