@@ -28,12 +28,19 @@ examples maintained as individual review units. `processed` is normalized canoni
 ## Installation
 
 Python 3.11 or newer is required. The selected Python runtime must include SQLite JSON functions
-and FTS5.
+and FTS5. `make install` checks these capabilities, repairs an incompatible project `.venv`, and
+falls back to a compatible system Python when the requested interpreter (including a pyenv build)
+does not provide `_sqlite3`.
 
 ```bash
 make install
 make kb-validate
 ```
+
+If no compatible interpreter is selected automatically, try
+`make install PYTHON=/usr/bin/python3`. On Ubuntu/Debian, a pyenv Python must be rebuilt after
+installing `libsqlite3-dev`; installing a package named `sqlite3` with pip cannot add CPython's
+missing `_sqlite3` extension.
 
 The repository uses `pyproject.toml` as authoritative package metadata. `requirements.txt` mirrors
 the supported ranges for environments that require that format.

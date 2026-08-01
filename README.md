@@ -414,6 +414,14 @@ Artifacts được giữ 14 ngày.
 ## Troubleshooting
 
 - Port 3000 bận: đặt `JUICE_SHOP_PORT` khác trong `.env`, rồi chạy lại `up`, `wait`, `smoke`.
+- `ModuleNotFoundError: No module named '_sqlite3'` khi chạy `make kb-validate`: bản Python
+  hiện tại (thường do pyenv build trước khi cài SQLite headers) không có extension SQLite. Chạy
+  lại `make install`; bootstrap sẽ tự kiểm tra Python >=3.11, SQLite JSON/FTS5 và tạo lại `.venv`
+  bằng runtime phù hợp. Có thể chỉ định rõ system Python bằng
+  `make install PYTHON=/usr/bin/python3`. Không chạy `pip install sqlite3`: `_sqlite3` là thành
+  phần của CPython, không phải package pip. Với pyenv trên Ubuntu/Debian, cài
+  `libsqlite3-dev`, rồi cài lại phiên bản Python của pyenv trước khi tạo lại môi trường.
+
 - Docker daemon/permission: chạy `make doctor`, khởi động Docker Desktop/daemon và bảo đảm user
   có quyền dùng Docker.
 - Semgrep báo thiếu token hoặc `requires login`: thay placeholder trong `.env` hoặc export
