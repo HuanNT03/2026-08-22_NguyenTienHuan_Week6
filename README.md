@@ -159,6 +159,9 @@ DAST, `make normalize` ghi `reports/normalized/unified-findings.jsonl` và
 `normalization-summary.json`. Chi tiết data contract, failure policy và CLI nằm tại
 [`docs/week-2-normalization.md`](docs/week-2-normalization.md).
 
+Inventory và quyết định thiết kế cho Security Knowledge Base được theo dõi tại
+[`docs/week-2-knowledgebase.md`](docs/week-2-knowledgebase.md).
+
 ## Gitleaks Git hooks
 
 Repository cung cấp hai native Git hooks:
