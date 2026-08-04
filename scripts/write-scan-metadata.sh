@@ -11,6 +11,7 @@ source "$SCRIPT_DIR/common.sh"
 tool=""
 report_path=""
 base_url=""
+scan_profile=""
 pipeline_run_id="${SENTINEL_PIPELINE_RUN_ID:-}"
 
 while (($#)); do
@@ -18,6 +19,7 @@ while (($#)); do
     --tool) tool="${2:-}"; shift 2 ;;
     --report) report_path="${2:-}"; shift 2 ;;
     --base-url) base_url="${2:-}"; shift 2 ;;
+    --scan-profile) scan_profile="${2:-}"; shift 2 ;;
     --pipeline-run-id) pipeline_run_id="${2:-}"; shift 2 ;;
     *) die "Unknown metadata option: $1" ;;
   esac
@@ -28,6 +30,11 @@ case "$tool" in
   *) die "--tool must be semgrep, zap, or codeql" ;;
 esac
 [[ -n "$report_path" ]] || die "--report is required"
+case "$tool:$scan_profile" in
+  zap:baseline|zap:full|semgrep:|codeql:) ;;
+  zap:) die "--scan-profile baseline or full is required for ZAP" ;;
+  *) die "--scan-profile is only supported for ZAP and must be baseline or full" ;;
+esac
 
 lock_file="$PROJECT_ROOT/target-app/TARGET.lock"
 versions_file="$PROJECT_ROOT/configs/tool-versions.env"
@@ -56,7 +63,7 @@ metadata_tmp="${metadata_path}.tmp"
 mkdir -p "$(dirname -- "$metadata_path")"
 rm -f -- "$metadata_path" "$metadata_tmp"
 
-jq -n   --arg run_id "$run_id"   --arg pipeline_run_id "$pipeline_run_id"   --arg scanned_at "$scanned_at"   --arg cli_version "$cli_version"   --arg report_path "$report_path"   --arg target_name "$target_name"   --arg target_version "$target_version"   --arg commit_sha "$commit_sha"   --arg base_url "$base_url"   --arg tool "$tool"   '{
+jq -n   --arg run_id "$run_id"   --arg pipeline_run_id "$pipeline_run_id"   --arg scanned_at "$scanned_at"   --arg cli_version "$cli_version"   --arg report_path "$report_path"   --arg target_name "$target_name"   --arg target_version "$target_version"   --arg commit_sha "$commit_sha"   --arg base_url "$base_url"   --arg tool "$tool"   --arg scan_profile "$scan_profile"   '{
     run_id: $run_id,
     pipeline_run_id: (if $pipeline_run_id == "" then null else $pipeline_run_id end),
     scanned_at: $scanned_at,
@@ -68,7 +75,7 @@ jq -n   --arg run_id "$run_id"   --arg pipeline_run_id "$pipeline_run_id"   --ar
       commit_sha: $commit_sha,
       base_url: (if $base_url == "" then null else $base_url end)
     }
-  } + (if $tool == "codeql" then {
+  } + (if $tool == "zap" then {scan_profile: $scan_profile} else {} end) + (if $tool == "codeql" then {
     query_suite: "javascript-security-extended.qls",
     query_packs: {}
   } else {} end)' >"$metadata_tmp"

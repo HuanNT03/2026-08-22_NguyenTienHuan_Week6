@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run pinned ZAP Baseline against the already-running Compose target and write reports/raw/zap.json.
+# Run pinned ZAP Full Scan with mandatory Client Spider against the running Compose target.
 
 set -Eeuo pipefail
 
@@ -14,24 +14,24 @@ REPORT_FILE="$REPORT_DIR/zap.json"
 META_FILE="$REPORT_DIR/zap.meta.json"
 HOST_USER="$(id -u):$(id -g)"
 NETWORK_NAME="sentinel-security"
-
-readonly ZAP_MODERN_SPIDER_MIN_BYTES=$((4 * 1024 * 1024 * 1024))
-docker_memory_bytes="$(docker info --format '{{.MemTotal}}')"
-zap_spider_args=()
-
-if (( docker_memory_bytes >= ZAP_MODERN_SPIDER_MIN_BYTES )); then
-  zap_spider_args=(-j --client-spider)
-  log "ZAP modern spider enabled (${docker_memory_bytes} bytes available)."
-else
-  log "ZAP modern spider disabled: ${docker_memory_bytes} bytes available; using traditional spider."
-fi
+TARGET_URL="http://juice-shop:3000"
+readonly ZAP_CLIENT_SPIDER_MIN_BYTES=$((4 * 1024 * 1024 * 1024))
+readonly ZAP_SPIDER_MAX_MINUTES=10
+readonly ZAP_PASSIVE_MAX_MINUTES=10
+readonly ZAP_ACTIVE_MAX_MINUTES=30
 
 load_tool_versions "$VERSIONS_FILE"
 "$SCRIPT_DIR/verify-target.sh"
 
+docker_memory_bytes="$(docker info --format '{{.MemTotal}}')"
+if ((docker_memory_bytes < ZAP_CLIENT_SPIDER_MIN_BYTES)); then
+  die "ZAP Full Scan requires at least 4 GiB Docker memory for mandatory -j --client-spider; found ${docker_memory_bytes} bytes."
+fi
+log "ZAP Client Spider required and enabled (${docker_memory_bytes} bytes available)."
+
 container_id="$(docker compose --project-directory "$PROJECT_ROOT" -f "$PROJECT_ROOT/docker-compose.yml" ps -q juice-shop)"
 if [[ -z "$container_id" ]] || [[ "$(docker inspect -f '{{.State.Running}}' "$container_id" 2>/dev/null || true)" != "true" ]]; then
-  die "Juice Shop is not running. Run: make build && make up && make wait && make smoke && make dast"
+  die "Juice Shop is not running. Run: make build && make up && make wait && make smoke && make dast-zap-fullscan"
 fi
 docker network inspect "$NETWORK_NAME" >/dev/null 2>&1 || \
   die "Docker network '$NETWORK_NAME' does not exist. Run 'make up' first."
@@ -41,7 +41,11 @@ docker network inspect "$NETWORK_NAME" >/dev/null 2>&1 || \
 mkdir -p "$REPORT_DIR"
 touch "$REPORT_DIR/.gitkeep"
 rm -f -- "$REPORT_FILE" "$META_FILE"
-"$SCRIPT_DIR/write-scan-metadata.sh" --tool zap --scan-profile baseline --report reports/raw/zap.json --base-url http://juice-shop:3000
+"$SCRIPT_DIR/write-scan-metadata.sh" \
+  --tool zap \
+  --scan-profile full \
+  --report reports/raw/zap.json \
+  --base-url "$TARGET_URL"
 
 log "ZAP image: $ZAP_IMAGE"
 docker run --rm \
@@ -59,21 +63,24 @@ docker run --rm \
   --network "$NETWORK_NAME" \
   -v "$REPORT_DIR:/zap/wrk:rw" \
   "$ZAP_IMAGE" \
-  zap-baseline.py \
-  -t http://juice-shop:3000 \
-  "${zap_spider_args[@]}" \
+  zap-full-scan.py \
+  -t "$TARGET_URL" \
+  -j \
+  --client-spider \
+  -m "$ZAP_SPIDER_MAX_MINUTES" \
+  -T "$ZAP_PASSIVE_MAX_MINUTES" \
   -J zap.json \
-  -z "-silent"
+  -z "-silent -config scanner.maxScanDurationInMins=$ZAP_ACTIVE_MAX_MINUTES"
 zap_exit_code=$?
 set -e
 
-log "ZAP Baseline exit code: $zap_exit_code"
+log "ZAP Full Scan exit code: $zap_exit_code"
 "$SCRIPT_DIR/validate-reports.sh" zap
 
 case "$zap_exit_code" in
-  0) log "ZAP Baseline completed without WARN or FAIL findings." ;;
-  1) log "ZAP Baseline completed with FAIL findings; accepted for Week 1." ;;
-  2) log "ZAP Baseline completed with WARN findings; accepted for Week 1." ;;
-  3) die "ZAP Baseline execution failed (exit code 3)." ;;
-  *) die "ZAP Baseline returned unexpected exit code: $zap_exit_code" ;;
+  0) log "ZAP Full Scan completed without WARN or FAIL findings." ;;
+  1) log "ZAP Full Scan completed with FAIL findings; report accepted." ;;
+  2) log "ZAP Full Scan completed with WARN findings; report accepted." ;;
+  3) die "ZAP Full Scan execution failed (exit code 3)." ;;
+  *) die "ZAP Full Scan returned unexpected exit code: $zap_exit_code" ;;
 esac

@@ -31,7 +31,7 @@ required_files=(
   configs/tool-versions.env target-app/TARGET.lock target-app/README.md
   configs/semgrep/includes.txt configs/semgrep/.semgrepignore configs/codeql/code-scanning.yml
   scripts/setup-target.sh scripts/verify-target.sh scripts/wait-for-target.sh scripts/smoke-test.sh
-  scripts/run-sast.sh scripts/run-dast.sh scripts/validate-reports.sh scripts/validate-sast-scope.py
+  scripts/run-sast.sh scripts/run-dast.sh scripts/run-dast-zap-fullscan.sh scripts/validate-reports.sh scripts/validate-sast-scope.py
   scripts/clean.sh docker/codeql/Dockerfile
   docs/reports/week1/architecture.md docs/reports/week1/endpoints.md
   docs/reports/week1/week-1-findings.md
@@ -160,6 +160,22 @@ grep -q -- 'zap_spider_args=(-j --client-spider)' "$PROJECT_ROOT/scripts/run-das
   fail "DAST must enable both modern ZAP spider modes when memory permits"
 grep -Fq -- '"${zap_spider_args[@]}" \' <<<"$zap_baseline_command" || \
   fail "DAST must pass the memory-aware spider arguments to ZAP"
+grep -q -- '--scan-profile baseline' "$PROJECT_ROOT/scripts/run-dast.sh" || \
+  fail "ZAP Baseline metadata must declare its scan profile"
+fullscan_script="$PROJECT_ROOT/scripts/run-dast-zap-fullscan.sh"
+grep -q '^dast-zap-fullscan:' "$PROJECT_ROOT/Makefile" || fail "ZAP Full Scan Make target is missing"
+grep -q 'ZAP_CLIENT_SPIDER_MIN_BYTES' "$fullscan_script" || fail "Full Scan must enforce its Client Spider memory floor"
+grep -q 'requires at least 4 GiB Docker memory' "$fullscan_script" || fail "Full Scan must fail clearly below the memory floor"
+zap_fullscan_command="$(sed -n '/zap-full-scan.py \\/,/zap_exit_code=/p' "$fullscan_script")"
+grep -Fq -- '  -j \' <<<"$zap_fullscan_command" || fail "Full Scan must pass -j to ZAP"
+grep -Fq -- '  --client-spider \' <<<"$zap_fullscan_command" || fail "Full Scan must select the Client Spider"
+grep -Fq -- '-m "$ZAP_SPIDER_MAX_MINUTES"' <<<"$zap_fullscan_command" || fail "Full Scan spider limit is missing"
+grep -Fq -- '-T "$ZAP_PASSIVE_MAX_MINUTES"' <<<"$zap_fullscan_command" || fail "Full Scan passive limit is missing"
+grep -q 'scanner.maxScanDurationInMins=\$ZAP_ACTIVE_MAX_MINUTES' <<<"$zap_fullscan_command" || \
+  fail "Full Scan active scanner limit is missing"
+grep -q -- '--scan-profile full' "$fullscan_script" || fail "ZAP Full Scan metadata must declare its scan profile"
+grep -q 'scan_profile: \$scan_profile' "$PROJECT_ROOT/scripts/write-scan-metadata.sh" || \
+  fail "ZAP metadata must persist the scan profile"
 grep -q -- '/nodejs/bin/node' "$PROJECT_ROOT/docker-compose.yml" || fail "healthcheck must use the distroless Node executable"
 grep -q -- "-w '%{http_code}'" "$PROJECT_ROOT/scripts/wait-for-target.sh" || fail "wait must poll HTTP status"
 grep -q 'touch "$REPORT_DIR/.gitkeep"' "$PROJECT_ROOT/scripts/run-sast.sh" || fail "SAST must restore raw report .gitkeep"
