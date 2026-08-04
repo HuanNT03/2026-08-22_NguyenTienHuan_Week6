@@ -36,6 +36,7 @@ required_files=(
   docs/reports/week1/architecture.md docs/reports/week1/endpoints.md
   docs/reports/week1/week-1-findings.md
   .github/workflows/ci.yml .github/workflows/sast-scan.yml .github/workflows/dast-scan.yml
+  .github/workflows/dast-zap-fullscan.yml
   pyproject.toml schemas/unified_findings.schema.json scripts/write-scan-metadata.sh
   src/normalizers/cli.py src/normalizers/semgrep.py src/normalizers/zap.py src/normalizers/codeql.py
 )
@@ -176,6 +177,18 @@ grep -q 'scanner.maxScanDurationInMins=\$ZAP_ACTIVE_MAX_MINUTES' <<<"$zap_fullsc
 grep -q -- '--scan-profile full' "$fullscan_script" || fail "ZAP Full Scan metadata must declare its scan profile"
 grep -q 'scan_profile: \$scan_profile' "$PROJECT_ROOT/scripts/write-scan-metadata.sh" || \
   fail "ZAP metadata must persist the scan profile"
+fullscan_workflow="$PROJECT_ROOT/.github/workflows/dast-zap-fullscan.yml"
+grep -q '^  workflow_dispatch:$' "$fullscan_workflow" || fail "Full Scan workflow must support manual dispatch"
+if grep -Eq '^  (push|pull_request|schedule|workflow_call):' "$fullscan_workflow"; then
+  fail "Full Scan workflow must be manual-only"
+fi
+grep -q '^    timeout-minutes: 75$' "$fullscan_workflow" || fail "Full Scan workflow timeout is incorrect"
+grep -q 'run: make dast-zap-fullscan' "$fullscan_workflow" || fail "Full Scan workflow must use the local Make target"
+grep -q 'zap-fullscan-raw-.*github.run_id' "$fullscan_workflow" || fail "Full Scan raw artifact is missing"
+grep -q 'reports/raw/zap.meta.json' "$fullscan_workflow" || fail "Full Scan metadata artifact is missing"
+grep -A2 'name: Stop Compose resources' "$fullscan_workflow" | grep -q 'if: always()' || \
+  fail "Full Scan workflow must always stop Compose resources"
+pass "ZAP Full Scan workflow is manual-only, bounded, auditable and always cleaned up"
 grep -q -- '/nodejs/bin/node' "$PROJECT_ROOT/docker-compose.yml" || fail "healthcheck must use the distroless Node executable"
 grep -q -- "-w '%{http_code}'" "$PROJECT_ROOT/scripts/wait-for-target.sh" || fail "wait must poll HTTP status"
 grep -q 'touch "$REPORT_DIR/.gitkeep"' "$PROJECT_ROOT/scripts/run-sast.sh" || fail "SAST must restore raw report .gitkeep"
