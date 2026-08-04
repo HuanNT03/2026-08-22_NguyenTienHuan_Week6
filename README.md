@@ -201,6 +201,10 @@ DAST, `make normalize` ghi `reports/normalized/unified-findings.jsonl` và
 Inventory và quyết định thiết kế cho Security Knowledge Base được theo dõi tại
 [`docs/reports/week2/week-2-knowledgebase.md`](docs/reports/week2/week-2-knowledgebase.md).
 
+Integration tests dùng các scanner snapshot cố định trong `tests/fixtures/scanners/`. Các file
+cùng tên dưới `reports/raw/` chỉ là output runtime đã được ignore; chạy scanner hoặc
+`make clean-reports` vì vậy không sửa hay xóa fixture của test.
+
 ## Tìm kiếm tài liệu bảo mật bằng từ khóa
 
 Cài dependency và build Knowledge Base trước lần tìm kiếm đầu tiên:

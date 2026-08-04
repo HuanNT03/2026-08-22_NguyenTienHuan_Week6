@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_semgrep_report_normalizes_one_finding_per_result():
-    report = json.loads((ROOT / "reports/raw/semgrep.json").read_text(encoding="utf-8"))
+    report = json.loads((ROOT / "tests/fixtures/scanners/semgrep.json").read_text(encoding="utf-8"))
     context = NormalizationContext(
         schema_version="1.0.0",
         normalizer_version="1.0.0",
@@ -21,7 +21,7 @@ def test_semgrep_report_normalizes_one_finding_per_result():
         target_version="20.1.1",
         target_commit_sha="f915bddd82790d0f3018902d36ae9b4241a5f51f",
         target_base_url=None,
-        report_path="reports/raw/semgrep.json",
+        report_path="tests/fixtures/scanners/semgrep.json",
     )
     result = normalize_semgrep_report(report, context, normalized_at="2026-08-01T01:00:00Z")
     assert len(result.findings) == len(report["results"])

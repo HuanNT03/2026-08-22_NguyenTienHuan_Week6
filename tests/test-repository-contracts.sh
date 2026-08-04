@@ -39,6 +39,8 @@ required_files=(
   .github/workflows/dast-zap-fullscan.yml
   pyproject.toml schemas/unified_findings.schema.json scripts/write-scan-metadata.sh
   src/normalizers/cli.py src/normalizers/semgrep.py src/normalizers/zap.py src/normalizers/codeql.py
+  tests/fixtures/scanners/semgrep.json tests/fixtures/scanners/zap.json
+  tests/fixtures/scanners/codeql.sarif tests/integration/test_codeql_normalizer.py
 )
 for required_file in "${required_files[@]}"; do
   assert_file "$required_file"
@@ -78,6 +80,19 @@ if git -C "$PROJECT_ROOT" check-ignore -q reports/raw/.gitkeep || \
   fail ".gitkeep files must not be ignored"
 fi
 pass "generated target, reports and logs have correct ignore rules"
+
+for generated_report in semgrep.json zap.json codeql.sarif; do
+  if git -C "$PROJECT_ROOT" ls-files --error-unmatch "reports/raw/$generated_report" >/dev/null 2>&1; then
+    fail "generated scanner report must not be tracked: reports/raw/$generated_report"
+  fi
+  git -C "$PROJECT_ROOT" check-ignore -q "reports/raw/$generated_report" || \
+    fail "generated scanner report must remain ignored: reports/raw/$generated_report"
+done
+for scanner_fixture in semgrep.json zap.json codeql.sarif; do
+  git -C "$PROJECT_ROOT" ls-files --error-unmatch "tests/fixtures/scanners/$scanner_fixture" >/dev/null 2>&1 || \
+    fail "scanner fixture must be tracked: tests/fixtures/scanners/$scanner_fixture"
+done
+pass "scanner fixtures are tracked separately from ignored runtime reports"
 
 ci_workflow="$PROJECT_ROOT/.github/workflows/ci.yml"
 grep -A2 '^  sast:$' "$ci_workflow" | grep -q 'needs: quality' || fail "SAST job must depend directly on quality"

@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_zap_report_normalizes_one_finding_per_instance():
-    report = json.loads((ROOT / "reports/raw/zap.json").read_text(encoding="utf-8"))
+    report = json.loads((ROOT / "tests/fixtures/scanners/zap.json").read_text(encoding="utf-8"))
     expected_count = sum(
         len(alert.get("instances", []))
         for site in report["site"]
@@ -26,7 +26,7 @@ def test_zap_report_normalizes_one_finding_per_instance():
         target_version="20.1.1",
         target_commit_sha="f915bddd82790d0f3018902d36ae9b4241a5f51f",
         target_base_url="http://juice-shop:3000",
-        report_path="reports/raw/zap.json",
+        report_path="tests/fixtures/scanners/zap.json",
     )
     result = normalize_zap_report(report, context, normalized_at="2026-08-01T01:00:00Z")
     assert len(result.findings) == expected_count
