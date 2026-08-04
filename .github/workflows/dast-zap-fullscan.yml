@@ -30,7 +30,7 @@ jobs:
         env:
           SENTINEL_PIPELINE_RUN_ID: github_${{ github.run_id }}
       - name: Validate ZAP report
-        if: always()
+        if: success()
         run: ./scripts/validate-reports.sh zap
       - name: Capture Compose logs on failure
         if: failure()

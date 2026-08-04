@@ -65,13 +65,45 @@ make sast-semgrep
 make sast-codeql
 ```
 
-Sau khi target đang chạy, có thể chủ động thay report ZAP Baseline bằng Full Scan:
+### Chạy ZAP Baseline local (passive)
+
+Baseline thực hiện spider và passive scan, không chạy active scan. Chạy lifecycle riêng sau:
 
 ```bash
-make dast-zap-fullscan
+make setup-target
+make build
+make up
+make wait
+make smoke
+make dast
+make down
 ```
 
-Đây là active scan có gửi payload kiểm thử; chỉ chạy trên Juice Shop đã pin của repository.
+Kết quả nằm tại `reports/raw/zap.json`; metadata `reports/raw/zap.meta.json` có
+`scan_profile=baseline`. Nếu một bước lỗi trước cleanup, vẫn chạy `make down`.
+
+### Chạy ZAP Full Scan local (active)
+
+Full Scan chạy spider, Client Spider và active scan có gửi payload kiểm thử. Chỉ chạy lifecycle
+này trên Juice Shop đã pin của repository:
+
+```bash
+make setup-target
+make build
+make up
+make wait
+make smoke
+make dast-zap-fullscan
+make down
+```
+
+Ngoài `zap.json` và metadata có `scan_profile=full`, log chẩn đoán được ghi tại
+`logs/zap-fullscan-runner.log` và `logs/zap-fullscan-zap.out`.
+
+Baseline và Full Scan dùng chung `reports/raw/zap.json`; profile chạy sau ghi đè kết quả profile
+trước. Hãy sao chép hoặc upload report trước khi chuyển profile nếu cần giữ cả hai. Không chạy hai
+profile đồng thời. Với cả hai lifecycle, nếu một bước lỗi trước cleanup thì vẫn chạy `make down`.
+
 Hoặc chạy toàn bộ luồng với cleanup runtime tự động:
 
 ```bash
@@ -179,6 +211,11 @@ cả `-j` và `--client-spider`; thiếu một flag sẽ không đạt repositor
 khi Docker có dưới 4 GiB RAM thay vì âm thầm bỏ Client Spider. Traditional/Client Spider được
 giới hạn 10 phút, passive/start wait 10 phút và toàn bộ active scan 30 phút bằng
 `scanner.maxScanDurationInMins=30`.
+
+Trước Full Scan, runner xác nhận core version khớp `ZAP_VERSION` và packaged script hỗ trợ
+`--client-spider`. ZAP daemon ghi `/zap/zap.out` qua bind mount thuộc UID/GID host; log được giữ
+tại `logs/zap-fullscan-zap.out`, còn stdout/stderr của packaged scan nằm tại
+`logs/zap-fullscan-runner.log` để dùng được cả local và CI.
 
 Cả Baseline và Full Scan ghi `reports/raw/zap.json` cùng `zap.meta.json`. Metadata phân biệt
 `scan_profile` là `baseline` hoặc `full`; scanner chạy sau ghi đè report ZAP trước đó và
@@ -485,5 +522,10 @@ Sentinel. Để tải lại target mà vẫn giữ kết quả scan: `make clean
   Client Spider là bắt buộc.
 - ZAP Full Scan hết thời gian: kiểm tra log spider/active scan; giới hạn local là 10/30 phút và
   GitHub job timeout là 75 phút.
+- ZAP Full Scan báo `Failed to start ZAP :(` hoặc code `3`: xem
+  `logs/zap-fullscan-runner.log` và `logs/zap-fullscan-zap.out`; validator không chạy khi scanner
+  chưa tạo report.
+- Full Scan preflight báo thiếu `--client-spider` hoặc sai version: image ứng với tag hiện tại
+  không đáp ứng contract; không bỏ flag hoặc bỏ qua kiểm tra để tạo report không tương thích.
 - ZAP code 1/2: đây là findings, không phải scanner crash; code 3 mới là execution failure.
 - ZAP không thấy network: bảo đảm `make up` thành công và network `sentinel-security` tồn tại.
