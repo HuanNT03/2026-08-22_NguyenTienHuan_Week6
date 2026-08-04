@@ -1,8 +1,9 @@
 # Project Sentinel — Week 2
 
 Môi trường DevSecOps có thể tái lập để chạy OWASP Juice Shop `v20.1.1`, quét mã nguồn
-bằng Semgrep cùng CodeQL, và quét web thụ động bằng OWASP ZAP Baseline. Source Juice Shop,
-raw reports và runtime logs không được commit vào repository Sentinel.
+bằng Semgrep cùng CodeQL, quét web thụ động bằng OWASP ZAP Baseline và chạy ZAP Full Scan
+chủ động theo yêu cầu. Source Juice Shop, generated raw reports và runtime logs không được commit
+vào repository Sentinel.
 
 ## Mục lục
 
@@ -40,6 +41,8 @@ Không cần cài Node.js, Semgrep, CodeQL hoặc ZAP trên host. Chạy `make d
 
 ```bash
 make doctor
+make install
+. .venv/bin/activate
 cp .env.example .env
 # Thay SEMGREP_APP_TOKEN placeholder trong .env bằng token thật.
 make setup-target
@@ -50,13 +53,11 @@ make smoke
 make sast
 make dast
 make validate-reports
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install '.[dev]'
 make normalize
 make down
 ```
 
+`make install` chuẩn bị project virtualenv để `lint`, test và normalizer dùng đủ dependency.
 `make sast` chạy Semgrep rồi CodeQL theo thứ tự. Có thể chạy riêng từng scanner khi cần:
 
 ```bash
@@ -64,6 +65,13 @@ make sast-semgrep
 make sast-codeql
 ```
 
+Sau khi target đang chạy, có thể chủ động thay report ZAP Baseline bằng Full Scan:
+
+```bash
+make dast-zap-fullscan
+```
+
+Đây là active scan có gửi payload kiểm thử; chỉ chạy trên Juice Shop đã pin của repository.
 Hoặc chạy toàn bộ luồng với cleanup runtime tự động:
 
 ```bash
@@ -87,7 +95,7 @@ Chạy `make help` để xem danh sách đầy đủ. Các nhóm lệnh chính:
 | Môi trường | `doctor`, `lint`, `test`, `quality` |
 | Target | `setup-target`, `verify-target` |
 | Runtime | `build`, `up`, `wait`, `smoke`, `status`, `logs`, `down` |
-| Scanner | `sast`, `sast-semgrep`, `sast-codeql`, `dast`, `validate-reports` |
+| Scanner | `sast`, `sast-semgrep`, `sast-codeql`, `dast`, `dast-zap-fullscan`, `validate-reports` |
 | Normalization | `normalize` |
 | Knowledge Base | `kb-validate`, `kb-build-documents`, `kb-build-index`, `kb-build`, `kb-rebuild` |
 | Knowledge Search | `kb-search`, `kb-inspect`, `kb-stats`, `kb-test`, `kb-lint` |
@@ -95,7 +103,8 @@ Chạy `make help` để xem danh sách đầy đủ. Các nhóm lệnh chính:
 | Cleanup | `kb-clean`, `clean-reports`, `clean` |
 
 `wait` polling HTTP cho đến khi ứng dụng thực sự ready. `smoke` là kiểm tra riêng từ host,
-yêu cầu HTTP 2xx/3xx và response body không rỗng.
+yêu cầu HTTP 2xx/3xx và response body không rỗng. `lint` chạy full Ruff trên `src/`, `tests/`
+và Python scripts, sau đó kiểm tra Bash syntax cùng Docker Compose configuration.
 
 ## SAST và DAST
 
@@ -155,19 +164,30 @@ dựa vào Docker layer cache, vì vậy lần chạy sau chỉ rebuild khi vers
 Service `codeql-scan` thuộc Compose profile `scan`, nên không chạy theo `docker compose up`.
 Không cần cài CodeQL trên host; cần chạy `make setup-target` trước khi scan.
 
-`make dast` chỉ scan; nó không build, start hoặc stop target. Hãy chạy `make build`, `make up`,
-`make wait` và `make smoke` trước. Image được pin tại
-`ghcr.io/zaproxy/zaproxy:2.17.0`. ZAP Baseline chạy Traditional Spider và Client Spider rồi
-thực hiện passive scan, ghi `reports/raw/zap.json`. Client Spider render JavaScript để khám phá
-Angular routes/endpoints mà Traditional Spider chỉ đọc HTML và `<a href>` không nhìn thấy.
+`make dast` và `make dast-zap-fullscan` chỉ scan; chúng không build, start hoặc stop target.
+Hãy chạy `make build`, `make up`, `make wait` và `make smoke` trước. Cả hai dùng image đã pin
+`ghcr.io/zaproxy/zaproxy:2.17.0` và chỉ truy cập URL cố định `http://juice-shop:3000` trong
+network `sentinel-security`; runner không nhận target URL tùy ý.
 
-Invocation bắt buộc dùng đồng thời `-j --client-spider`: `-j` bật modern spider và
-`--client-spider` chọn Client Spider thay cho Ajax Spider. Nếu thiếu `-j`, option
-`--client-spider` bị wrapper bỏ qua. Exit code `1` hoặc `2` biểu thị findings, vẫn được xem là
-scan hoàn tất; exit code `3` hoặc report không hợp lệ làm task thất bại.
+ZAP Baseline chạy passive scan. Khi Docker có ít nhất 4 GiB RAM, runner truyền đồng thời
+`-j --client-spider`; nếu thiếu RAM, Baseline dùng Traditional Spider. Client Spider render
+JavaScript để khám phá Angular routes/endpoints mà Traditional Spider chỉ đọc HTML và
+`<a href>` không nhìn thấy.
 
-Runner truyền `-z "-silent"` để không tự update hoặc cài add-on trong lúc scan; scanner
-behavior vì vậy bám theo image đã pin.
+ZAP Full Scan chạy spider rồi active scan có gửi payload kiểm thử. Runner Full Scan luôn truyền
+cả `-j` và `--client-spider`; thiếu một flag sẽ không đạt repository contract. Full Scan fail-fast
+khi Docker có dưới 4 GiB RAM thay vì âm thầm bỏ Client Spider. Traditional/Client Spider được
+giới hạn 10 phút, passive/start wait 10 phút và toàn bộ active scan 30 phút bằng
+`scanner.maxScanDurationInMins=30`.
+
+Cả Baseline và Full Scan ghi `reports/raw/zap.json` cùng `zap.meta.json`. Metadata phân biệt
+`scan_profile` là `baseline` hoặc `full`; scanner chạy sau ghi đè report ZAP trước đó và
+`make normalize` sẽ dùng report mới nhất. Exit code `1` hoặc `2` biểu thị findings và vẫn được
+xem là scan hoàn tất; exit code `3`, code lạ hoặc report không hợp lệ làm task thất bại.
+
+Runner truyền `-silent` để không tự update hoặc cài add-on trong lúc scan; scanner behavior vì
+vậy bám theo image đã pin. Chỉ chạy Full Scan trên target được cấp phép và không dùng script
+này để scan production hay hệ thống ngoài `TARGET.lock`.
 
 Các scanner container chạy bằng UID/GID của host để raw reports không thuộc sở hữu root.
 
@@ -394,9 +414,14 @@ Nếu đã có custom hook path, hãy khôi phục chính xác giá trị cũ th
 
 ## GitHub Actions
 
-Workflow chính chạy `quality`, sau đó khởi chạy SAST và DAST song song. Bên trong reusable
-SAST workflow, Semgrep và CodeQL tiếp tục chạy ở hai job độc lập để không chờ nhau. Mỗi job
-tự setup target vì filesystem và container không được chia sẻ giữa các runner.
+Workflow chính chạy `quality`, sau đó khởi chạy SAST và ZAP Baseline DAST song song. Bên trong
+reusable SAST workflow, Semgrep và CodeQL tiếp tục chạy ở hai job độc lập để không chờ nhau.
+Mỗi job tự setup target vì filesystem và container không được chia sẻ giữa các runner.
+
+Workflow **ZAP Full Scan DAST** là workflow độc lập, chỉ có `workflow_dispatch` và không chạy
+trên push, pull request hoặc schedule. Mở workflow này trong tab **Actions**, chọn **Run
+workflow** để tạo target cô lập, chạy `make dast-zap-fullscan`, validate report và cleanup.
+Job có timeout 75 phút để bao phủ clone/build, spider, active scan và upload artifact.
 
 Trước khi chạy workflow, vào **Settings → Secrets and variables → Actions**, tạo repository
 secret `SEMGREP_APP_TOKEN` chứa token từ Semgrep AppSec Platform. Workflow chính chỉ truyền
@@ -408,7 +433,8 @@ Trong trang GitHub Actions, mở workflow run và tải artifact:
 
 - `semgrep-raw-<run_id>`;
 - `codeql-raw-<run_id>`;
-- `zap-raw-<run_id>`;
+- `zap-raw-<run_id>` từ Baseline workflow;
+- `zap-fullscan-raw-<run_id>` từ Full Scan workflow thủ công;
 - `normalized-findings-<run_id>` chứa unified JSONL và normalization summary;
 - `dast-logs-<run_id>` nếu DAST thất bại.
 
@@ -418,12 +444,13 @@ Artifacts được giữ 14 ngày.
 
 ## Cleanup
 
-`make clean-reports` chỉ xóa nội dung sinh ra trong `reports/raw/` và
-`reports/normalized/`, đồng thời giữ `.gitkeep`.
+`make clean-reports` là lệnh duy nhất xóa nội dung sinh ra trong `reports/raw/` và
+`reports/normalized/`; lệnh giữ lại `.gitkeep`.
 
-`make clean` dừng Compose resources, xóa generated reports và xóa chính xác clone
-`target-app/juice-shop/`. Nó không xóa lock, configs, docs, schemas hoặc source Sentinel.
-Để tải lại target: `make clean && make setup-target`.
+`make clean` chạy `docker compose down --volumes --remove-orphans`, vì vậy container writable
+data và mọi Compose volume của target bị xóa, rồi xóa chính xác clone
+`target-app/juice-shop/`. Lệnh không xóa reports, lock, configs, docs, schemas hoặc source
+Sentinel. Để tải lại target mà vẫn giữ kết quả scan: `make clean && make setup-target`.
 
 ## Troubleshooting
 
@@ -450,5 +477,9 @@ Artifacts được giữ 14 ngày.
 - Target dirty: không reset tự động; chạy `git -C target-app/juice-shop status`, review thay đổi,
   rồi dùng `make clean && make setup-target` nếu muốn tải lại hoàn toàn.
 - Sai commit/remote/tag: `make verify-target` in expected/actual; dùng full reset nếu clone không đúng.
-- ZAP code 1/2: đây là findings, không phải scanner crash trong Week 1.
+- ZAP Full Scan báo thiếu 4 GiB: tăng Docker Engine/Desktop memory; runner không fallback vì
+  Client Spider là bắt buộc.
+- ZAP Full Scan hết thời gian: kiểm tra log spider/active scan; giới hạn local là 10/30 phút và
+  GitHub job timeout là 75 phút.
+- ZAP code 1/2: đây là findings, không phải scanner crash; code 3 mới là execution failure.
 - ZAP không thấy network: bảo đảm `make up` thành công và network `sentinel-security` tồn tại.
