@@ -34,6 +34,7 @@ services:
     working_dir: /workspace
     volumes:
       - ./target-app/juice-shop:/workspace/target-app/juice-shop:ro
+      - ./configs/codeql:/workspace/configs/codeql:ro
       - ./reports/raw:/workspace/reports/raw:rw
     command:
       - /bin/bash
@@ -41,8 +42,8 @@ services:
       - pipefail
       - -c
       - |
-        codeql database create /tmp/codeql-db --language=javascript-typescript --source-root=target-app/juice-shop
-        codeql database analyze /tmp/codeql-db javascript-security-extended.qls --format=sarif-latest --sarif-add-query-help --output=reports/raw/codeql.sarif
+        codeql database create /tmp/codeql-db --language=javascript-typescript --source-root=target-app/juice-shop --codescanning-config=/workspace/configs/codeql/code-scanning.yml
+        codeql database analyze /tmp/codeql-db javascript-security-extended.qls --ram=3000 --format=sarif-latest --sarif-add-query-help --output=reports/raw/codeql.sarif
 
 networks:
   security:

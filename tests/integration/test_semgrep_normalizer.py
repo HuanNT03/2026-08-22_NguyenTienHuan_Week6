@@ -6,7 +6,6 @@ from src.normalizers.common.validation import build_validator, load_schema, vali
 from src.normalizers.context import NormalizationContext
 from src.normalizers.semgrep import normalize_semgrep_report
 
-
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -27,7 +26,11 @@ def test_semgrep_report_normalizes_one_finding_per_result():
     result = normalize_semgrep_report(report, context, normalized_at="2026-08-01T01:00:00Z")
     assert len(result.findings) == len(report["results"])
     assert result.raw_counts["findings_written"] == len(report["results"])
-    assert sum(finding["data_flow"] is not None for finding in result.findings) == 41
+    expected_data_flows = sum(
+        raw_result.get("extra", {}).get("dataflow_trace") is not None for raw_result in report["results"]
+    )
+    assert expected_data_flows > 0
+    assert sum(finding["data_flow"] is not None for finding in result.findings) == expected_data_flows
 
     validator = build_validator(load_schema(ROOT / "schemas/unified_findings.schema.json"))
     for index, finding in enumerate(result.findings):

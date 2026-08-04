@@ -101,8 +101,22 @@ yêu cầu HTTP 2xx/3xx và response body không rỗng.
 
 `make sast-semgrep` chạy Semgrep theo đúng luồng hiện có; `make sast` gọi target này trước rồi
 gọi `make sast-codeql`. Semgrep chạy image `semgrep/semgrep:1.171.0` trên duy nhất
-`target-app/juice-shop/`, dùng các Registry ruleset `p/owasp-top-ten`, `p/javascript`,
-`p/nodejs` và `p/expressjs`. Report được ghi tại `reports/raw/semgrep.json`.
+phần runtime của `target-app/juice-shop/`, dùng các Registry ruleset `p/owasp-top-ten`,
+`p/javascript`, `p/nodejs` và `p/expressjs`. Report được ghi tại
+`reports/raw/semgrep.json`.
+
+Scope SAST được quản lý bằng allowlist `configs/semgrep/includes.txt` và denylist
+`configs/semgrep/.semgrepignore`. Semgrep chuyển hai danh sách này thành `--include`/`--exclude`;
+CodeQL có cấu hình tương đương, độc lập tại `configs/codeql/code-scanning.yml`. Phần được quét
+gồm entry point `app.ts`, `server.ts`, backend `routes/`, `lib/`, `models/`, runtime data/config,
+views và Angular `frontend/src/`. Test/spec, CI config, output build, dependency đã cài và
+`data/static/codefixes/` bị loại. Mỗi scanner chạy validator hậu kiểm report; chỉ một artifact
+ngoài scope cũng làm job thất bại.
+
+`node_modules/` không được đưa vào SAST. Semgrep và CodeQL ở pipeline này phân tích source để
+tìm lỗi luồng dữ liệu/cách dùng API; chúng không thay thế Software Composition Analysis (SCA)
+để đối chiếu package/version với cơ sở dữ liệu CVE. Khi bổ sung SCA, nên quét manifest/lockfile
+hoặc SBOM bằng một job riêng và giữ kết quả tách khỏi phép đo overlap SAST/DAST.
 
 Scan SAST yêu cầu `SEMGREP_APP_TOKEN` hợp lệ. Local runner ưu tiên biến đã export, sau đó đọc
 đúng khóa này từ `.env` mà không thực thi toàn bộ file:
@@ -132,11 +146,11 @@ dựng URL release tương ứng. Bundle cùng file `.checksum.txt` được t�
 `github/codeql-action/releases` và phải vượt qua `sha256sum -c` trước khi giải nén.
 
 CodeQL tạo database JavaScript/TypeScript tại `/tmp/codeql-db` trong container, sau đó chạy
-suite `javascript-security-extended.qls` với query help và ghi SARIF tại
-`reports/raw/codeql.sarif`. Database không được mount nên tự mất khi container `--rm` kết thúc.
-Source Juice Shop được mount read-only; report được ghi bằng UID/GID của host để tránh file
-thuộc sở hữu root. Target luôn gọi `docker compose build` trước scan và dựa vào Docker layer
-cache, vì vậy lần chạy sau chỉ rebuild khi version hoặc Dockerfile thay đổi.
+suite `javascript-security-extended.qls` với ngân sách RAM 3000 MiB, query help và ghi SARIF
+tại `reports/raw/codeql.sarif`. Database không được mount nên tự mất khi container `--rm` kết
+thúc. Source Juice Shop và cấu hình scope được mount read-only; report được ghi bằng UID/GID
+của host để tránh file thuộc sở hữu root. Target luôn gọi `docker compose build` trước scan và
+dựa vào Docker layer cache, vì vậy lần chạy sau chỉ rebuild khi version hoặc Dockerfile thay đổi.
 
 Service `codeql-scan` thuộc Compose profile `scan`, nên không chạy theo `docker compose up`.
 Không cần cài CodeQL trên host; cần chạy `make setup-target` trước khi scan.

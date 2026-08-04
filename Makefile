@@ -78,6 +78,7 @@ sast-codeql: verify-target ## Build and run CodeQL SAST against the pinned targe
 	docker compose --env-file configs/tool-versions.env --profile scan build codeql-scan
 	@./scripts/write-scan-metadata.sh --tool codeql --report reports/raw/codeql.sarif
 	HOST_UID="$$(id -u)" HOST_GID="$$(id -g)" docker compose --env-file configs/tool-versions.env --profile scan run --rm codeql-scan
+	@$(PYTHON) scripts/validate-sast-scope.py --tool codeql --report reports/raw/codeql.sarif
 
 dast: ## Run ZAP Baseline against the already-running target.
 	@./scripts/run-dast.sh

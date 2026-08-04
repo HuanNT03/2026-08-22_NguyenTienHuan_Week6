@@ -1,0 +1,11 @@
+# Runtime application sources, relative to the pinned Juice Shop root.
+app.ts
+server.ts
+routes/**
+lib/**
+models/**
+data/*.ts
+data/static/contractABIs.ts
+views/**
+config/**
+frontend/src/**

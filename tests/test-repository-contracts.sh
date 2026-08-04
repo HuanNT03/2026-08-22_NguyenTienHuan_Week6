@@ -29,8 +29,10 @@ required_files=(
   .dockerignore .env.example .gitattributes .gitignore .githooks/pre-commit
   .githooks/pre-push .githooks/lib/gitleaks-common.sh Makefile README.md docker-compose.yml
   configs/tool-versions.env target-app/TARGET.lock target-app/README.md
+  configs/semgrep/includes.txt configs/semgrep/.semgrepignore configs/codeql/code-scanning.yml
   scripts/setup-target.sh scripts/verify-target.sh scripts/wait-for-target.sh scripts/smoke-test.sh
-  scripts/run-sast.sh scripts/run-dast.sh scripts/validate-reports.sh scripts/clean.sh docker/codeql/Dockerfile
+  scripts/run-sast.sh scripts/run-dast.sh scripts/validate-reports.sh scripts/validate-sast-scope.py
+  scripts/clean.sh docker/codeql/Dockerfile
   docs/architecture.md docs/endpoints.md docs/week-1-findings.md
   .github/workflows/ci.yml .github/workflows/sast-scan.yml .github/workflows/dast-scan.yml
   pyproject.toml schemas/unified_findings.schema.json scripts/write-scan-metadata.sh
@@ -84,6 +86,9 @@ fi
 grep -q -- '--user "$HOST_USER"' "$PROJECT_ROOT/scripts/run-sast.sh" || fail "SAST container must use host UID/GID"
 grep -q -- '--dataflow-traces' "$PROJECT_ROOT/scripts/run-sast.sh" || fail "SAST must emit dataflow traces"
 grep -q -- '--sarif-output /src/reports/raw/semgrep.sarif' "$PROJECT_ROOT/scripts/run-sast.sh" || fail "SAST must emit a SARIF report"
+grep -q 'configs/semgrep/includes.txt' "$PROJECT_ROOT/scripts/run-sast.sh" || fail "Semgrep include config is not loaded"
+grep -q 'configs/semgrep/.semgrepignore' "$PROJECT_ROOT/scripts/run-sast.sh" || fail "Semgrep exclude config is not loaded"
+grep -q 'validate-sast-scope.py.*--tool semgrep' "$PROJECT_ROOT/scripts/run-sast.sh" || fail "Semgrep scope is not validated"
 grep -q -- '-e SEMGREP_APP_TOKEN' "$PROJECT_ROOT/scripts/run-sast.sh" || fail "SAST container must receive SEMGREP_APP_TOKEN"
 grep -q -- 'contains metadata that requires login' "$PROJECT_ROOT/scripts/run-sast.sh" || \
   fail "SAST must reject unauthenticated finding metadata"
@@ -112,9 +117,14 @@ grep -A3 '^  codeql-scan:$' "$compose_file" | grep -q 'profiles: \["scan"\]' || 
   fail "CodeQL service must be opt-in through the scan profile"
 grep -q './target-app/juice-shop:/workspace/target-app/juice-shop:ro' "$compose_file" || \
   fail "CodeQL source mount must be read-only"
+grep -q './configs/codeql:/workspace/configs/codeql:ro' "$compose_file" || \
+  fail "CodeQL config mount must be read-only"
 grep -q './reports/raw:/workspace/reports/raw:rw' "$compose_file" || fail "CodeQL report mount must be writable"
+grep -q -- '--codescanning-config=/workspace/configs/codeql/code-scanning.yml' "$compose_file" || \
+  fail "CodeQL must use the repository scope config"
 grep -q 'javascript-typescript' "$compose_file" || fail "CodeQL must scan JavaScript and TypeScript"
 grep -q 'javascript-security-extended.qls' "$compose_file" || fail "CodeQL must use security-extended queries"
+grep -q -- '--ram=3000' "$compose_file" || fail "CodeQL must receive an explicit memory budget"
 grep -q -- '--sarif-add-query-help' "$compose_file" || fail "CodeQL SARIF must contain query help"
 grep -q -- '--output=reports/raw/codeql.sarif' "$compose_file" || fail "CodeQL output path is incorrect"
 
@@ -132,6 +142,11 @@ grep -q 'sha256sum -c' "$sast_workflow" || fail "CI must verify the CodeQL check
 grep -q 'sudo chmod -R a+rX /opt/codeql' "$sast_workflow" || fail "CI runner must read precompiled CodeQL queries"
 grep -q 'github/codeql-action/upload-sarif@v4' "$sast_workflow" || fail "CI must upload CodeQL SARIF"
 grep -q 'reports/raw/codeql.sarif' "$sast_workflow" || fail "CI must retain the CodeQL report"
+grep -q -- '--codescanning-config=configs/codeql/code-scanning.yml' "$sast_workflow" || \
+  fail "CI CodeQL must use the repository scope config"
+grep -q -- '--ram=3000' "$sast_workflow" || fail "CI CodeQL must receive the same memory budget"
+grep -q 'validate-sast-scope.py.*--tool codeql' "$sast_workflow" || fail "CI must validate CodeQL scope"
+grep -q 'validate-sast-scope.py.*--tool codeql' "$PROJECT_ROOT/Makefile" || fail "Local CodeQL scope is not validated"
 if grep -q 'github/codeql-action/init' "$sast_workflow"; then fail "CI must not use CodeQL init"; fi
 grep -A5 '^  sast:$' "$ci_workflow" | grep -q 'security-events: write' || fail "SAST caller must grant SARIF upload permission"
 grep -A5 '^  sast:$' "$ci_workflow" | grep -q 'actions: read' || fail "SAST caller must allow private-repository SARIF upload"

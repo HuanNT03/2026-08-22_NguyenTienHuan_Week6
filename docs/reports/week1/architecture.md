@@ -31,15 +31,24 @@ flowchart LR
   Quality --> DASTJob[DAST job]
 ```
 
-Semgrep đọc source read-only; chỉ report mount có quyền ghi. ZAP spider và passive scan target
-qua Docker network. Raw reports nằm trong `reports/raw/` ở local và được upload làm CI artifact,
+Semgrep và CodeQL đọc source read-only; chỉ report mount có quyền ghi. Cả hai dùng cùng một
+chính sách runtime nhưng giữ cấu hình riêng: `configs/semgrep/includes.txt` + `.semgrepignore`
+cho Semgrep, `configs/codeql/code-scanning.yml` cho CodeQL. Validator hậu kiểm mọi source path
+trong JSON/SARIF để ngăn scope drift giữa local và CI. ZAP spider và passive scan target qua
+Docker network. Raw reports nằm trong `reports/raw/` ở local và được upload làm CI artifact,
 không commit vào Git.
+
+Scope runtime gồm Express entry point/routes, business/data layer được runtime gọi, view/config
+và Angular source. CI/test/build output, `node_modules/` và `data/static/codefixes/` không tham
+gia phép đo overlap SAST/DAST. `codefixes/` vẫn được giữ nguyên trong target để làm nguồn tạo
+ground truth; đây là pipeline đánh giá riêng, không phải source đang phục vụ request.
 
 ## Trust boundaries
 
 - Source target là dependency bên ngoài, được pin và kiểm tra nhưng không thuộc Sentinel.
 - Semgrep Registry rulesets được tải từ dịch vụ remote và chưa được pin nội dung.
-- Container scanner chỉ được cấp source read-only hoặc endpoint/network cần thiết.
+- Container scanner chỉ được cấp source/config read-only hoặc endpoint/network cần thiết.
+- Dependency đã cài không được quét như first-party source; SCA/SBOM là trust boundary và job riêng.
 - Dữ liệu từ target và scanner output là dữ liệu chưa tin cậy cho các component AI tương lai.
 - Host port chỉ bind loopback, không expose Juice Shop trên `0.0.0.0`.
 

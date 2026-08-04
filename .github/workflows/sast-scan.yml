@@ -85,9 +85,10 @@ jobs:
           set -euo pipefail
           mkdir -p reports/raw
           ./scripts/write-scan-metadata.sh --tool codeql --report reports/raw/codeql.sarif --pipeline-run-id "github_${GITHUB_RUN_ID}"
-          codeql database create /tmp/codeql-db --language=javascript-typescript --source-root=target-app/juice-shop
-          codeql database analyze /tmp/codeql-db javascript-security-extended.qls --format=sarif-latest --sarif-add-query-help --output=reports/raw/codeql.sarif
+          codeql database create /tmp/codeql-db --language=javascript-typescript --source-root=target-app/juice-shop --codescanning-config=configs/codeql/code-scanning.yml
+          codeql database analyze /tmp/codeql-db javascript-security-extended.qls --ram=3000 --format=sarif-latest --sarif-add-query-help --output=reports/raw/codeql.sarif
           python3 -c "import json; json.load(open('reports/raw/codeql.sarif'))"
+          python3 scripts/validate-sast-scope.py --tool codeql --report reports/raw/codeql.sarif
       - name: Upload CodeQL SARIF to code scanning
         uses: github/codeql-action/upload-sarif@v4
         with:

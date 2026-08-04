@@ -1,0 +1,31 @@
+name: Sentinel runtime application scope
+
+paths:
+  - app.ts
+  - server.ts
+  - routes/**
+  - lib/**
+  - models/**
+  - data/*.ts
+  - data/static/contractABIs.ts
+  - views/**
+  - config/**
+  - frontend/src/**
+
+paths-ignore:
+  - .github/**
+  - .gitlab/**
+  - data/static/codefixes/**
+  - test/**
+  - cypress/**
+  - "**/node_modules/**"
+  - frontend/dist/**
+  - frontend/.angular/**
+  - dist/**
+  - build/**
+  - frontend/src/**/*.spec.ts
+  - frontend/src/**/*.test.ts
+  - frontend/src/test-setup.ts
+  - frontend/src/vitest.d.ts
+  - frontend/src/mocks/**
+  - frontend/src/assets/private/**

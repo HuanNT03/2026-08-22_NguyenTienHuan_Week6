@@ -9,11 +9,35 @@ PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd -P)"
 source "$SCRIPT_DIR/common.sh"
 
 VERSIONS_FILE="$PROJECT_ROOT/configs/tool-versions.env"
+SEMGREP_INCLUDE_FILE="$PROJECT_ROOT/configs/semgrep/includes.txt"
+SEMGREP_IGNORE_FILE="$PROJECT_ROOT/configs/semgrep/.semgrepignore"
 REPORT_DIR="$PROJECT_ROOT/reports/raw"
 REPORT_FILE="$REPORT_DIR/semgrep.json"
 SARIF_FILE="$REPORT_DIR/semgrep.sarif"
 META_FILE="$REPORT_DIR/semgrep.meta.json"
 HOST_USER="$(id -u):$(id -g)"
+
+declare -a SEMGREP_SCOPE_ARGS=()
+
+load_scope_patterns() {
+  local pattern_file="$1"
+  local option="$2"
+  local pattern
+  local pattern_count=0
+
+  [[ -f "$pattern_file" ]] || die "Semgrep scope file not found: $pattern_file"
+  while IFS= read -r pattern || [[ -n "$pattern" ]]; do
+    [[ -z "$pattern" || "$pattern" == \#* ]] && continue
+    [[ "$pattern" != \!* && "$pattern" != :* ]] || \
+      die "Unsupported Semgrep scope directive in $pattern_file: $pattern"
+    SEMGREP_SCOPE_ARGS+=("$option=$pattern")
+    pattern_count=$((pattern_count + 1))
+  done <"$pattern_file"
+  ((pattern_count > 0)) || die "Semgrep scope file has no patterns: $pattern_file"
+}
+
+load_scope_patterns "$SEMGREP_INCLUDE_FILE" --include
+load_scope_patterns "$SEMGREP_IGNORE_FILE" --exclude
 
 load_tool_versions "$VERSIONS_FILE"
 SEMGREP_APP_TOKEN="$(resolve_semgrep_app_token "$PROJECT_ROOT")"
@@ -39,12 +63,14 @@ docker run --rm \
   --config p/javascript \
   --config p/nodejs \
   --config p/expressjs \
+  "${SEMGREP_SCOPE_ARGS[@]}" \
   --dataflow-traces \
   --sarif-output /src/reports/raw/semgrep.sarif \
   --json-output=/src/reports/raw/semgrep.json \
   /src/target-app/juice-shop
 
 "$SCRIPT_DIR/validate-reports.sh" semgrep
+python3 "$SCRIPT_DIR/validate-sast-scope.py" --tool semgrep --report "$REPORT_FILE"
 
 jq -e 'all(.results[]; (.extra.fingerprint // "") != "requires login" and (.extra.lines // "") != "requires login")' \
   "$REPORT_FILE" >/dev/null || die "Semgrep report contains metadata that requires login"
