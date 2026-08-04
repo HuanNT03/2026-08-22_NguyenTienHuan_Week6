@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Remove generated reports, or perform the explicit full reset. Input: reports|full. Preserves project sources.
+# Remove generated reports or clean only target runtime data and clone. Input: reports|target.
 
 set -Eeuo pipefail
 
@@ -34,10 +34,8 @@ case "$mode" in
     clean_report_directory "$RAW_DIR" "$PROJECT_ROOT/reports/raw"
     clean_report_directory "$NORMALIZED_DIR" "$PROJECT_ROOT/reports/normalized"
     ;;
-  full)
+  target)
     docker compose --project-directory "$PROJECT_ROOT" -f "$PROJECT_ROOT/docker-compose.yml" down --volumes --remove-orphans
-    clean_report_directory "$RAW_DIR" "$PROJECT_ROOT/reports/raw"
-    clean_report_directory "$NORMALIZED_DIR" "$PROJECT_ROOT/reports/normalized"
     assert_exact_path "$TARGET_DIR" "$PROJECT_ROOT/target-app/juice-shop"
     if [[ -e "$TARGET_DIR" ]]; then
       rm -rf -- "$TARGET_DIR"
@@ -46,5 +44,5 @@ case "$mode" in
       log "Target clone already absent: $TARGET_DIR"
     fi
     ;;
-  *) die "Usage: $0 {reports|full}" ;;
+  *) die "Usage: $0 {reports|target}" ;;
 esac

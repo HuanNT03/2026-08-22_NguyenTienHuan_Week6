@@ -182,6 +182,20 @@ grep -A3 '^  normalize:$' "$ci_workflow" | grep -q 'needs: \[sast, dast\]' || fa
 grep -q 'normalized-findings-.*github.run_id' "$ci_workflow" || fail "CI unified findings artifact is missing"
 pass "implementation preserves parallel scans, metadata provenance and normalized artifacts"
 
+grep -A2 '^clean-reports:' "$PROJECT_ROOT/Makefile" | grep -q 'clean.sh reports' || \
+  fail "clean-reports must use the reports-only cleanup mode"
+grep -A2 '^clean:' "$PROJECT_ROOT/Makefile" | grep -q 'clean.sh target' || \
+  fail "clean must use the target-only cleanup mode"
+target_cleanup="$(sed -n '/  target)/,/    ;;/p' "$PROJECT_ROOT/scripts/clean.sh")"
+grep -q 'down --volumes --remove-orphans' <<<"$target_cleanup" || \
+  fail "target cleanup must remove Compose volumes"
+if grep -q 'clean_report_directory' <<<"$target_cleanup"; then
+  fail "target cleanup must not remove reports"
+fi
+grep -q 'assert_exact_path "$TARGET_DIR"' <<<"$target_cleanup" || \
+  fail "target cleanup must protect the target clone path"
+pass "target cleanup removes runtime data and clone without removing reports"
+
 set +e
 verify_output="$(SENTINEL_TARGET_DIR="$TEST_TMP/missing-target" "$PROJECT_ROOT/scripts/verify-target.sh" 2>&1)"
 verify_status=$?

@@ -95,8 +95,8 @@ normalize: ## Normalize all raw scanner reports into unified JSONL.
 clean-reports: ## Remove generated reports while preserving tracked directories.
 	@./scripts/clean.sh reports
 
-clean: ## Stop runtime and remove generated reports and target clone.
-	@./scripts/clean.sh full
+clean: ## Stop runtime, remove target data volumes, and remove the target clone.
+	@./scripts/clean.sh target
 
 .PHONY: kb-python-check kb-validate kb-build-documents kb-build-index kb-build kb-rebuild kb-search \
 	kb-inspect kb-stats kb-test kb-lint kb-clean
