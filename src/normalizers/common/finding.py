@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlparse
 from uuid import uuid4
@@ -7,7 +7,7 @@ from src.normalizers.context import NormalizationContext
 
 
 def utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    return datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
 def optional_string(value: Any) -> str | None:
@@ -37,7 +37,7 @@ def reference_urls(value: Any) -> list[str]:
         cleaned = item.strip()
         try:
             parsed = urlparse(cleaned)
-        except Exception:
+        except Exception:  # noqa: BLE001, S112  # Ignore malformed untrusted references.
             continue
         if parsed.scheme.lower() in {"http", "https"} and parsed.netloc:
             urls.add(cleaned)

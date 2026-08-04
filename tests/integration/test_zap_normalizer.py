@@ -6,7 +6,6 @@ from src.normalizers.common.validation import build_validator, load_schema, vali
 from src.normalizers.context import NormalizationContext
 from src.normalizers.zap import normalize_zap_report
 
-
 ROOT = Path(__file__).resolve().parents[2]
 
 

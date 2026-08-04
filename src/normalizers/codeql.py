@@ -206,14 +206,14 @@ def normalize_codeql_report(
         raise ValueError(f"Unsupported SARIF version: {sarif.get('version')!r}")
     runs = sarif.get("runs")
     if not isinstance(runs, list):
-        raise ValueError("SARIF runs must be an array")
+        raise TypeError("SARIF runs must be an array")
     normalized_at = normalized_at or utc_now()
     findings: list[dict[str, Any]] = []
     missing_rule_descriptors = 0
     raw_findings = 0
     for run_index, run in enumerate(runs):
         if not isinstance(run, dict):
-            raise ValueError(f"SARIF run {run_index} must be an object")
+            raise TypeError(f"SARIF run {run_index} must be an object")
         tool = run.get("tool") if isinstance(run.get("tool"), dict) else {}
         driver = tool.get("driver") if isinstance(tool.get("driver"), dict) else {}
         rules = driver.get("rules") if isinstance(driver.get("rules"), list) else []
@@ -227,7 +227,7 @@ def normalize_codeql_report(
         for result_index, result in enumerate(results):
             raw_findings += 1
             if not isinstance(result, dict):
-                raise ValueError(f"CodeQL result {result_index} must be an object")
+                raise TypeError(f"CodeQL result {result_index} must be an object")
             rule_id = optional_string(result.get("ruleId"))
             if rule_id is None:
                 raise ValueError(f"CodeQL result {result_index} is missing ruleId")

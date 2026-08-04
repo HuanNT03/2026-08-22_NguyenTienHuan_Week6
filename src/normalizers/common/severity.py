@@ -1,6 +1,5 @@
 from typing import Any
 
-
 _ENUMS = {"info", "low", "medium", "high", "critical"}
 
 

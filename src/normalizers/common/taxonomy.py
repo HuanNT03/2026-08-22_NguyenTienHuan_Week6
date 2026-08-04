@@ -2,7 +2,6 @@ import re
 from collections.abc import Iterable
 from typing import Any
 
-
 _CWE_PATTERN = re.compile(r"(?:cwe(?:[-_/]cwe)?[-_/]?)?0*([0-9]+)", re.IGNORECASE)
 _WASC_PATTERN = re.compile(r"(?:wasc[-_/]?)?0*([0-9]+)", re.IGNORECASE)
 _OWASP_PATTERN = re.compile(r"(?:owasp[-_/]?)?a(0?[1-9]|10)\s*[:_-]\s*([0-9]{4})", re.IGNORECASE)

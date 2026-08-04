@@ -50,7 +50,12 @@ logs: ## Follow Juice Shop logs.
 status: ## Show Compose service status.
 	docker compose ps
 
-lint: ## Syntax-check scripts and validate Compose configuration.
+lint: ## Lint Python, syntax-check shell scripts, and validate Compose configuration.
+	@if [[ -x "$(VENV_PYTHON)" ]]; then \
+		"$(VENV_PYTHON)" -m ruff check src tests scripts; \
+	else \
+		"$(PYTHON)" -m ruff check src tests scripts; \
+	fi
 	bash -n scripts/*.sh
 	docker compose config --quiet
 

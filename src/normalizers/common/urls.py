@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urlparse
 
-
 _URL_PATTERN = re.compile(r"https?://[^\s<>'\"\)]+", flags=re.IGNORECASE)
 
 
@@ -22,7 +21,7 @@ def canonicalize_endpoint(raw_uri: str | None) -> str | None:
         return None
     try:
         parsed = urlparse(value)
-    except Exception:
+    except Exception:  # noqa: BLE001  # Treat malformed untrusted URL values as absent.
         return None
     return parsed.path or "/"
 
@@ -40,12 +39,12 @@ def extract_urls_with_status(value: Any) -> UrlParseResult:
             cleaned = candidate.rstrip(".,;:")
             try:
                 parsed = urlparse(cleaned)
-            except Exception:
+            except Exception:  # noqa: BLE001, S112  # Ignore malformed untrusted URLs.
                 continue
             if parsed.scheme.lower() in {"http", "https"} and parsed.netloc:
                 urls.add(cleaned)
         return UrlParseResult(sorted(urls), False)
-    except Exception:
+    except Exception:  # noqa: BLE001  # Preserve structured parse-error reporting.
         return UrlParseResult([], True)
 
 

@@ -6,7 +6,6 @@ from src.normalizers.common.finding import (
     fingerprint_collision_count,
     native_string,
     optional_string,
-    string_array,
     utc_now,
 )
 from src.normalizers.common.hashing import canonical_sha256
@@ -89,7 +88,7 @@ def normalize_zap_report(
             continue
         for alert_index, alert in enumerate(alerts):
             if not isinstance(alert, dict):
-                raise ValueError(f"ZAP alert {alert_index} must be an object")
+                raise TypeError(f"ZAP alert {alert_index} must be an object")
             raw_alerts += 1
             instances = alert.get("instances")
             if not isinstance(instances, list):
@@ -117,7 +116,7 @@ def normalize_zap_report(
             for instance_index, instance in enumerate(instances):
                 raw_instances += 1
                 if not isinstance(instance, dict):
-                    raise ValueError(f"ZAP instance {instance_index} must be an object")
+                    raise TypeError(f"ZAP instance {instance_index} must be an object")
                 uri = optional_string(instance.get("uri"))
                 endpoint = canonicalize_endpoint(uri)
                 if uri is None or endpoint is None:

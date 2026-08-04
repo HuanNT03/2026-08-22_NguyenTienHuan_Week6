@@ -110,12 +110,12 @@ def normalize_semgrep_report(
 ) -> ToolNormalizationResult:
     results = report.get("results")
     if not isinstance(results, list):
-        raise ValueError("Semgrep report.results must be an array")
+        raise TypeError("Semgrep report.results must be an array")
     normalized_at = normalized_at or utc_now()
     findings: list[dict[str, Any]] = []
     for result_index, result in enumerate(results):
         if not isinstance(result, dict):
-            raise ValueError(f"Semgrep result {result_index} must be an object")
+            raise TypeError(f"Semgrep result {result_index} must be an object")
         extra = result.get("extra") if isinstance(result.get("extra"), dict) else {}
         metadata = extra.get("metadata") if isinstance(extra.get("metadata"), dict) else {}
         start = result.get("start") if isinstance(result.get("start"), dict) else {}

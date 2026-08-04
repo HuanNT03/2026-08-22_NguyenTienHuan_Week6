@@ -1,7 +1,6 @@
 import re
 from urllib.parse import unquote, urlparse
 
-
 _TARGET_MARKER = re.compile(r"(?:^|/)target-app/[^/]+/(.*)$")
 
 

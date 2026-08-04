@@ -2,8 +2,9 @@ import argparse
 import json
 import os
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from src.normalizers import NORMALIZER_VERSION, SCHEMA_VERSION
 from src.normalizers.codeql import normalize_codeql_report
@@ -15,7 +16,6 @@ from src.normalizers.context import NormalizationContext
 from src.normalizers.semgrep import normalize_semgrep_report
 from src.normalizers.summary import build_summary, failed_tool_summary, skipped_tool_summary, successful_tool_summary
 from src.normalizers.zap import normalize_zap_report
-
 
 TOOLS = ("semgrep", "zap", "codeql")
 REPORT_NAMES = {"semgrep": "semgrep.json", "zap": "zap.json", "codeql": "codeql.sarif"}
@@ -51,7 +51,7 @@ def _load_json(path: Path) -> dict[str, Any]:
     with path.open(encoding="utf-8") as handle:
         value = json.load(handle)
     if not isinstance(value, dict):
-        raise ValueError(f"JSON document must be an object: {path}")
+        raise TypeError(f"JSON document must be an object: {path}")
     return value
 
 
@@ -64,7 +64,7 @@ def _required_string(value: Any, field: str) -> str:
 def _context(metadata: dict[str, Any], report_path: str) -> NormalizationContext:
     target = metadata.get("target")
     if not isinstance(target, dict):
-        raise ValueError("Metadata target must be an object")
+        raise TypeError("Metadata target must be an object")
     return NormalizationContext(
         schema_version=SCHEMA_VERSION,
         normalizer_version=NORMALIZER_VERSION,
@@ -130,7 +130,7 @@ def _run(selected: tuple[str, ...], paths: dict[str, tuple[Path, Path]], output_
         report_path, metadata_path = paths[tool]
         try:
             result = _normalize_tool(tool, report_path, metadata_path, normalized_at, validator)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001  # Isolate each untrusted scanner input.
             failed = True
             tool_summaries[tool] = failed_tool_summary(exc)
             print(f"{tool}: normalization failed: {exc}", file=sys.stderr)
