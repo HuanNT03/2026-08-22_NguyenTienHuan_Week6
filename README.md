@@ -176,10 +176,10 @@ Các scanner container chạy bằng UID/GID của host để raw reports không
 Mỗi scanner tạo raw report cùng sidecar metadata tại scan boundary. Sau khi chạy đủ SAST và
 DAST, `make normalize` ghi `reports/normalized/unified-findings.jsonl` và
 `normalization-summary.json`. Chi tiết data contract, failure policy và CLI nằm tại
-[`docs/week-2-normalization.md`](docs/week-2-normalization.md).
+[`docs/reports/week2/week-2-normalization.md`](docs/reports/week2/week-2-normalization.md).
 
 Inventory và quyết định thiết kế cho Security Knowledge Base được theo dõi tại
-[`docs/week-2-knowledgebase.md`](docs/week-2-knowledgebase.md).
+[`docs/reports/week2/week-2-knowledgebase.md`](docs/reports/week2/week-2-knowledgebase.md).
 
 ## Tìm kiếm tài liệu bảo mật bằng từ khóa
 

@@ -5,7 +5,7 @@ scanner findings, and vulnerability examples. It is designed for direct use by b
 Week 3 agent without invoking a CLI subprocess.
 
 The review inventory, exact source paths, and expected counts are maintained in
-[`docs/week-2-knowledgebase.md`](../docs/week-2-knowledgebase.md).
+[`docs/reports/week2/week-2-knowledgebase.md`](../docs/reports/week2/week-2-knowledgebase.md).
 
 ## Directory structure
 
@@ -117,7 +117,7 @@ optional detectability metadata.
 2. Use a lowercase deterministic `example-*` ID.
 3. Provide `id`, `title`, `description`, identifiers, tags, vulnerable behavior, and remediation.
 4. If present, detectability values must be `high`, `medium`, `low`, or `unknown`.
-5. Add its path, ID, and primary mappings to `docs/week-2-knowledgebase.md`.
+5. Add its path, ID, and primary mappings to `docs/reports/week2/week-2-knowledgebase.md`.
 6. Run `make kb-validate`, `make kb-build`, and `make kb-test`.
 
 Duplicate IDs fail with both the first and conflicting source paths.

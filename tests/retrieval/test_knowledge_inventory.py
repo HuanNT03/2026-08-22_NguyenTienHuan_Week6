@@ -39,7 +39,9 @@ def test_documented_inventory_matches_parsed_sources() -> None:
 
 
 def test_every_curated_and_scanner_source_is_listed_in_review_document() -> None:
-    review = (PROJECT_ROOT / "docs" / "week-2-knowledgebase.md").read_text(encoding="utf-8")
+    review = (
+        PROJECT_ROOT / "docs" / "reports" / "week2" / "week-2-knowledgebase.md"
+    ).read_text(encoding="utf-8")
     documents = [
         *parse_example_directory(EXAMPLES_DIR),
         *parse_scanner_directories((SEMGREP_RAW_DIR, ZAP_RAW_DIR)),

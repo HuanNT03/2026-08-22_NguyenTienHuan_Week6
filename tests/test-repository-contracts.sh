@@ -33,7 +33,8 @@ required_files=(
   scripts/setup-target.sh scripts/verify-target.sh scripts/wait-for-target.sh scripts/smoke-test.sh
   scripts/run-sast.sh scripts/run-dast.sh scripts/validate-reports.sh scripts/validate-sast-scope.py
   scripts/clean.sh docker/codeql/Dockerfile
-  docs/architecture.md docs/endpoints.md docs/week-1-findings.md
+  docs/reports/week1/architecture.md docs/reports/week1/endpoints.md
+  docs/reports/week1/week-1-findings.md
   .github/workflows/ci.yml .github/workflows/sast-scan.yml .github/workflows/dast-scan.yml
   pyproject.toml schemas/unified_findings.schema.json scripts/write-scan-metadata.sh
   src/normalizers/cli.py src/normalizers/semgrep.py src/normalizers/zap.py src/normalizers/codeql.py
