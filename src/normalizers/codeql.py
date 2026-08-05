@@ -157,7 +157,7 @@ def _rule_descriptor(
     rule_index = result.get("ruleIndex")
     if isinstance(rule_index, int) and not isinstance(rule_index, bool) and 0 <= rule_index < len(rules):
         descriptor = rules[rule_index]
-        if isinstance(descriptor, dict):
+        if isinstance(descriptor, dict) and optional_string(descriptor.get("id")) == rule_id:
             return rule_index, descriptor
     return rules_by_id.get(rule_id, (None, None))
 
@@ -217,11 +217,13 @@ def normalize_codeql_report(
         tool = run.get("tool") if isinstance(run.get("tool"), dict) else {}
         driver = tool.get("driver") if isinstance(tool.get("driver"), dict) else {}
         rules = driver.get("rules") if isinstance(driver.get("rules"), list) else []
-        rules_by_id = {
-            rule["id"]: (index, rule)
-            for index, rule in enumerate(rules)
-            if isinstance(rule, dict) and optional_string(rule.get("id")) is not None
-        }
+        rules_by_id: dict[str, tuple[int, dict[str, Any]]] = {}
+        for index, rule in enumerate(rules):
+            if not isinstance(rule, dict):
+                continue
+            normalized_rule_id = optional_string(rule.get("id"))
+            if normalized_rule_id is not None:
+                rules_by_id[normalized_rule_id] = (index, rule)
         results = run.get("results") if isinstance(run.get("results"), list) else []
         tool_version = native_string(driver.get("version")) or native_string(driver.get("semanticVersion"))
         for result_index, result in enumerate(results):
