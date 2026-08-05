@@ -55,6 +55,7 @@ grep -q 'javascript-typescript' "$compose_file" || fail "CodeQL must scan JavaSc
 grep -q 'javascript-security-extended.qls' "$compose_file" || fail "CodeQL must use security-extended queries"
 grep -q -- '--ram=3000' "$compose_file" || fail "CodeQL must receive an explicit memory budget"
 grep -q -- '--sarif-add-query-help' "$compose_file" || fail "CodeQL SARIF must contain query help"
+grep -q -- '--sarif-add-snippets' "$compose_file" || fail "Local CodeQL SARIF must contain source snippets"
 grep -q -- '--output=reports/raw/codeql.sarif' "$compose_file" || fail "CodeQL output path is incorrect"
 
 codeql_build_line="$(grep -n -- '--profile scan build codeql-scan' "$PROJECT_ROOT/Makefile" | cut -d: -f1)"
@@ -73,6 +74,7 @@ grep -q 'github/codeql-action/upload-sarif@v4' "$sast_workflow" || fail "CI must
 grep -q 'reports/raw/codeql.sarif' "$sast_workflow" || fail "CI must retain the CodeQL report"
 grep -q -- '--codescanning-config=configs/codeql/code-scanning.yml' "$sast_workflow" || \
   fail "CI CodeQL must use the repository scope config"
+grep -q -- '--sarif-add-snippets' "$sast_workflow" || fail "CI CodeQL SARIF must contain source snippets"
 grep -q -- '--ram=3000' "$sast_workflow" || fail "CI CodeQL must receive the same memory budget"
 grep -q 'validate-sast-scope.py.*--tool codeql' "$sast_workflow" || fail "CI must validate CodeQL scope"
 grep -q 'validate-sast-scope.py.*--tool codeql' "$PROJECT_ROOT/Makefile" || fail "Local CodeQL scope is not validated"
@@ -95,4 +97,3 @@ grep -q '^  normalize:$' "$ci_workflow" || fail "CI normalize job is missing"
 grep -A3 '^  normalize:$' "$ci_workflow" | grep -q 'needs: \[sast, dast\]' || fail "normalize must wait for SAST and DAST"
 grep -q 'normalized-findings-.*github.run_id' "$ci_workflow" || fail "CI unified findings artifact is missing"
 pass "implementation preserves parallel scans, metadata provenance and normalized artifacts"
-

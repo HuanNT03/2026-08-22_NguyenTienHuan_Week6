@@ -43,7 +43,7 @@ services:
       - -c
       - |
         codeql database create /tmp/codeql-db --language=javascript-typescript --source-root=target-app/juice-shop --codescanning-config=/workspace/configs/codeql/code-scanning.yml
-        codeql database analyze /tmp/codeql-db javascript-security-extended.qls --ram=3000 --format=sarif-latest --sarif-add-query-help --output=reports/raw/codeql.sarif
+        codeql database analyze /tmp/codeql-db javascript-security-extended.qls --ram=3000 --format=sarif-latest --sarif-add-query-help --sarif-add-snippets --output=reports/raw/codeql.sarif
 
 networks:
   security:

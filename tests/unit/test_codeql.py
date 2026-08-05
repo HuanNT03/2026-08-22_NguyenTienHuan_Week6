@@ -119,6 +119,51 @@ def test_missing_rule_descriptor_is_reported_without_fabricating_metadata() -> N
     assert normalized.warnings["missing_rule_descriptors"] == 1
 
 
+def test_raw_sarif_snippets_are_not_ingested_by_v1_normalizer() -> None:
+    report = _report()
+    result = report["runs"][0]["results"][0]
+    result["locations"][0]["physicalLocation"]["region"]["snippet"] = {
+        "text": "const result = unsafe(input)"
+    }
+    result["codeFlows"] = [{
+        "threadFlows": [{
+            "locations": [
+                {
+                    "location": {
+                        "physicalLocation": {
+                            "artifactLocation": {"uri": "routes/search.ts"},
+                            "region": {
+                                "startLine": 8,
+                                "snippet": {"text": "const input = req.query.q"},
+                            },
+                        },
+                        "message": {"text": "req.query.q"},
+                    },
+                },
+                {
+                    "location": {
+                        "physicalLocation": {
+                            "artifactLocation": {"uri": "routes/search.ts"},
+                            "region": {
+                                "startLine": 12,
+                                "snippet": {"text": "const result = unsafe(input)"},
+                            },
+                        },
+                        "message": {"text": "unsafe(input)"},
+                    },
+                },
+            ],
+        }],
+    }]
+
+    finding = _normalize(report).findings[0]
+
+    assert finding["evidence"] is None
+    assert finding["data_flow"] is not None
+    assert finding["data_flow"][0]["source"]["content"] is None
+    assert finding["data_flow"][0]["sink"]["content"] is None
+
+
 @pytest.mark.parametrize(
     ("mutate", "error", "message"),
     [
