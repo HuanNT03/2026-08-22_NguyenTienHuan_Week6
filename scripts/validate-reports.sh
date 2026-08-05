@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Validate raw Semgrep and/or ZAP JSON structure. Input: semgrep|zap|all. Exits non-zero on invalid reports.
+# Validate raw scanner reports and their metadata sidecars. Input: semgrep|zap|codeql|all.
 
 set -Eeuo pipefail
 
@@ -9,36 +9,117 @@ PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd -P)"
 source "$SCRIPT_DIR/common.sh"
 
 REPORT_DIR="${SENTINEL_REPORT_DIR:-$PROJECT_ROOT/reports/raw}"
+VALIDATION_ERRORS=0
+
+load_target_lock "$PROJECT_ROOT/target-app/TARGET.lock"
+load_tool_versions "$PROJECT_ROOT/configs/tool-versions.env"
+TARGET_NAME="${REPOSITORY_URL##*/}"
+TARGET_NAME="${TARGET_NAME%.git}"
+TARGET_VERSION="${TAG#v}"
+
+report_error() {
+  printf '[sentinel] ERROR: %s\n' "$*" >&2
+  VALIDATION_ERRORS=$((VALIDATION_ERRORS + 1))
+}
 
 validate_json_file() {
-  local report_name="$1"
-  local report_path="$2"
+  local artifact_name="$1"
+  local artifact_path="$2"
   local jq_expression="$3"
+  local log_success="${4:-true}"
 
-  [[ -e "$report_path" ]] || die "$report_name report is missing: $report_path"
-  [[ -s "$report_path" ]] || die "$report_name report is empty: $report_path"
-  jq empty "$report_path" >/dev/null 2>&1 || die "$report_name report contains invalid JSON: $report_path"
-  jq -e "$jq_expression" "$report_path" >/dev/null 2>&1 || \
-    die "$report_name report has an invalid top-level structure: $report_path"
-  log "$report_name report is valid: $report_path"
+  if [[ ! -e "$artifact_path" ]]; then
+    report_error "$artifact_name is missing: $artifact_path"
+    return 1
+  fi
+  if [[ ! -s "$artifact_path" ]]; then
+    report_error "$artifact_name is empty: $artifact_path"
+    return 1
+  fi
+  if ! jq empty "$artifact_path" >/dev/null 2>&1; then
+    report_error "$artifact_name contains invalid JSON: $artifact_path"
+    return 1
+  fi
+  if ! jq -e "$jq_expression" "$artifact_path" >/dev/null 2>&1; then
+    report_error "$artifact_name has an invalid top-level structure: $artifact_path"
+    return 1
+  fi
+  [[ "$log_success" != true ]] || log "$artifact_name is valid: $artifact_path"
+}
+
+validate_metadata() {
+  local tool="$1"
+  local report_name="$2"
+  local expected_version="$3"
+  local metadata_path="$REPORT_DIR/$tool.meta.json"
+  local tool_expression='true'
+
+  case "$tool" in
+    zap) tool_expression='(.scan_profile == "baseline" or .scan_profile == "full")' ;;
+    codeql) tool_expression='(.query_suite == "javascript-security-extended.qls" and (.query_packs | type == "object"))' ;;
+  esac
+
+  if ! validate_json_file "$tool metadata" "$metadata_path" 'type == "object"' false; then
+    return
+  fi
+  if ! jq -e \
+    --arg report_path "reports/raw/$report_name" \
+    --arg target_name "$TARGET_NAME" \
+    --arg target_version "$TARGET_VERSION" \
+    --arg commit_sha "$COMMIT_SHA" \
+    --arg cli_version "$expected_version" \
+    "
+      (.run_id | type == \"string\" and length > 0) and
+      (.pipeline_run_id | type == \"null\" or type == \"string\") and
+      (.scanned_at | type == \"string\" and test(\"^[0-9]{4}-[0-9]{2}-[0-9]{2}T.*(Z|[+-][0-9]{2}:[0-9]{2})$\")) and
+      (.cli_version == \$cli_version) and
+      (.report_path == \$report_path) and
+      (.target | type == \"object\") and
+      (.target.name == \$target_name) and
+      (.target.version == \$target_version) and
+      (.target.commit_sha == \$commit_sha) and
+      (.target.base_url | type == \"null\" or type == \"string\") and
+      $tool_expression
+    " "$metadata_path" >/dev/null 2>&1; then
+    report_error "$tool metadata is invalid or does not match the pinned report: $metadata_path"
+    return
+  fi
+  log "$tool metadata matches $report_name: $metadata_path"
 }
 
 validate_semgrep() {
-  validate_json_file "Semgrep" "$REPORT_DIR/semgrep.json" \
-    'type == "object" and (.results | type == "array")'
+  validate_json_file "Semgrep report" "$REPORT_DIR/semgrep.json" \
+    'type == "object" and (.results | type == "array")' || true
+  validate_metadata semgrep semgrep.json "$SEMGREP_VERSION"
 }
 
 validate_zap() {
-  validate_json_file "ZAP" "$REPORT_DIR/zap.json" \
-    'type == "object" and (.site | (type == "array" or type == "object"))'
+  validate_json_file "ZAP report" "$REPORT_DIR/zap.json" \
+    'type == "object" and (.site | (type == "array" or type == "object"))' || true
+  validate_metadata zap zap.json "$ZAP_VERSION"
+}
+
+validate_codeql() {
+  validate_json_file "CodeQL report" "$REPORT_DIR/codeql.sarif" \
+    'type == "object" and .version == "2.1.0" and (.runs | type == "array")' || true
+  validate_metadata codeql codeql.sarif "$CODEQL_VERSION"
 }
 
 case "${1:-}" in
   semgrep) validate_semgrep ;;
   zap) validate_zap ;;
+  codeql) validate_codeql ;;
   all)
     validate_semgrep
     validate_zap
+    validate_codeql
     ;;
-  *) die "Usage: $0 {semgrep|zap|all}" ;;
+  *) die "Usage: $0 {semgrep|zap|codeql|all}" ;;
 esac
+
+if ((VALIDATION_ERRORS > 0)); then
+  report_error_count="$VALIDATION_ERRORS"
+  printf '[sentinel] Validation failed with %d artifact error(s).\n' "$report_error_count" >&2
+  exit 1
+fi
+log "All requested scanner reports and metadata are valid."

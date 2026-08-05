@@ -91,7 +91,7 @@ dast: ## Run ZAP Baseline against the already-running target.
 dast-zap-fullscan: ## Run ZAP Full Scan with mandatory Client Spider against the running target.
 	@./scripts/run-dast-zap-fullscan.sh
 
-validate-reports: ## Validate both raw scanner reports.
+validate-reports: ## Validate all raw scanner reports and metadata sidecars.
 	@./scripts/validate-reports.sh all
 
 week1: ## Run the complete Week 1 flow with guaranteed runtime cleanup.

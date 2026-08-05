@@ -33,11 +33,46 @@ pass "target verifier rejects a missing target clearly"
 
 report_dir="$TEST_TMP/reports"
 mkdir -p "$report_dir"
+
+write_test_metadata() {
+  local tool="$1"
+  local report_name="$2"
+  local cli_version="$3"
+  local base_url=""
+  [[ "$tool" == "zap" ]] && base_url="http://juice-shop:3000"
+  jq -n \
+    --arg tool "$tool" \
+    --arg report_path "reports/raw/$report_name" \
+    --arg cli_version "$cli_version" \
+    --arg base_url "$base_url" \
+    '{
+      run_id: ($tool + "_test"),
+      pipeline_run_id: null,
+      scanned_at: "2026-08-05T00:00:00Z",
+      cli_version: $cli_version,
+      report_path: $report_path,
+      target: {
+        name: "juice-shop",
+        version: "20.1.1",
+        commit_sha: "f915bddd82790d0f3018902d36ae9b4241a5f51f",
+        base_url: (if $base_url == "" then null else $base_url end)
+      }
+    } +
+    (if $tool == "zap" then {scan_profile: "full"}
+     elif $tool == "codeql" then {query_suite: "javascript-security-extended.qls", query_packs: {}}
+     else {} end)' >"$report_dir/$tool.meta.json"
+}
+
 set +e
-missing_output="$(SENTINEL_REPORT_DIR="$report_dir" "$PROJECT_ROOT/scripts/validate-reports.sh" semgrep 2>&1)"
+missing_output="$(SENTINEL_REPORT_DIR="$report_dir" "$PROJECT_ROOT/scripts/validate-reports.sh" all 2>&1)"
 missing_status=$?
 set -e
-((missing_status != 0)) && [[ "$missing_output" == *"is missing"* ]] || fail "validator did not distinguish a missing report"
+((missing_status != 0)) || fail "validator unexpectedly accepted missing scanner artifacts"
+for missing_name in semgrep.json semgrep.meta.json zap.json zap.meta.json codeql.sarif codeql.meta.json; do
+  [[ "$missing_output" == *"$missing_name"* ]] || fail "validator did not report missing $missing_name"
+done
+
+write_test_metadata semgrep semgrep.json 1.171.0
 
 : >"$report_dir/semgrep.json"
 set +e
@@ -64,10 +99,28 @@ set -e
 printf '{"results":[]}\n' >"$report_dir/semgrep.json"
 SENTINEL_REPORT_DIR="$report_dir" "$PROJECT_ROOT/scripts/validate-reports.sh" semgrep >/dev/null || \
   fail "validator rejected a valid Semgrep report"
+
 printf '{"site":[]}\n' >"$report_dir/zap.json"
+write_test_metadata zap zap.json 2.17.0
 SENTINEL_REPORT_DIR="$report_dir" "$PROJECT_ROOT/scripts/validate-reports.sh" zap >/dev/null || \
   fail "validator rejected a valid ZAP report"
-pass "report validator distinguishes missing, empty, malformed, invalid-structure and valid reports"
+
+printf '{"version":"2.1.0","runs":[]}\n' >"$report_dir/codeql.sarif"
+write_test_metadata codeql codeql.sarif 2.26.0
+SENTINEL_REPORT_DIR="$report_dir" "$PROJECT_ROOT/scripts/validate-reports.sh" codeql >/dev/null || \
+  fail "validator rejected a valid CodeQL report"
+
+jq '.report_path = "reports/raw/wrong.sarif"' "$report_dir/codeql.meta.json" \
+  >"$report_dir/codeql.meta.json.tmp"
+mv -- "$report_dir/codeql.meta.json.tmp" "$report_dir/codeql.meta.json"
+set +e
+metadata_output="$(SENTINEL_REPORT_DIR="$report_dir" "$PROJECT_ROOT/scripts/validate-reports.sh" codeql 2>&1)"
+metadata_status=$?
+set -e
+((metadata_status != 0)) && [[ "$metadata_output" == *"metadata is invalid"* ]] || \
+  fail "validator accepted CodeQL metadata for the wrong report"
+
+pass "report validator covers all scanners, metadata, missing files and malformed inputs"
 
 semgrep_env_root="$TEST_TMP/semgrep-env"
 mkdir -p "$semgrep_env_root"
@@ -117,4 +170,3 @@ set -e
 ((duplicate_token_status != 0)) && [[ "$duplicate_token_output" == *"Duplicate SEMGREP_APP_TOKEN"* ]] || \
   fail "duplicate Semgrep token entries must be rejected"
 pass "Semgrep token resolution is deterministic and fails safely"
-
