@@ -31,6 +31,18 @@ Each scanner creates a matching sidecar before scanning:
 The sidecar supplies run ID, pipeline ID, scan timestamp, and pinned target identity. Scanner
 normalizers do not read CI variables, Git state, `TARGET.lock`, or the clock.
 
+Normalization consumes complete report/metadata pairs:
+
+| Scanner | Report | Metadata |
+| --- | --- | --- |
+| Semgrep | `semgrep.json` | `semgrep.meta.json` |
+| ZAP | `zap.json` | `zap.meta.json` |
+| CodeQL | `codeql.sarif` | `codeql.meta.json` |
+
+The metadata sidecar is required. A report without its matching sidecar cannot provide the scan
+and target provenance required by the Unified Finding schema. `semgrep.sarif` and `zap.yaml` are
+not normalization inputs.
+
 ## Local usage
 
 Create and activate a Python 3.11+ virtual environment, then install the project:
@@ -60,9 +72,14 @@ A single report uses `--tool`, `--input`, `--metadata`, `--output`, and optional
 
 ## Failure behavior
 
-Normalization is isolated per tool. Invalid JSON, unsupported SARIF, missing primary location,
-schema failure, or an unresolved JSON Pointer marks that tool as failed and discards its
-buffer. Findings from other successful tools are still written, the summary records the
+Normalization is isolated per tool. A missing report or metadata sidecar marks that tool as
+`skipped` with `reason: "missing_input"` and a `missing_files` list. If at least one complete
+tool pair succeeds and the remaining tools are only missing, JSONL is written and the CLI exits
+zero. If no tool succeeds, the CLI exits non-zero and does not create a success output.
+
+An existing but invalid JSON document, unsupported SARIF, invalid metadata, missing primary
+location, schema failure, or unresolved JSON Pointer marks that tool as `failed` and discards
+its buffer. Findings from other successful tools are still written, the summary records the
 failure, and the CLI exits non-zero.
 
 Scanner diagnostics and recoverable parsing issues produce `partial` status. They are summary

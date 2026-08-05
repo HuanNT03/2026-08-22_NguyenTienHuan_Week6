@@ -40,6 +40,10 @@ grep -A2 '^test-python:' "$PROJECT_ROOT/Makefile" | grep -q '\$(VENV_PYTHON).*py
   fail "Python tests must run through VENV_PYTHON"
 grep -A2 'name: Install Python development dependencies' "$PROJECT_ROOT/.github/workflows/ci.yml" | \
   grep -q 'run: make install' || fail "CI quality must install the project virtual environment"
+grep -q 'zap-fullscan-raw-<run_id>' "$PROJECT_ROOT/README.md" || \
+  fail "README must document Full Scan report and metadata download"
+grep -q 'reason: "missing_input"' "$PROJECT_ROOT/docs/reports/week2/week-2-normalization.md" || \
+  fail "normalization documentation must define missing-input behavior"
 pass "normalizer schema and local entrypoint are present"
 
 lock_file="$PROJECT_ROOT/target-app/TARGET.lock"

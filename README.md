@@ -252,6 +252,29 @@ make validate-reports
 make normalize
 ```
 
+Mỗi scanner cần một cặp report/metadata trong `reports/raw/`:
+
+| Scanner | Finding report | Metadata sidecar |
+| --- | --- | --- |
+| Semgrep | `semgrep.json` | `semgrep.meta.json` |
+| ZAP Baseline hoặc Full Scan | `zap.json` | `zap.meta.json` |
+| CodeQL | `codeql.sarif` | `codeql.meta.json` |
+
+Metadata là input bắt buộc vì cung cấp scan run ID, thời điểm quét, phiên bản CLI và target
+identity cần cho audit/provenance của Unified Finding. `semgrep.sarif` và `zap.yaml` không phải
+input của normalizer.
+
+Khi tải artifact từ GitHub Actions, giải nén report và sidecar tương ứng vào cùng
+`reports/raw/`. Với Full Scan, dùng cả `zap.json` và `zap.meta.json` trong artifact
+`zap-fullscan-raw-<run_id>`; không ghép report của một workflow với metadata của workflow khác.
+
+`make validate-reports` kiểm tra cả sáu artifact và liệt kê toàn bộ file thiếu hoặc không hợp lệ
+trước khi exit non-zero. `make normalize` vẫn tạo output nếu còn ít nhất một cặp hợp lệ: scanner
+thiếu report/metadata có `status: "skipped"`, `reason: "missing_input"` trong summary. File đã
+tồn tại nhưng rỗng, malformed hoặc metadata không hợp lệ có `status: "failed"`; findings hợp lệ
+từ scanner khác vẫn được ghi nhưng command exit non-zero. Nếu không có cặp nào thành công,
+normalizer không tạo success output giả.
+
 Inventory và quyết định thiết kế cho Security Knowledge Base được theo dõi tại
 [`docs/reports/week2/week-2-knowledgebase.md`](docs/reports/week2/week-2-knowledgebase.md).
 
