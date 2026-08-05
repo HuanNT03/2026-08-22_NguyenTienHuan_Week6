@@ -51,6 +51,12 @@ jq -e '."$schema" == "https://json-schema.org/draft/2020-12/schema" and .propert
   "$PROJECT_ROOT/schemas/unified_findings.schema.json" >/dev/null || fail "unified finding schema is invalid or incomplete"
 grep -q '^normalize:' "$PROJECT_ROOT/Makefile" || fail "Makefile normalize target is missing"
 grep -q 'normalize-all' "$PROJECT_ROOT/Makefile" || fail "Makefile does not invoke aggregate normalization"
+grep -q '^test-python: kb-python-check' "$PROJECT_ROOT/Makefile" || \
+  fail "Python tests must validate the project virtual environment"
+grep -A2 '^test-python:' "$PROJECT_ROOT/Makefile" | grep -q '\$(VENV_PYTHON).*pytest' || \
+  fail "Python tests must run through VENV_PYTHON"
+grep -A2 'name: Install Python development dependencies' "$PROJECT_ROOT/.github/workflows/ci.yml" | \
+  grep -q 'run: make install' || fail "CI quality must install the project virtual environment"
 pass "normalizer schema and local entrypoint are present"
 
 lock_file="$PROJECT_ROOT/target-app/TARGET.lock"

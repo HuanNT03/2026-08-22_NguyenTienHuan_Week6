@@ -65,8 +65,8 @@ test-contracts: ## Run repository contract tests.
 	@./tests/test-repository-contracts.sh
 	@./tests/test-kb-python-env.sh
 
-test-python: ## Run normalizer unit and integration tests.
-	@$(PYTHON) -m pytest tests/unit tests/integration
+test-python: kb-python-check ## Run normalizer unit and integration tests.
+	@$(VENV_PYTHON) -m pytest tests/unit tests/integration
 
 quality: ## Run lint followed by repository contract tests.
 	@$(MAKE) lint

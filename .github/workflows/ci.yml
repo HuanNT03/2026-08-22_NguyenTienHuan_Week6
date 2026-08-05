@@ -23,7 +23,7 @@ jobs:
           python-version: "3.12"
           cache: pip
       - name: Install Python development dependencies
-        run: python -m pip install '.[dev]'
+        run: make install
       - name: Run repository quality checks
         run: make quality
 
