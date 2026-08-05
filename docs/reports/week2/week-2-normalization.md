@@ -11,9 +11,14 @@ Code locations are relative to the Juice Shop source root. HTTP endpoints contai
 path in Week 2. Fingerprints and group keys use canonical JSON with sorted keys, compact
 separators, UTF-8 Unicode, and explicit null keys.
 
-The v1 normalizer deliberately emits `evidence: null`. Scanner content remains untrusted and
-redaction is deferred to the guardrail work rather than passing raw evidence into the AI
-pipeline.
+CodeQL local và CI scan dùng `--sarif-add-snippets`. Với output SARIF, cờ này thêm
+`physicalLocation.region.snippet.text` cho mỗi result location cùng hai dòng ngữ cảnh trước và
+sau vị trí được báo cáo; nó không nhúng toàn bộ file.
+
+The v1 normalizer deliberately emits `evidence: null`. It also does not copy CodeQL snippet text
+into `data_flow.content`. Scanner content remains untrusted and redaction is deferred to the
+guardrail work rather than passing raw evidence or source snippets into the AI pipeline. Raw
+SARIF remains available as an ignored local artifact or short-lived CI artifact for audit.
 
 ## Scan metadata
 

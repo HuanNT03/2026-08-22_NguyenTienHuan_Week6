@@ -50,6 +50,8 @@ ground truth; đây là pipeline đánh giá riêng, không phải source đang 
 - Container scanner chỉ được cấp source/config read-only hoặc endpoint/network cần thiết.
 - Dependency đã cài không được quét như first-party source; SCA/SBOM là trust boundary và job riêng.
 - Dữ liệu từ target và scanner output là dữ liệu chưa tin cậy cho các component AI tương lai.
+- CodeQL dùng `--sarif-add-snippets`, nên raw SARIF có thể chứa source code quanh từng result
+  location. Snippet vẫn là scanner output chưa tin cậy và chưa được chuyển vào Unified Findings.
 - Host port chỉ bind loopback, không expose Juice Shop trên `0.0.0.0`.
 
 Normalizer Week 2 xử lý raw reports như dữ liệu không tin cậy, validate JSON Schema và JSON

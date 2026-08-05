@@ -75,6 +75,9 @@ grep -q 'reports/raw/codeql.sarif' "$sast_workflow" || fail "CI must retain the 
 grep -q -- '--codescanning-config=configs/codeql/code-scanning.yml' "$sast_workflow" || \
   fail "CI CodeQL must use the repository scope config"
 grep -q -- '--sarif-add-snippets' "$sast_workflow" || fail "CI CodeQL SARIF must contain source snippets"
+grep -q -- '--sarif-add-snippets' "$PROJECT_ROOT/README.md" || fail "README must document CodeQL snippets"
+grep -q 'does not copy CodeQL snippet text' "$PROJECT_ROOT/docs/reports/week2/week-2-normalization.md" || \
+  fail "Normalization documentation must state that v1 does not ingest CodeQL snippets"
 grep -q -- '--ram=3000' "$sast_workflow" || fail "CI CodeQL must receive the same memory budget"
 grep -q 'validate-sast-scope.py.*--tool codeql' "$sast_workflow" || fail "CI must validate CodeQL scope"
 grep -q 'validate-sast-scope.py.*--tool codeql' "$PROJECT_ROOT/Makefile" || fail "Local CodeQL scope is not validated"

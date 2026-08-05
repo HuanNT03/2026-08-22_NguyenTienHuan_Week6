@@ -188,10 +188,17 @@ dựng URL release tương ứng. Bundle cùng file `.checksum.txt` được t�
 
 CodeQL tạo database JavaScript/TypeScript tại `/tmp/codeql-db` trong container, sau đó chạy
 suite `javascript-security-extended.qls` với ngân sách RAM 3000 MiB, query help và ghi SARIF
-tại `reports/raw/codeql.sarif`. Database không được mount nên tự mất khi container `--rm` kết
-thúc. Source Juice Shop và cấu hình scope được mount read-only; report được ghi bằng UID/GID
-của host để tránh file thuộc sở hữu root. Target luôn gọi `docker compose build` trước scan và
-dựa vào Docker layer cache, vì vậy lần chạy sau chỉ rebuild khi version hoặc Dockerfile thay đổi.
+tại `reports/raw/codeql.sarif`. Cả local runner và CI truyền `--sarif-add-snippets`; CodeQL vì
+vậy thêm `physicalLocation.region.snippet.text` cho các vị trí kết quả, gồm hai dòng ngữ cảnh
+trước và sau vị trí được báo cáo. Cờ này chỉ bổ sung code snippet vào raw SARIF, không thêm toàn
+bộ nội dung file như `--sarif-add-file-contents`.
+
+Unified Findings v1 chưa đưa raw snippet vào `evidence` hoặc `data_flow.content`; hai trường này
+tiếp tục giữ chính sách hiện có cho tới khi có redaction và trust-boundary phù hợp. Database
+CodeQL không được mount nên tự mất khi container `--rm` kết thúc. Source Juice Shop và cấu hình
+scope được mount read-only; report được ghi bằng UID/GID của host để tránh file thuộc sở hữu
+root. Target luôn gọi `docker compose build` trước scan và dựa vào Docker layer cache, vì vậy
+lần chạy sau chỉ rebuild khi version hoặc Dockerfile thay đổi.
 
 Service `codeql-scan` thuộc Compose profile `scan`, nên không chạy theo `docker compose up`.
 Không cần cài CodeQL trên host; cần chạy `make setup-target` trước khi scan.
