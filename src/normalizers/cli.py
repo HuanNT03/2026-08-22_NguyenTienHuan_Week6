@@ -119,9 +119,21 @@ def _write_summary(path: Path, summary: dict[str, Any]) -> None:
 def _run(selected: tuple[str, ...], paths: dict[str, tuple[Path, Path]], output_path: Path, summary_path: Path, schema_path: Path) -> int:
     _remove_old(output_path, summary_path)
     normalized_at = utc_now()
-    validator = build_validator(load_schema(schema_path))
     all_findings: list[dict[str, Any]] = []
     tool_summaries: dict[str, dict[str, Any]] = {}
+    try:
+        validator = build_validator(load_schema(schema_path))
+    except Exception as exc:  # noqa: BLE001  # Convert setup failures into the CLI failure contract.
+        for tool in TOOLS:
+            tool_summaries[tool] = failed_tool_summary(exc) if tool in selected else skipped_tool_summary()
+        print(f"schema: normalization setup failed: {exc}", file=sys.stderr)
+        _write_summary(summary_path, build_summary(
+            schema_version=SCHEMA_VERSION,
+            normalizer_version=NORMALIZER_VERSION,
+            normalized_at=normalized_at,
+            tools=tool_summaries,
+        ))
+        return 1
     failed = False
     for tool in TOOLS:
         if tool not in selected:
