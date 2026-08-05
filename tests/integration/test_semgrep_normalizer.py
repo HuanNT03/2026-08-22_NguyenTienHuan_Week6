@@ -12,8 +12,8 @@ ROOT = Path(__file__).resolve().parents[2]
 def test_semgrep_report_normalizes_one_finding_per_result():
     report = json.loads((ROOT / "tests/fixtures/scanners/semgrep.json").read_text(encoding="utf-8"))
     context = NormalizationContext(
-        schema_version="1.0.0",
-        normalizer_version="1.0.0",
+        schema_version="2.0.0",
+        normalizer_version="2.0.0",
         run_id="semgrep_test",
         pipeline_run_id=None,
         scanned_at="2026-08-01T00:00:00Z",
@@ -39,6 +39,14 @@ def test_semgrep_report_normalizes_one_finding_per_result():
         assert not finding["location"]["path"].startswith("/")
         assert finding["fingerprint"].startswith("fp_sha256:v1:")
         assert finding["group_key"].startswith("grp_sha256:v1:")
-        assert finding["evidence"] is None
+        assert finding["schema_version"] == "2.0.0"
+        assert finding["normalization"]["normalizer_version"] == "2.0.0"
+        assert finding["evidence"]["kind"] == "code"
+        assert finding["evidence"]["quality"] == "direct"
+        assert finding["evidence"]["http_evidence"] is None
+        assert finding["evidence"]["provenance"] == f"semgrep.json:results[{index}].extra.lines"
+        assert finding["evidence"]["code_evidence"]["redacted"] is False
+        assert finding["evidence"]["code_evidence"]["truncated"] is False
         pointer = finding["raw_sources"][0]["json_pointer"]
         assert resolve_json_pointer(report, pointer) is report["results"][index]
+    assert result.warnings["source_evidence_errors"] == 37

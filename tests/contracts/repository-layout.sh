@@ -20,6 +20,7 @@ required_files=(
   .github/workflows/dast-zap-fullscan.yml
   pyproject.toml schemas/unified_findings.schema.json scripts/write-scan-metadata.sh
   src/normalizers/cli.py src/normalizers/semgrep.py src/normalizers/zap.py src/normalizers/codeql.py
+  src/normalizers/common/evidence.py docs/reports/week3/week-3-evidence-enrichment.md
   tests/fixtures/scanners/semgrep.json tests/fixtures/scanners/zap.json
   tests/fixtures/scanners/codeql.sarif tests/integration/test_codeql_normalizer.py
   tests/contracts/common.sh tests/contracts/repository-layout.sh tests/contracts/sast-ci.sh
@@ -30,10 +31,15 @@ for required_file in "${required_files[@]}"; do
 done
 pass "required Week 1 and Week 2 files exist"
 
-jq -e '."$schema" == "https://json-schema.org/draft/2020-12/schema" and .properties.fingerprint.pattern' \
+jq -e '."$schema" == "https://json-schema.org/draft/2020-12/schema" and
+  .properties.schema_version.const == "2.0.0" and
+  .properties.evidence.type == "object" and
+  .properties.fingerprint.pattern' \
   "$PROJECT_ROOT/schemas/unified_findings.schema.json" >/dev/null || fail "unified finding schema is invalid or incomplete"
 grep -q '^normalize:' "$PROJECT_ROOT/Makefile" || fail "Makefile normalize target is missing"
 grep -q 'normalize-all' "$PROJECT_ROOT/Makefile" || fail "Makefile does not invoke aggregate normalization"
+grep -q -- '--output-dir reports/normalized' "$PROJECT_ROOT/Makefile" || \
+  fail "Makefile must let the normalizer create the timestamped output filename"
 grep -q '^test-python: kb-python-check' "$PROJECT_ROOT/Makefile" || \
   fail "Python tests must validate the project virtual environment"
 grep -A2 '^test-python:' "$PROJECT_ROOT/Makefile" | grep -q '\$(VENV_PYTHON).*pytest' || \

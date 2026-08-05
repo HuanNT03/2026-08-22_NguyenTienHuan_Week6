@@ -23,10 +23,18 @@ def test_codeql_report_normalizes_one_finding_per_result():
     report = json.loads((ROOT / REPORT_PATH).read_text(encoding="utf-8"))
     raw_results = _raw_results(report)
     assert raw_results
+    assert sum(
+        raw_result["locations"][0]["physicalLocation"]["region"].get("endLine") is None
+        for raw_result in raw_results
+    ) == 85
+    assert all(
+        raw_result["locations"][0]["physicalLocation"]["contextRegion"]["snippet"]["text"]
+        for raw_result in raw_results
+    )
 
     context = NormalizationContext(
-        schema_version="1.0.0",
-        normalizer_version="1.0.0",
+        schema_version="2.0.0",
+        normalizer_version="2.0.0",
         run_id="codeql_test",
         pipeline_run_id=None,
         scanned_at="2026-08-03T00:00:00Z",
@@ -50,6 +58,7 @@ def test_codeql_report_normalizes_one_finding_per_result():
         "affected_files": 0,
         "missing_rule_descriptors": 0,
         "fingerprint_collisions": 0,
+        "source_evidence_errors": 87,
     }
 
     validator = build_validator(load_schema(ROOT / "schemas/unified_findings.schema.json"))
@@ -66,7 +75,15 @@ def test_codeql_report_normalizes_one_finding_per_result():
         assert finding["location"]["start_line"] > 0
         assert finding["fingerprint"].startswith("fp_sha256:v1:")
         assert finding["group_key"].startswith("grp_sha256:v1:")
-        assert finding["evidence"] is None
+        assert finding["schema_version"] == "2.0.0"
+        assert finding["evidence"]["kind"] == "code"
+        assert finding["evidence"]["quality"] == "direct"
+        assert finding["evidence"]["code_evidence"]["matched_contents"] == []
+        assert finding["evidence"]["http_evidence"] is None
+        assert finding["evidence"]["provenance"].startswith("codeql.sarif:path=")
+        raw_region = raw_result["locations"][0]["physicalLocation"]["region"]
+        if raw_region.get("endLine") is None:
+            assert finding["location"]["end_line"] == finding["location"]["start_line"]
 
         result_source = finding["raw_sources"][0]
         assert result_source["format"] == "codeql-sarif"
@@ -84,3 +101,11 @@ def test_codeql_report_normalizes_one_finding_per_result():
             assert data_flow["engine"] == "codeql"
             assert data_flow["source"]["step_index"] == 0
             assert data_flow["sink"]["step_index"] >= 1
+
+    related_context = [
+        related
+        for finding in result.findings
+        for related in finding["evidence"]["code_evidence"]["related_context"]
+    ]
+    assert any(item["id"] is None for item in related_context)
+    assert any(item["message"] is None for item in related_context)

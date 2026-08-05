@@ -17,8 +17,8 @@ def test_zap_report_normalizes_one_finding_per_instance():
         for alert in site.get("alerts", [])
     )
     context = NormalizationContext(
-        schema_version="1.0.0",
-        normalizer_version="1.0.0",
+        schema_version="2.0.0",
+        normalizer_version="2.0.0",
         run_id="zap_test",
         pipeline_run_id=None,
         scanned_at="2026-08-01T00:00:00Z",
@@ -30,13 +30,17 @@ def test_zap_report_normalizes_one_finding_per_instance():
     )
     result = normalize_zap_report(report, context, normalized_at="2026-08-01T01:00:00Z")
     assert len(result.findings) == expected_count
+    assert expected_count == 86
     assert result.warnings["text_parse_errors"] == 0
     validator = build_validator(load_schema(ROOT / "schemas/unified_findings.schema.json"))
     for finding in result.findings:
         validate_finding(finding, validator)
         assert finding["location"]["uri"]
         assert finding["location"]["endpoint"].startswith("/")
-        assert finding["evidence"] is None
+        assert finding["schema_version"] == "2.0.0"
+        assert finding["evidence"]["kind"] == "http"
+        assert finding["evidence"]["code_evidence"] is None
+        assert finding["evidence"]["provenance"].startswith("zap.json:site[")
         assert "<p>" not in (finding["description"] or "")
         assert resolve_json_pointer(report, finding["raw_sources"][0]["json_pointer"])
 
@@ -46,3 +50,8 @@ def test_zap_report_normalizes_one_finding_per_instance():
     ]
     assert invalid_taxonomy
     assert all(finding["cwe_ids"] == [] and finding["wasc_ids"] == [] for finding in invalid_taxonomy)
+    quality_counts = {
+        quality: sum(finding["evidence"]["quality"] == quality for finding in result.findings)
+        for quality in ("direct", "inferred", "none")
+    }
+    assert quality_counts == {"direct": 59, "inferred": 14, "none": 13}

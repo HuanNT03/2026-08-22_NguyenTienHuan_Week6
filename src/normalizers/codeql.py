@@ -1,6 +1,9 @@
+import logging
+from pathlib import Path
 from typing import Any
 
 from src.normalizers.common.confidence import normalize_confidence
+from src.normalizers.common.evidence import nullable_text, read_code_evidence
 from src.normalizers.common.finding import (
     base_finding,
     fingerprint_collision_count,
@@ -16,6 +19,8 @@ from src.normalizers.common.severity import normalize_severity
 from src.normalizers.common.taxonomy import normalize_cwe_ids, normalize_owasp_categories
 from src.normalizers.context import NormalizationContext
 
+LOGGER = logging.getLogger(__name__)
+
 
 def _message_text(value: Any) -> str | None:
     if not isinstance(value, dict):
@@ -30,21 +35,49 @@ def _physical_location(value: Any) -> dict[str, Any]:
     return physical if isinstance(physical, dict) else {}
 
 
-def _code_location(physical: dict[str, Any]) -> dict[str, Any] | None:
+def _artifact_uri(run: dict[str, Any], artifact: dict[str, Any]) -> str | None:
+    uri = nullable_text(artifact.get("uri"))
+    if uri is not None:
+        return uri
+    artifact_index = artifact.get("index")
+    artifacts = run.get("artifacts") if isinstance(run.get("artifacts"), list) else []
+    if (
+        isinstance(artifact_index, bool)
+        or not isinstance(artifact_index, int)
+        or artifact_index < 0
+        or artifact_index >= len(artifacts)
+    ):
+        return None
+    artifact_entry = artifacts[artifact_index] if isinstance(artifacts[artifact_index], dict) else {}
+    location = artifact_entry.get("location") if isinstance(artifact_entry.get("location"), dict) else {}
+    return nullable_text(location.get("uri"))
+
+
+def _code_location(
+    physical: dict[str, Any],
+    run: dict[str, Any],
+) -> tuple[dict[str, Any], str, dict[str, Any], dict[str, Any]] | None:
     artifact = physical.get("artifactLocation") if isinstance(physical.get("artifactLocation"), dict) else {}
     region = physical.get("region") if isinstance(physical.get("region"), dict) else {}
-    path = normalize_code_path(artifact.get("uri"))
+    context_region = physical.get("contextRegion") if isinstance(physical.get("contextRegion"), dict) else {}
+    artifact_uri = _artifact_uri(run, artifact)
+    path = normalize_code_path(artifact_uri)
     start_line = positive_int(region.get("startLine"))
     if path is None or start_line is None:
         return None
-    return {
+    raw_end_line = region.get("endLine")
+    end_line = positive_int(raw_end_line) if raw_end_line is not None else start_line
+    if end_line is None:
+        return None
+    location = {
         "kind": "code",
         "path": path,
         "start_line": start_line,
         "start_column": positive_int(region.get("startColumn")),
-        "end_line": positive_int(region.get("endLine")) or start_line,
+        "end_line": end_line,
         "end_column": positive_int(region.get("endColumn")),
     }
+    return location, artifact_uri, region, context_region
 
 
 def _flow_node(value: Any, step_index: int) -> dict[str, Any] | None:
@@ -196,6 +229,35 @@ def _diagnostics(sarif: dict[str, Any]) -> tuple[int, int, int]:
     return extraction_errors, parse_errors, len(affected_files)
 
 
+def _snippet_text(region: dict[str, Any]) -> str | None:
+    snippet = region.get("snippet") if isinstance(region.get("snippet"), dict) else {}
+    return nullable_text(snippet.get("text"))
+
+
+def _related_context(result: dict[str, Any], run: dict[str, Any]) -> list[dict[str, Any]]:
+    related_locations = result.get("relatedLocations")
+    if not isinstance(related_locations, list):
+        return []
+    normalized: list[dict[str, Any]] = []
+    for related in related_locations:
+        if not isinstance(related, dict):
+            continue
+        physical = _physical_location(related)
+        artifact = physical.get("artifactLocation") if isinstance(physical.get("artifactLocation"), dict) else {}
+        region = physical.get("region") if isinstance(physical.get("region"), dict) else {}
+        raw_id = related.get("id")
+        related_id = raw_id if isinstance(raw_id, int) and not isinstance(raw_id, bool) else None
+        normalized.append({
+            "id": related_id,
+            "message": nullable_text(
+                related.get("message", {}).get("text") if isinstance(related.get("message"), dict) else None
+            ),
+            "path": normalize_code_path(_artifact_uri(run, artifact)),
+            "line": positive_int(region.get("startLine")),
+        })
+    return normalized
+
+
 def normalize_codeql_report(
     sarif: dict[str, Any],
     context: NormalizationContext,
@@ -210,6 +272,7 @@ def normalize_codeql_report(
     normalized_at = normalized_at or utc_now()
     findings: list[dict[str, Any]] = []
     missing_rule_descriptors = 0
+    source_evidence_errors = 0
     raw_findings = 0
     for run_index, run in enumerate(runs):
         if not isinstance(run, dict):
@@ -236,9 +299,40 @@ def normalize_codeql_report(
             locations = result.get("locations")
             if not isinstance(locations, list) or not locations:
                 raise ValueError(f"CodeQL result {result_index} is missing primary location")
-            location = _code_location(_physical_location(locations[0]))
-            if location is None:
+            extracted_location = _code_location(_physical_location(locations[0]), run)
+            if extracted_location is None:
                 raise ValueError(f"CodeQL result {result_index} has an incomplete primary location")
+            location, source_path, region, context_region = extracted_location
+            source_evidence = read_code_evidence(
+                context.source_root,
+                source_path,
+                location["start_line"],
+                location["end_line"],
+            )
+            if source_evidence.warning is not None:
+                source_evidence_errors += 1
+                LOGGER.warning(
+                    "CodeQL source evidence unavailable for %r: %s",
+                    source_path,
+                    source_evidence.warning,
+                )
+            region_snippet = _snippet_text(region)
+            context_snippet = _snippet_text(context_region)
+            scanner_snippet = region_snippet or context_snippet
+            snippet_content = scanner_snippet or source_evidence.content
+            related_context = _related_context(result, run)
+            related_locations = result.get("relatedLocations")
+            code_flows = result.get("codeFlows")
+            if scanner_snippet is not None:
+                evidence_quality = "direct"
+            elif source_evidence.source_succeeded:
+                evidence_quality = "enriched"
+            elif (isinstance(related_locations, list) and related_locations) or (
+                isinstance(code_flows, list) and code_flows
+            ):
+                evidence_quality = "inferred"
+            else:
+                evidence_quality = "none"
             rule_index, descriptor = _rule_descriptor(result, rules, rules_by_id, rule_id)
             if descriptor is None:
                 missing_rule_descriptors += 1
@@ -286,7 +380,26 @@ def normalize_codeql_report(
                 "owasp_categories": normalize_owasp_categories(properties.get("tags")),
                 "wasc_ids": [],
                 "location": location,
-                "evidence": None,
+                "evidence": {
+                    "kind": "code",
+                    "code_evidence": {
+                        "code_snippet": {
+                            "content": snippet_content,
+                            "context_before": source_evidence.context_before,
+                            "context_after": source_evidence.context_after,
+                        },
+                        "matched_contents": [],
+                        "related_context": related_context,
+                        "redacted": False,
+                        "truncated": False,
+                    },
+                    "http_evidence": None,
+                    "quality": evidence_quality,
+                    "provenance": (
+                        f"{Path(context.report_path).name}:path={location['path']},"
+                        f"lines={location['start_line']}-{location['end_line']}"
+                    ),
+                },
                 "data_flow": _data_flows(result),
                 "solution": None,
                 "references": [],
@@ -303,5 +416,6 @@ def normalize_codeql_report(
             "affected_files": affected_files,
             "missing_rule_descriptors": missing_rule_descriptors,
             "fingerprint_collisions": fingerprint_collision_count(findings),
+            "source_evidence_errors": source_evidence_errors,
         },
     )

@@ -99,4 +99,10 @@ grep -q 'zap.meta.json' "$PROJECT_ROOT/.github/workflows/dast-scan.yml" || fail 
 grep -q '^  normalize:$' "$ci_workflow" || fail "CI normalize job is missing"
 grep -A3 '^  normalize:$' "$ci_workflow" | grep -q 'needs: \[sast, dast\]' || fail "normalize must wait for SAST and DAST"
 grep -q 'normalized-findings-.*github.run_id' "$ci_workflow" || fail "CI unified findings artifact is missing"
+grep -q 'id: normalize' "$ci_workflow" || fail "CI normalize step must expose its output path"
+grep -q 'steps.normalize.outputs.output_path' "$ci_workflow" || \
+  fail "CI artifact upload must consume the explicit normalized output path"
+if grep -q 'reports/normalized/unified-findings.jsonl' "$ci_workflow"; then
+  fail "CI must not hard-code the legacy normalized output filename"
+fi
 pass "implementation preserves parallel scans, metadata provenance and normalized artifacts"

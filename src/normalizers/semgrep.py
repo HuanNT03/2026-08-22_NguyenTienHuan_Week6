@@ -1,6 +1,9 @@
+import logging
+from pathlib import Path
 from typing import Any
 
 from src.normalizers.common.confidence import normalize_confidence
+from src.normalizers.common.evidence import nullable_text, read_code_evidence
 from src.normalizers.common.finding import (
     base_finding,
     fingerprint_collision_count,
@@ -17,6 +20,8 @@ from src.normalizers.common.paths import normalize_code_path
 from src.normalizers.common.severity import normalize_severity
 from src.normalizers.common.taxonomy import normalize_cwe_ids, normalize_owasp_categories
 from src.normalizers.context import NormalizationContext
+
+LOGGER = logging.getLogger(__name__)
 
 
 def _trace_node(location: Any, content: Any, step_index: int) -> dict[str, Any] | None:
@@ -102,6 +107,16 @@ def _group_key(context: NormalizationContext, cwe_ids: list[str], path: str, sta
     return canonical_sha256("grp", "v1", payload)
 
 
+def _matched_contents(value: Any) -> list[dict[str, str | None]]:
+    if not isinstance(value, dict):
+        return []
+    matches: list[dict[str, str | None]] = []
+    for name in sorted(value):
+        metavariable = value[name] if isinstance(value[name], dict) else {}
+        matches.append({"name": name, "content": nullable_text(metavariable.get("abstract_content"))})
+    return matches
+
+
 def normalize_semgrep_report(
     report: dict[str, Any],
     context: NormalizationContext,
@@ -113,6 +128,7 @@ def normalize_semgrep_report(
         raise TypeError("Semgrep report.results must be an array")
     normalized_at = normalized_at or utc_now()
     findings: list[dict[str, Any]] = []
+    source_evidence_errors = 0
     for result_index, result in enumerate(results):
         if not isinstance(result, dict):
             raise TypeError(f"Semgrep result {result_index} must be an object")
@@ -128,6 +144,20 @@ def normalize_semgrep_report(
         start_column = positive_int(start.get("col"))
         end_line = positive_int(end.get("line")) or start_line
         end_column = positive_int(end.get("col"))
+        source_evidence = read_code_evidence(
+            context.source_root,
+            result.get("path"),
+            start_line,
+            end_line,
+        )
+        if source_evidence.warning is not None:
+            source_evidence_errors += 1
+            LOGGER.warning(
+                "Semgrep source evidence unavailable for %r: %s",
+                result.get("path"),
+                source_evidence.warning,
+            )
+        scanner_content = nullable_text(extra.get("lines"))
         native_severity = native_string(extra.get("severity"))
         native_confidence = native_string(metadata.get("confidence"))
         cwe_ids = normalize_cwe_ids(metadata.get("cwe"))
@@ -173,7 +203,23 @@ def normalize_semgrep_report(
                 "end_line": end_line,
                 "end_column": end_column,
             },
-            "evidence": None,
+            "evidence": {
+                "kind": "code",
+                "code_evidence": {
+                    "code_snippet": {
+                        "content": scanner_content,
+                        "context_before": source_evidence.context_before,
+                        "context_after": source_evidence.context_after,
+                    },
+                    "matched_contents": _matched_contents(extra.get("metavars")),
+                    "related_context": [],
+                    "redacted": False,
+                    "truncated": False,
+                },
+                "http_evidence": None,
+                "quality": "direct" if scanner_content is not None else "none",
+                "provenance": f"{Path(context.report_path).name}:results[{result_index}].extra.lines",
+            },
             "data_flow": _normalize_data_flow(extra.get("dataflow_trace")),
             "solution": optional_string(extra.get("fix")),
             "references": reference_urls(metadata.get("references")),
@@ -188,6 +234,7 @@ def normalize_semgrep_report(
     warnings = {
         "scanner_errors": len(scanner_errors) if isinstance(scanner_errors, list) else 0,
         "fingerprint_collisions": fingerprint_collision_count(findings),
+        "source_evidence_errors": source_evidence_errors,
     }
     return ToolNormalizationResult(
         findings=findings,

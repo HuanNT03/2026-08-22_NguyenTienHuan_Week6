@@ -1,6 +1,8 @@
+from pathlib import Path
 from typing import Any
 
 from src.normalizers.common.confidence import normalize_confidence
+from src.normalizers.common.evidence import nullable_text
 from src.normalizers.common.finding import (
     base_finding,
     fingerprint_collision_count,
@@ -70,6 +72,15 @@ def _group_key(
     })
 
 
+def _request_excerpt(method: str | None, uri: str | None, parameter: str | None) -> str | None:
+    request_line = " ".join(part for part in (method, uri) if part is not None)
+    if not request_line:
+        return None
+    if parameter is not None:
+        return f"{request_line} (param: {parameter})"
+    return request_line
+
+
 def normalize_zap_report(
     report: dict[str, Any],
     context: NormalizationContext,
@@ -124,6 +135,14 @@ def normalize_zap_report(
                 method_value = optional_string(instance.get("method"))
                 method = method_value.upper() if method_value is not None else None
                 parameter = optional_string(instance.get("param"))
+                matched_evidence = nullable_text(instance.get("evidence"))
+                context_note = nullable_text(instance.get("otherinfo")) or nullable_text(alert.get("otherinfo"))
+                if matched_evidence is not None:
+                    evidence_quality = "direct"
+                elif context_note is not None:
+                    evidence_quality = "inferred"
+                else:
+                    evidence_quality = "none"
                 rule_reference = alert_ref or plugin_id
                 finding = base_finding(
                     context=context,
@@ -157,7 +176,23 @@ def normalize_zap_report(
                         "method": method,
                         "parameter": parameter,
                     },
-                    "evidence": None,
+                    "evidence": {
+                        "kind": "http",
+                        "code_evidence": None,
+                        "http_evidence": {
+                            "request_excerpt": _request_excerpt(method, uri, parameter),
+                            "matched_evidence": matched_evidence,
+                            "context_note": context_note,
+                            "attack_payload": nullable_text(instance.get("attack")),
+                            "redacted": False,
+                            "truncated": False,
+                        },
+                        "quality": evidence_quality,
+                        "provenance": (
+                            f"{Path(context.report_path).name}:site[{site_index if site_index is not None else 0}]"
+                            f".alerts[{alert_index}].instances[{instance_index}]"
+                        ),
+                    },
                     "data_flow": None,
                     "solution": solution_result.value,
                     "references": references_result.urls,

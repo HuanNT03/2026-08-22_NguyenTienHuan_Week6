@@ -1,7 +1,10 @@
 import json
+import re
+import shutil
 from pathlib import Path
 
 from src.normalizers import cli
+from src.normalizers.common.validation import build_validator, load_schema, validate_finding
 
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMA_PATH = ROOT / "schemas/unified_findings.schema.json"
@@ -60,11 +63,12 @@ def _fixed_clock(monkeypatch) -> None:
     monkeypatch.setattr(cli, "utc_now", lambda: "2026-08-05T01:00:00Z")
 
 
-def test_single_tool_cli_writes_valid_jsonl_and_summary(tmp_path: Path, monkeypatch) -> None:
+def test_single_tool_cli_writes_timestamped_jsonl_and_prints_exact_path(tmp_path: Path, monkeypatch, capsys) -> None:
     _fixed_clock(monkeypatch)
     report = tmp_path / "codeql.sarif"
     metadata = tmp_path / "codeql.meta.json"
-    output = tmp_path / "unified-findings.jsonl"
+    output_dir = tmp_path / "normalized"
+    output = output_dir / "unified-findings-20260805T010000Z.jsonl"
     summary = tmp_path / "summary.json"
     _write_json(report, _codeql_report())
     _write_json(metadata, _metadata())
@@ -73,17 +77,22 @@ def test_single_tool_cli_writes_valid_jsonl_and_summary(tmp_path: Path, monkeypa
         "--tool", "codeql",
         "--input", str(report),
         "--metadata", str(metadata),
-        "--output", str(output),
+        "--output-dir", str(output_dir),
         "--summary", str(summary),
         "--schema", str(SCHEMA_PATH),
     ])
 
+    captured = capsys.readouterr()
     assert status == 0
+    assert re.fullmatch(r"unified-findings-\d{8}T\d{6}Z\.jsonl", output.name)
+    assert captured.out.strip() == output.as_posix()
+    assert not (output.parent / f".{output.name}.tmp").exists()
     lines = output.read_text(encoding="utf-8").splitlines()
     assert len(lines) == 1
     assert json.loads(lines[0])["description"] == "Finding description"
     payload = json.loads(summary.read_text(encoding="utf-8"))
     assert payload["normalized_at"] == "2026-08-05T01:00:00Z"
+    assert payload["output_path"] == output.as_posix()
     assert payload["total_findings_written"] == 1
     assert payload["tools"]["codeql"]["status"] == "success"
     assert payload["tools"]["semgrep"]["status"] == "skipped"
@@ -101,13 +110,14 @@ def test_normalize_all_keeps_successful_tools_when_one_report_is_malformed(
     (raw_dir / "semgrep.json").write_text("{broken\n", encoding="utf-8")
     for tool in cli.TOOLS:
         _write_json(raw_dir / f"{tool}.meta.json", _metadata())
-    output = tmp_path / "unified-findings.jsonl"
+    output_dir = tmp_path / "normalized"
+    output = output_dir / "unified-findings-20260805T010000Z.jsonl"
     summary = tmp_path / "summary.json"
 
     status = cli.main([
         "normalize-all",
         "--raw-dir", str(raw_dir),
-        "--output", str(output),
+        "--output-dir", str(output_dir),
         "--summary", str(summary),
         "--schema", str(SCHEMA_PATH),
     ])
@@ -127,19 +137,21 @@ def test_invalid_schema_returns_structured_failure_without_traceback(tmp_path: P
     _fixed_clock(monkeypatch)
     report = tmp_path / "codeql.sarif"
     metadata = tmp_path / "codeql.meta.json"
-    output = tmp_path / "unified-findings.jsonl"
+    output_dir = tmp_path / "normalized"
+    output = output_dir / "unified-findings-20260805T010000Z.jsonl"
     summary = tmp_path / "summary.json"
     schema = tmp_path / "invalid.schema.json"
     _write_json(report, _codeql_report())
     _write_json(metadata, _metadata())
     _write_json(schema, {"type": "not-a-json-schema-type"})
+    output_dir.mkdir(parents=True)
     output.write_text("stale output\n", encoding="utf-8")
 
     status = cli.main([
         "--tool", "codeql",
         "--input", str(report),
         "--metadata", str(metadata),
-        "--output", str(output),
+        "--output-dir", str(output_dir),
         "--summary", str(summary),
         "--schema", str(schema),
     ])
@@ -159,17 +171,19 @@ def test_invalid_metadata_fails_selected_tool_and_removes_stale_output(tmp_path:
     _fixed_clock(monkeypatch)
     report = tmp_path / "codeql.sarif"
     metadata = tmp_path / "codeql.meta.json"
-    output = tmp_path / "unified-findings.jsonl"
+    output_dir = tmp_path / "normalized"
+    output = output_dir / "unified-findings-20260805T010000Z.jsonl"
     summary = tmp_path / "summary.json"
     _write_json(report, _codeql_report())
     _write_json(metadata, {"run_id": "missing-target"})
+    output_dir.mkdir(parents=True)
     output.write_text("stale output\n", encoding="utf-8")
 
     status = cli.main([
         "--tool", "codeql",
         "--input", str(report),
         "--metadata", str(metadata),
-        "--output", str(output),
+        "--output-dir", str(output_dir),
         "--summary", str(summary),
         "--schema", str(SCHEMA_PATH),
     ])
@@ -188,13 +202,14 @@ def test_normalize_all_skips_missing_pairs_when_one_tool_succeeds(tmp_path: Path
     raw_dir = tmp_path / "raw"
     _write_json(raw_dir / "codeql.sarif", _codeql_report())
     _write_json(raw_dir / "codeql.meta.json", _metadata())
-    output = tmp_path / "unified-findings.jsonl"
+    output_dir = tmp_path / "normalized"
+    output = output_dir / "unified-findings-20260805T010000Z.jsonl"
     summary = tmp_path / "summary.json"
 
     status = cli.main([
         "normalize-all",
         "--raw-dir", str(raw_dir),
-        "--output", str(output),
+        "--output-dir", str(output_dir),
         "--summary", str(summary),
         "--schema", str(SCHEMA_PATH),
     ])
@@ -223,13 +238,14 @@ def test_missing_metadata_skips_only_that_scanner(tmp_path: Path, monkeypatch) -
     _write_json(raw_dir / "codeql.sarif", _codeql_report())
     _write_json(raw_dir / "zap.json", {"site": []})
     _write_json(raw_dir / "zap.meta.json", _metadata())
-    output = tmp_path / "unified-findings.jsonl"
+    output_dir = tmp_path / "normalized"
+    output = output_dir / "unified-findings-20260805T010000Z.jsonl"
     summary = tmp_path / "summary.json"
 
     status = cli.main([
         "normalize-all",
         "--raw-dir", str(raw_dir),
-        "--output", str(output),
+        "--output-dir", str(output_dir),
         "--summary", str(summary),
         "--schema", str(SCHEMA_PATH),
     ])
@@ -250,14 +266,16 @@ def test_missing_metadata_skips_only_that_scanner(tmp_path: Path, monkeypatch) -
 def test_all_missing_inputs_exit_nonzero_without_success_output(tmp_path: Path, monkeypatch, capsys) -> None:
     _fixed_clock(monkeypatch)
     raw_dir = tmp_path / "raw"
-    output = tmp_path / "unified-findings.jsonl"
+    output_dir = tmp_path / "normalized"
+    output = output_dir / "unified-findings-20260805T010000Z.jsonl"
     summary = tmp_path / "summary.json"
+    output_dir.mkdir(parents=True)
     output.write_text("stale output\n", encoding="utf-8")
 
     status = cli.main([
         "normalize-all",
         "--raw-dir", str(raw_dir),
-        "--output", str(output),
+        "--output-dir", str(output_dir),
         "--summary", str(summary),
         "--schema", str(SCHEMA_PATH),
     ])
@@ -269,3 +287,55 @@ def test_all_missing_inputs_exit_nonzero_without_success_output(tmp_path: Path, 
     assert payload["total_findings_written"] == 0
     assert all(payload["tools"][tool]["reason"] == "missing_input" for tool in cli.TOOLS)
     assert "Traceback" not in captured.err
+
+
+def test_full_curated_fixture_run_writes_210_v2_records(tmp_path: Path) -> None:
+    raw_dir = tmp_path / "raw"
+    raw_dir.mkdir()
+    fixture_dir = ROOT / "tests/fixtures/scanners"
+    for tool, report_name in cli.REPORT_NAMES.items():
+        shutil.copyfile(fixture_dir / report_name, raw_dir / report_name)
+        metadata = _metadata()
+        metadata["run_id"] = f"{tool}_fixture"
+        _write_json(raw_dir / f"{tool}.meta.json", metadata)
+    output_dir = tmp_path / "normalized"
+    summary = output_dir / "normalization-summary.json"
+
+    clock_calls = 0
+
+    def fixed_clock() -> str:
+        nonlocal clock_calls
+        clock_calls += 1
+        return "2026-08-05T08:00:00+07:00"
+
+    status = cli.main(
+        [
+            "normalize-all",
+            "--raw-dir", str(raw_dir),
+            "--output-dir", str(output_dir),
+            "--source-root", str(tmp_path / "missing-source"),
+            "--summary", str(summary),
+            "--schema", str(SCHEMA_PATH),
+        ],
+        clock=fixed_clock,
+    )
+
+    output = output_dir / "unified-findings-20260805T010000Z.jsonl"
+    findings = [json.loads(line) for line in output.read_text(encoding="utf-8").splitlines()]
+    validator = build_validator(load_schema(SCHEMA_PATH))
+    for finding in findings:
+        validate_finding(finding, validator)
+
+    assert status == 0
+    assert clock_calls == 1
+    assert len(findings) == 210
+    assert {finding["schema_version"] for finding in findings} == {"2.0.0"}
+    assert {finding["normalization"]["normalized_at"] for finding in findings} == {"2026-08-05T01:00:00Z"}
+    assert sum(finding["tool"]["name"] == "semgrep" for finding in findings) == 37
+    assert sum(finding["tool"]["name"] == "codeql" for finding in findings) == 87
+    zap_findings = [finding for finding in findings if finding["tool"]["name"] == "zap"]
+    assert len(zap_findings) == 86
+    assert {
+        quality: sum(finding["evidence"]["quality"] == quality for finding in zap_findings)
+        for quality in ("direct", "inferred", "none")
+    } == {"direct": 59, "inferred": 14, "none": 13}

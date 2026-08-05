@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from pathlib import Path
 
 
 @dataclass(frozen=True)
@@ -16,3 +17,4 @@ class NormalizationContext:
     target_base_url: str | None
 
     report_path: str
+    source_root: Path | None = None

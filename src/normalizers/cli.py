@@ -3,6 +3,7 @@ import json
 import os
 import sys
 from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -38,7 +39,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--tool", choices=TOOLS, required=True)
     parser.add_argument("--input", required=True)
     parser.add_argument("--metadata", required=True)
-    parser.add_argument("--output", required=True)
+    parser.add_argument("--output-dir", default="reports/normalized")
+    parser.add_argument("--source-root", default="target-app/juice-shop")
     parser.add_argument("--schema", default="schemas/unified_findings.schema.json")
     parser.add_argument("--summary")
     return parser
@@ -47,7 +49,8 @@ def _parser() -> argparse.ArgumentParser:
 def _all_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Normalize all scanner reports")
     parser.add_argument("--raw-dir", default="reports/raw")
-    parser.add_argument("--output", default="reports/normalized/unified-findings.jsonl")
+    parser.add_argument("--output-dir", default="reports/normalized")
+    parser.add_argument("--source-root", default="target-app/juice-shop")
     parser.add_argument("--schema", default="schemas/unified_findings.schema.json")
     parser.add_argument("--summary", default="reports/normalized/normalization-summary.json")
     return parser
@@ -67,7 +70,7 @@ def _required_string(value: Any, field: str) -> str:
     return value.strip()
 
 
-def _context(metadata: dict[str, Any], report_path: str) -> NormalizationContext:
+def _context(metadata: dict[str, Any], report_path: str, source_root: Path) -> NormalizationContext:
     target = metadata.get("target")
     if not isinstance(target, dict):
         raise TypeError("Metadata target must be an object")
@@ -82,13 +85,21 @@ def _context(metadata: dict[str, Any], report_path: str) -> NormalizationContext
         target_commit_sha=target.get("commit_sha") if isinstance(target.get("commit_sha"), str) else None,
         target_base_url=target.get("base_url") if isinstance(target.get("base_url"), str) else None,
         report_path=report_path,
+        source_root=source_root,
     )
 
 
-def _normalize_tool(tool: str, report_path: Path, metadata_path: Path, normalized_at: str, validator: Any) -> ToolNormalizationResult:
+def _normalize_tool(
+    tool: str,
+    report_path: Path,
+    metadata_path: Path,
+    normalized_at: str,
+    validator: Any,
+    source_root: Path,
+) -> ToolNormalizationResult:
     report = _load_json(report_path)
     metadata = _load_json(metadata_path)
-    context = _context(metadata, report_path.as_posix())
+    context = _context(metadata, report_path.as_posix(), source_root)
     result = NORMALIZERS[tool](report, context, normalized_at=normalized_at)
     for finding in result.findings:
         validate_finding(finding, validator)
@@ -122,9 +133,32 @@ def _write_summary(path: Path, summary: dict[str, Any]) -> None:
     os.replace(temporary, path)
 
 
-def _run(selected: tuple[str, ...], paths: dict[str, tuple[Path, Path]], output_path: Path, summary_path: Path, schema_path: Path) -> int:
+def _run_timestamp(clock: Callable[[], str]) -> tuple[str, str]:
+    normalized_at = clock()
+    try:
+        instant = datetime.fromisoformat(normalized_at)
+    except ValueError as exc:
+        raise ValueError(f"Normalization clock returned an invalid timestamp: {normalized_at!r}") from exc
+    if instant.tzinfo is None:
+        raise ValueError("Normalization clock must return a timezone-aware timestamp")
+    utc_instant = instant.astimezone(UTC).replace(microsecond=0)
+    normalized_at = utc_instant.isoformat(timespec="seconds").replace("+00:00", "Z")
+    filename_timestamp = utc_instant.strftime("%Y%m%dT%H%M%SZ")
+    return normalized_at, filename_timestamp
+
+
+def _run(
+    selected: tuple[str, ...],
+    paths: dict[str, tuple[Path, Path]],
+    output_dir: Path,
+    summary_path: Path,
+    schema_path: Path,
+    source_root: Path,
+    clock: Callable[[], str],
+) -> int:
+    normalized_at, filename_timestamp = _run_timestamp(clock)
+    output_path = output_dir / f"unified-findings-{filename_timestamp}.jsonl"
     _remove_old(output_path, summary_path)
-    normalized_at = utc_now()
     all_findings: list[dict[str, Any]] = []
     tool_summaries: dict[str, dict[str, Any]] = {}
     try:
@@ -137,6 +171,7 @@ def _run(selected: tuple[str, ...], paths: dict[str, tuple[Path, Path]], output_
             schema_version=SCHEMA_VERSION,
             normalizer_version=NORMALIZER_VERSION,
             normalized_at=normalized_at,
+            output_path=None,
             tools=tool_summaries,
         ))
         return 1
@@ -157,7 +192,7 @@ def _run(selected: tuple[str, ...], paths: dict[str, tuple[Path, Path]], output_
             print(f"{tool}: skipped: missing input file(s): {', '.join(missing_paths)}", file=sys.stderr)
             continue
         try:
-            result = _normalize_tool(tool, report_path, metadata_path, normalized_at, validator)
+            result = _normalize_tool(tool, report_path, metadata_path, normalized_at, validator, source_root)
         except Exception as exc:  # noqa: BLE001  # Isolate each untrusted scanner input.
             failed = True
             tool_summaries[tool] = failed_tool_summary(exc)
@@ -172,31 +207,39 @@ def _run(selected: tuple[str, ...], paths: dict[str, tuple[Path, Path]], output_
         schema_version=SCHEMA_VERSION,
         normalizer_version=NORMALIZER_VERSION,
         normalized_at=normalized_at,
+        output_path=output_path.as_posix() if successful else None,
         tools=tool_summaries,
     ))
+    if successful:
+        print(output_path.as_posix())
     return 1 if failed or not successful else 0
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None, *, clock: Callable[[], str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
+    clock = clock or utc_now
     if argv and argv[0] == "normalize-all":
         args = _all_parser().parse_args(argv[1:])
         raw_dir = Path(args.raw_dir)
         return _run(
             TOOLS,
             {tool: (raw_dir / REPORT_NAMES[tool], raw_dir / META_NAMES[tool]) for tool in TOOLS},
-            Path(args.output),
+            Path(args.output_dir),
             Path(args.summary),
             Path(args.schema),
+            Path(args.source_root),
+            clock,
         )
     args = _parser().parse_args(argv)
-    output_path = Path(args.output)
+    output_dir = Path(args.output_dir)
     return _run(
         (args.tool,),
         {args.tool: (Path(args.input), Path(args.metadata))},
-        output_path,
-        Path(args.summary) if args.summary else output_path.with_name("normalization-summary.json"),
+        output_dir,
+        Path(args.summary) if args.summary else output_dir / "normalization-summary.json",
         Path(args.schema),
+        Path(args.source_root),
+        clock,
     )
 
 

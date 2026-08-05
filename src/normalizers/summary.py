@@ -40,12 +40,14 @@ def build_summary(
     schema_version: str,
     normalizer_version: str,
     normalized_at: str,
+    output_path: str | None,
     tools: dict[str, dict[str, Any]],
 ) -> dict[str, Any]:
     return {
         "schema_version": schema_version,
         "normalizer_version": normalizer_version,
         "normalized_at": normalized_at,
+        "output_path": output_path,
         "tools": tools,
         "total_findings_written": sum(
             int(tool.get("findings_written", 0))

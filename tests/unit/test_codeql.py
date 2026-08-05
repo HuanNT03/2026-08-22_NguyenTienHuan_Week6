@@ -1,4 +1,5 @@
 from copy import deepcopy
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -7,10 +8,10 @@ from src.normalizers.codeql import normalize_codeql_report
 from src.normalizers.context import NormalizationContext
 
 
-def _context() -> NormalizationContext:
+def _context(source_root: Path | None = None) -> NormalizationContext:
     return NormalizationContext(
-        schema_version="1.0.0",
-        normalizer_version="1.0.0",
+        schema_version="2.0.0",
+        normalizer_version="2.0.0",
         run_id="codeql_unit",
         pipeline_run_id=None,
         scanned_at="2026-08-05T00:00:00Z",
@@ -19,6 +20,7 @@ def _context() -> NormalizationContext:
         target_commit_sha="f915bddd82790d0f3018902d36ae9b4241a5f51f",
         target_base_url=None,
         report_path="codeql.sarif",
+        source_root=source_root,
     )
 
 
@@ -65,8 +67,8 @@ def _report() -> dict[str, Any]:
     }
 
 
-def _normalize(report: dict[str, Any]):
-    return normalize_codeql_report(report, _context(), normalized_at="2026-08-05T01:00:00Z")
+def _normalize(report: dict[str, Any], source_root: Path | None = None):
+    return normalize_codeql_report(report, _context(source_root), normalized_at="2026-08-05T01:00:00Z")
 
 
 def test_result_message_precedes_rule_description() -> None:
@@ -119,7 +121,7 @@ def test_missing_rule_descriptor_is_reported_without_fabricating_metadata() -> N
     assert normalized.warnings["missing_rule_descriptors"] == 1
 
 
-def test_raw_sarif_snippets_are_not_ingested_by_v1_normalizer() -> None:
+def test_region_snippet_is_direct_evidence_without_changing_data_flow() -> None:
     report = _report()
     result = report["runs"][0]["results"][0]
     result["locations"][0]["physicalLocation"]["region"]["snippet"] = {
@@ -158,10 +160,100 @@ def test_raw_sarif_snippets_are_not_ingested_by_v1_normalizer() -> None:
 
     finding = _normalize(report).findings[0]
 
-    assert finding["evidence"] is None
+    assert finding["evidence"]["quality"] == "direct"
+    assert finding["evidence"]["code_evidence"]["code_snippet"]["content"] == "const result = unsafe(input)"
     assert finding["data_flow"] is not None
     assert finding["data_flow"][0]["source"]["content"] is None
     assert finding["data_flow"][0]["sink"]["content"] is None
+
+
+def test_missing_end_line_falls_back_to_start_line() -> None:
+    report = _report()
+    del report["runs"][0]["results"][0]["locations"][0]["physicalLocation"]["region"]["endLine"]
+
+    finding = _normalize(report).findings[0]
+
+    assert finding["location"]["start_line"] == 12
+    assert finding["location"]["end_line"] == 12
+    assert finding["evidence"]["provenance"].endswith("lines=12-12")
+
+
+def test_context_region_snippet_is_used_after_region_snippet() -> None:
+    report = _report()
+    physical = report["runs"][0]["results"][0]["locations"][0]["physicalLocation"]
+    physical["contextRegion"] = {"snippet": {"text": "context scanner snippet"}}
+
+    finding = _normalize(report).findings[0]
+
+    assert finding["evidence"]["quality"] == "direct"
+    assert finding["evidence"]["code_evidence"]["code_snippet"]["content"] == "context scanner snippet"
+
+
+def test_source_fallback_is_enriched_and_adds_context(tmp_path: Path) -> None:
+    source = tmp_path / "routes/search.ts"
+    source.parent.mkdir(parents=True)
+    source.write_text("\n".join(f"line {number}" for number in range(1, 20)) + "\n", encoding="utf-8")
+
+    finding = _normalize(_report(), tmp_path).findings[0]
+    snippet = finding["evidence"]["code_evidence"]["code_snippet"]
+
+    assert finding["evidence"]["quality"] == "enriched"
+    assert snippet["content"] == "line 12"
+    assert [item["line"] for item in snippet["context_before"]] == [7, 8, 9, 10, 11]
+    assert [item["line"] for item in snippet["context_after"]] == [13, 14, 15, 16, 17]
+
+
+@pytest.mark.parametrize("field", ["relatedLocations", "codeFlows"])
+def test_flow_or_related_location_without_source_is_inferred(field: str) -> None:
+    report = _report()
+    result = report["runs"][0]["results"][0]
+    if field == "relatedLocations":
+        result[field] = [{"physicalLocation": {"artifactLocation": {"uri": "routes/input.ts"}}}]
+    else:
+        result[field] = [{}]
+
+    finding = _normalize(report).findings[0]
+
+    assert finding["evidence"]["quality"] == "inferred"
+
+
+def test_without_snippet_source_or_flow_quality_is_none() -> None:
+    finding = _normalize(_report()).findings[0]
+
+    assert finding["evidence"]["quality"] == "none"
+    assert finding["evidence"]["code_evidence"]["code_snippet"]["content"] is None
+
+
+def test_related_context_allows_missing_id_message_and_artifact_uri_fallback() -> None:
+    report = _report()
+    run = report["runs"][0]
+    run["artifacts"] = [{"location": {"uri": "routes/related.ts"}}]
+    run["results"][0]["relatedLocations"] = [{
+        "physicalLocation": {
+            "artifactLocation": {"index": 0},
+            "region": {"startLine": 19},
+        },
+    }]
+
+    finding = _normalize(report).findings[0]
+
+    assert finding["evidence"]["code_evidence"]["related_context"] == [{
+        "id": None,
+        "message": None,
+        "path": "routes/related.ts",
+        "line": 19,
+    }]
+
+
+def test_primary_artifact_uri_falls_back_to_artifact_index() -> None:
+    report = _report()
+    run = report["runs"][0]
+    run["artifacts"] = [{"location": {"uri": "routes/search.ts"}}]
+    run["results"][0]["locations"][0]["physicalLocation"]["artifactLocation"] = {"index": 0}
+
+    finding = _normalize(report).findings[0]
+
+    assert finding["location"]["path"] == "routes/search.ts"
 
 
 @pytest.mark.parametrize(

@@ -97,8 +97,10 @@ validate-reports: ## Validate all raw scanner reports and metadata sidecars.
 week1: ## Run the complete Week 1 flow with guaranteed runtime cleanup.
 	@./scripts/run-week1.sh
 
-normalize: ## Normalize all raw scanner reports into unified JSONL.
-	@$(PYTHON) -m src.normalizers.cli normalize-all --raw-dir reports/raw --output reports/normalized/unified-findings.jsonl
+normalize: kb-python-check ## Normalize all raw scanner reports into unified JSONL.
+	@./scripts/verify-target.sh >&2
+	@$(VENV_PYTHON) -m src.normalizers.cli normalize-all --raw-dir reports/raw \
+		--output-dir reports/normalized --source-root target-app/juice-shop
 
 clean-reports: ## Remove generated reports while preserving tracked directories.
 	@./scripts/clean.sh reports

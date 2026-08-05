@@ -193,12 +193,13 @@ vậy thêm `physicalLocation.region.snippet.text` cho các vị trí kết qu�
 trước và sau vị trí được báo cáo. Cờ này chỉ bổ sung code snippet vào raw SARIF, không thêm toàn
 bộ nội dung file như `--sarif-add-file-contents`.
 
-Unified Findings v1 chưa đưa raw snippet vào `evidence` hoặc `data_flow.content`; hai trường này
-tiếp tục giữ chính sách hiện có cho tới khi có redaction và trust-boundary phù hợp. Database
-CodeQL không được mount nên tự mất khi container `--rm` kết thúc. Source Juice Shop và cấu hình
-scope được mount read-only; report được ghi bằng UID/GID của host để tránh file thuộc sở hữu
-root. Target luôn gọi `docker compose build` trước scan và dựa vào Docker layer cache, vì vậy
-lần chạy sau chỉ rebuild khi version hoặc Dockerfile thay đổi.
+Unified Findings v2 đưa scanner snippet và source context vào structured `evidence`, nhưng vẫn
+không copy snippet vào `data_flow.content`. Evidence chưa được redaction hoặc truncation và phải
+được coi là dữ liệu không đáng tin cậy, có thể nhạy cảm; không đưa trực tiếp vào prompt của Agent
+trước khi có guardrail phù hợp. Database CodeQL không được mount nên tự mất khi container `--rm`
+kết thúc. Source Juice Shop và cấu hình scope được mount read-only; report được ghi bằng UID/GID
+của host để tránh file thuộc sở hữu root. Target luôn gọi `docker compose build` trước scan và
+dựa vào Docker layer cache, vì vậy lần chạy sau chỉ rebuild khi version hoặc Dockerfile thay đổi.
 
 Service `codeql-scan` thuộc Compose profile `scan`, nên không chạy theo `docker compose up`.
 Không cần cài CodeQL trên host; cần chạy `make setup-target` trước khi scan.
@@ -238,9 +239,12 @@ Các scanner container chạy bằng UID/GID của host để raw reports không
 ## Unified findings normalization
 
 Mỗi scanner tạo raw report cùng sidecar metadata tại scan boundary. Sau khi chạy đủ SAST và
-DAST, `make normalize` ghi `reports/normalized/unified-findings.jsonl` và
-`normalization-summary.json`. Chi tiết data contract, failure policy và CLI nằm tại
-[`docs/reports/week2/week-2-normalization.md`](docs/reports/week2/week-2-normalization.md).
+DAST, `make normalize` ghi `reports/normalized/unified-findings-YYYYMMDDTHHMMSSZ.jsonl` và
+`normalization-summary.json`. Lệnh in exact JSONL path ra stdout để downstream truyền path một
+cách tường minh, không tìm file mới nhất bằng glob. Contract v1 lịch sử nằm tại
+[`docs/reports/week2/week-2-normalization.md`](docs/reports/week2/week-2-normalization.md); evidence
+v2 và migration được mô tả tại
+[`docs/reports/week3/week-3-evidence-enrichment.md`](docs/reports/week3/week-3-evidence-enrichment.md).
 
 Normalizer dùng các dependency Python đã cài trong project virtualenv. Luôn kích hoạt `.venv`
 trong shell hiện tại trước khi validate hoặc normalize report:
@@ -249,7 +253,8 @@ trong shell hiện tại trước khi validate hoặc normalize report:
 make install
 source .venv/bin/activate
 make validate-reports
-make normalize
+normalized_path="$(make normalize)"
+printf '%s\n' "$normalized_path"
 ```
 
 Mỗi scanner cần một cặp report/metadata trong `reports/raw/`:
