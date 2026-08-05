@@ -14,7 +14,13 @@ from src.normalizers.common.models import ToolNormalizationResult
 from src.normalizers.common.validation import build_validator, load_schema, validate_finding
 from src.normalizers.context import NormalizationContext
 from src.normalizers.semgrep import normalize_semgrep_report
-from src.normalizers.summary import build_summary, failed_tool_summary, skipped_tool_summary, successful_tool_summary
+from src.normalizers.summary import (
+    build_summary,
+    failed_tool_summary,
+    missing_input_tool_summary,
+    skipped_tool_summary,
+    successful_tool_summary,
+)
 from src.normalizers.zap import normalize_zap_report
 
 TOOLS = ("semgrep", "zap", "codeql")
@@ -135,11 +141,21 @@ def _run(selected: tuple[str, ...], paths: dict[str, tuple[Path, Path]], output_
         ))
         return 1
     failed = False
+    successful = False
     for tool in TOOLS:
         if tool not in selected:
             tool_summaries[tool] = skipped_tool_summary()
             continue
         report_path, metadata_path = paths[tool]
+        missing_paths = [
+            path.as_posix()
+            for path in (report_path, metadata_path)
+            if not path.exists()
+        ]
+        if missing_paths:
+            tool_summaries[tool] = missing_input_tool_summary(missing_paths)
+            print(f"{tool}: skipped: missing input file(s): {', '.join(missing_paths)}", file=sys.stderr)
+            continue
         try:
             result = _normalize_tool(tool, report_path, metadata_path, normalized_at, validator)
         except Exception as exc:  # noqa: BLE001  # Isolate each untrusted scanner input.
@@ -149,7 +165,8 @@ def _run(selected: tuple[str, ...], paths: dict[str, tuple[Path, Path]], output_
             continue
         all_findings.extend(result.findings)
         tool_summaries[tool] = successful_tool_summary(result)
-    if any(tool in selected and tool_summaries[tool]["status"] != "failed" for tool in TOOLS):
+        successful = True
+    if successful:
         _write_jsonl(output_path, all_findings)
     _write_summary(summary_path, build_summary(
         schema_version=SCHEMA_VERSION,
@@ -157,7 +174,7 @@ def _run(selected: tuple[str, ...], paths: dict[str, tuple[Path, Path]], output_
         normalized_at=normalized_at,
         tools=tool_summaries,
     ))
-    return 1 if failed else 0
+    return 1 if failed or not successful else 0
 
 
 def main(argv: list[str] | None = None) -> int:

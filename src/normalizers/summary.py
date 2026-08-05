@@ -25,6 +25,16 @@ def skipped_tool_summary() -> dict[str, Any]:
     }
 
 
+def missing_input_tool_summary(missing_files: list[str]) -> dict[str, Any]:
+    return {
+        "status": "skipped",
+        "findings_written": 0,
+        "warnings": {},
+        "reason": "missing_input",
+        "missing_files": missing_files,
+    }
+
+
 def build_summary(
     *,
     schema_version: str,

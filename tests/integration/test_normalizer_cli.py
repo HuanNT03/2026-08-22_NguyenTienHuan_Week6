@@ -181,3 +181,91 @@ def test_invalid_metadata_fails_selected_tool_and_removes_stale_output(tmp_path:
     assert payload["tools"]["codeql"]["status"] == "failed"
     assert "Metadata target must be an object" in captured.err
     assert "Traceback" not in captured.err
+
+
+def test_normalize_all_skips_missing_pairs_when_one_tool_succeeds(tmp_path: Path, monkeypatch, capsys) -> None:
+    _fixed_clock(monkeypatch)
+    raw_dir = tmp_path / "raw"
+    _write_json(raw_dir / "codeql.sarif", _codeql_report())
+    _write_json(raw_dir / "codeql.meta.json", _metadata())
+    output = tmp_path / "unified-findings.jsonl"
+    summary = tmp_path / "summary.json"
+
+    status = cli.main([
+        "normalize-all",
+        "--raw-dir", str(raw_dir),
+        "--output", str(output),
+        "--summary", str(summary),
+        "--schema", str(SCHEMA_PATH),
+    ])
+
+    captured = capsys.readouterr()
+    payload = json.loads(summary.read_text(encoding="utf-8"))
+    assert status == 0
+    assert len(output.read_text(encoding="utf-8").splitlines()) == 1
+    assert payload["total_findings_written"] == 1
+    assert payload["tools"]["codeql"]["status"] == "success"
+    for tool, report_name in (("semgrep", "semgrep.json"), ("zap", "zap.json")):
+        tool_summary = payload["tools"][tool]
+        assert tool_summary["status"] == "skipped"
+        assert tool_summary["reason"] == "missing_input"
+        assert tool_summary["missing_files"] == [
+            (raw_dir / report_name).as_posix(),
+            (raw_dir / f"{tool}.meta.json").as_posix(),
+        ]
+    assert "semgrep: skipped: missing input file(s)" in captured.err
+    assert "zap: skipped: missing input file(s)" in captured.err
+
+
+def test_missing_metadata_skips_only_that_scanner(tmp_path: Path, monkeypatch) -> None:
+    _fixed_clock(monkeypatch)
+    raw_dir = tmp_path / "raw"
+    _write_json(raw_dir / "codeql.sarif", _codeql_report())
+    _write_json(raw_dir / "zap.json", {"site": []})
+    _write_json(raw_dir / "zap.meta.json", _metadata())
+    output = tmp_path / "unified-findings.jsonl"
+    summary = tmp_path / "summary.json"
+
+    status = cli.main([
+        "normalize-all",
+        "--raw-dir", str(raw_dir),
+        "--output", str(output),
+        "--summary", str(summary),
+        "--schema", str(SCHEMA_PATH),
+    ])
+
+    payload = json.loads(summary.read_text(encoding="utf-8"))
+    assert status == 0
+    assert output.exists()
+    assert payload["tools"]["zap"]["status"] == "success"
+    assert payload["tools"]["codeql"] == {
+        "status": "skipped",
+        "findings_written": 0,
+        "warnings": {},
+        "reason": "missing_input",
+        "missing_files": [(raw_dir / "codeql.meta.json").as_posix()],
+    }
+
+
+def test_all_missing_inputs_exit_nonzero_without_success_output(tmp_path: Path, monkeypatch, capsys) -> None:
+    _fixed_clock(monkeypatch)
+    raw_dir = tmp_path / "raw"
+    output = tmp_path / "unified-findings.jsonl"
+    summary = tmp_path / "summary.json"
+    output.write_text("stale output\n", encoding="utf-8")
+
+    status = cli.main([
+        "normalize-all",
+        "--raw-dir", str(raw_dir),
+        "--output", str(output),
+        "--summary", str(summary),
+        "--schema", str(SCHEMA_PATH),
+    ])
+
+    captured = capsys.readouterr()
+    payload = json.loads(summary.read_text(encoding="utf-8"))
+    assert status == 1
+    assert not output.exists()
+    assert payload["total_findings_written"] == 0
+    assert all(payload["tools"][tool]["reason"] == "missing_input" for tool in cli.TOOLS)
+    assert "Traceback" not in captured.err
