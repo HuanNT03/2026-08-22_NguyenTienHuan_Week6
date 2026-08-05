@@ -242,6 +242,16 @@ DAST, `make normalize` ghi `reports/normalized/unified-findings.jsonl` và
 `normalization-summary.json`. Chi tiết data contract, failure policy và CLI nằm tại
 [`docs/reports/week2/week-2-normalization.md`](docs/reports/week2/week-2-normalization.md).
 
+Normalizer dùng các dependency Python đã cài trong project virtualenv. Luôn kích hoạt `.venv`
+trong shell hiện tại trước khi validate hoặc normalize report:
+
+```bash
+make install
+source .venv/bin/activate
+make validate-reports
+make normalize
+```
+
 Inventory và quyết định thiết kế cho Security Knowledge Base được theo dõi tại
 [`docs/reports/week2/week-2-knowledgebase.md`](docs/reports/week2/week-2-knowledgebase.md).
 
@@ -510,6 +520,10 @@ Sentinel. Để tải lại target mà vẫn giữ kết quả scan: `make clean
   `make install PYTHON=/usr/bin/python3`. Không chạy `pip install sqlite3`: `_sqlite3` là thành
   phần của CPython, không phải package pip. Với pyenv trên Ubuntu/Debian, cài
   `libsqlite3-dev`, rồi cài lại phiên bản Python của pyenv trước khi tạo lại môi trường.
+- `ModuleNotFoundError: No module named 'jsonschema'` khi chạy `make normalize`: shell hiện tại
+  chưa dùng project virtualenv. Chạy `source .venv/bin/activate` rồi chạy lại; nếu `.venv` chưa
+  tồn tại hoặc thiếu dependency, chạy `make install` trước. Không cài riêng `jsonschema` vào
+  system Python để né project environment.
 
 - Docker daemon/permission: chạy `make doctor`, khởi động Docker Desktop/daemon và bảo đảm user
   có quyền dùng Docker.
