@@ -97,6 +97,31 @@ validate_zap() {
   validate_json_file "ZAP report" "$REPORT_DIR/zap.json" \
     'type == "object" and (.site | (type == "array" or type == "object"))' || true
   validate_metadata zap zap.json "$ZAP_VERSION"
+
+  local endpoints_path="$REPORT_DIR/zap-endpoints.txt"
+  local site_tree_path="$REPORT_DIR/zap-site-tree.yaml"
+  if [[ ! -s "$endpoints_path" ]]; then
+    report_error "ZAP endpoint inventory is missing or empty: $endpoints_path"
+  elif ! grep -Eq '^http://juice-shop:3000($|[/?#])' "$endpoints_path"; then
+    report_error "ZAP endpoint inventory does not contain a Juice Shop URL: $endpoints_path"
+  elif awk '
+    NF && $0 !~ /^http:\/\/juice-shop:3000($|[\/?#])/ { exit 1 }
+  ' "$endpoints_path"; then
+    log "ZAP endpoint inventory is limited to the Juice Shop origin: $endpoints_path"
+  else
+    report_error "ZAP endpoint inventory contains a URL outside the Juice Shop origin: $endpoints_path"
+  fi
+
+  if [[ ! -s "$site_tree_path" ]]; then
+    report_error "ZAP site tree is missing or empty: $site_tree_path"
+  elif ! grep -Fq 'http://juice-shop:3000' "$site_tree_path"; then
+    report_error "ZAP site tree does not contain the Juice Shop origin: $site_tree_path"
+  elif grep -Eo 'https?://[^"[:space:]]+' "$site_tree_path" | \
+      awk '$0 !~ /^http:\/\/juice-shop:3000($|[\/?#])/ { exit 1 }'; then
+    log "ZAP site tree is limited to the Juice Shop origin: $site_tree_path"
+  else
+    report_error "ZAP site tree contains a URL outside the Juice Shop origin: $site_tree_path"
+  fi
 }
 
 validate_codeql() {

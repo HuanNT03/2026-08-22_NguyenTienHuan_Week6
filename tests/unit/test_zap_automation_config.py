@@ -70,3 +70,24 @@ def test_all_plans_generate_the_existing_json_report_contract() -> None:
             "reportFile": "zap.json",
             "displayReport": False,
         }
+
+
+def test_all_plans_export_scoped_urls_and_sites_tree() -> None:
+    expected_exports = [
+        {
+            "context": "juice-shop",
+            "type": "url",
+            "source": "all",
+            "fileName": "/zap/wrk/zap-endpoints.txt",
+        },
+        {
+            "context": "juice-shop",
+            "type": "yaml",
+            "source": "sitestree",
+            "fileName": "/zap/wrk/zap-site-tree.yaml",
+        },
+    ]
+    for name in ("baseline.yaml", "baseline-low-memory.yaml", "full.yaml"):
+        exports = _jobs(_load_plan(name), "export")
+        assert [job["parameters"] for job in exports] == expected_exports
+        assert all(job["alwaysRun"] is True for job in exports)

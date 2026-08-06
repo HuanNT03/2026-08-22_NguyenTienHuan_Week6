@@ -45,6 +45,8 @@ jobs:
           path: |
             reports/raw/zap.json
             reports/raw/zap.meta.json
+            reports/raw/zap-endpoints.txt
+            reports/raw/zap-site-tree.yaml
           retention-days: 14
           if-no-files-found: warn
       - name: Upload failure logs

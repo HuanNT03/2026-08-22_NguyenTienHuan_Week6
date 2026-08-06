@@ -68,7 +68,7 @@ missing_output="$(SENTINEL_REPORT_DIR="$report_dir" "$PROJECT_ROOT/scripts/valid
 missing_status=$?
 set -e
 ((missing_status != 0)) || fail "validator unexpectedly accepted missing scanner artifacts"
-for missing_name in semgrep.json semgrep.meta.json zap.json zap.meta.json codeql.sarif codeql.meta.json; do
+for missing_name in semgrep.json semgrep.meta.json zap.json zap.meta.json zap-endpoints.txt zap-site-tree.yaml codeql.sarif codeql.meta.json; do
   [[ "$missing_output" == *"$missing_name"* ]] || fail "validator did not report missing $missing_name"
 done
 
@@ -102,8 +102,27 @@ SENTINEL_REPORT_DIR="$report_dir" "$PROJECT_ROOT/scripts/validate-reports.sh" se
 
 printf '{"site":[]}\n' >"$report_dir/zap.json"
 write_test_metadata zap zap.json 2.17.0
+printf '\n' >"$report_dir/zap-endpoints.txt"
+printf '%s\n' '- node: "http://juice-shop:3000"' '  url: "http://juice-shop:3000/"' >"$report_dir/zap-site-tree.yaml"
+set +e
+blank_inventory_output="$(SENTINEL_REPORT_DIR="$report_dir" "$PROJECT_ROOT/scripts/validate-reports.sh" zap 2>&1)"
+blank_inventory_status=$?
+set -e
+((blank_inventory_status != 0)) && [[ "$blank_inventory_output" == *"does not contain a Juice Shop URL"* ]] || \
+  fail "validator accepted an endpoint inventory without URLs"
+
+printf 'http://juice-shop:3000/\n' >"$report_dir/zap-endpoints.txt"
 SENTINEL_REPORT_DIR="$report_dir" "$PROJECT_ROOT/scripts/validate-reports.sh" zap >/dev/null || \
   fail "validator rejected a valid ZAP report"
+
+printf 'https://github.com/juice-shop/juice-shop\n' >>"$report_dir/zap-endpoints.txt"
+set +e
+scope_output="$(SENTINEL_REPORT_DIR="$report_dir" "$PROJECT_ROOT/scripts/validate-reports.sh" zap 2>&1)"
+scope_status=$?
+set -e
+((scope_status != 0)) && [[ "$scope_output" == *"outside the Juice Shop origin"* ]] || \
+  fail "validator accepted an out-of-scope URL export"
+printf 'http://juice-shop:3000/\n' >"$report_dir/zap-endpoints.txt"
 
 printf '{"version":"2.1.0","runs":[]}\n' >"$report_dir/codeql.sarif"
 write_test_metadata codeql codeql.sarif 2.26.0

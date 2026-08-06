@@ -47,6 +47,10 @@ grep -q '^    timeout-minutes: 75$' "$fullscan_workflow" || fail "Full Scan work
 grep -q 'run: make dast-zap-fullscan' "$fullscan_workflow" || fail "Full Scan workflow must use the local Make target"
 grep -q 'zap-fullscan-raw-.*github.run_id' "$fullscan_workflow" || fail "Full Scan raw artifact is missing"
 grep -q 'reports/raw/zap.meta.json' "$fullscan_workflow" || fail "Full Scan metadata artifact is missing"
+for workflow in "$PROJECT_ROOT/.github/workflows/dast-scan.yml" "$fullscan_workflow"; do
+  grep -q 'reports/raw/zap-endpoints.txt' "$workflow" || fail "ZAP endpoint inventory artifact is missing"
+  grep -q 'reports/raw/zap-site-tree.yaml' "$workflow" || fail "ZAP site tree artifact is missing"
+done
 grep -A2 'name: Validate ZAP report' "$fullscan_workflow" | grep -q 'if: success()' || \
   fail "Full Scan workflow must not validate a missing report after scanner failure"
 grep -A2 'name: Stop Compose resources' "$fullscan_workflow" | grep -q 'if: always()' || \

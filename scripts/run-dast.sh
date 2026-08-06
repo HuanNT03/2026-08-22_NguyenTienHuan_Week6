@@ -12,6 +12,8 @@ VERSIONS_FILE="$PROJECT_ROOT/configs/tool-versions.env"
 REPORT_DIR="$PROJECT_ROOT/reports/raw"
 REPORT_FILE="$REPORT_DIR/zap.json"
 META_FILE="$REPORT_DIR/zap.meta.json"
+ENDPOINTS_FILE="$REPORT_DIR/zap-endpoints.txt"
+SITE_TREE_FILE="$REPORT_DIR/zap-site-tree.yaml"
 ZAP_CONFIG_DIR="$PROJECT_ROOT/configs/zap"
 ZAP_AUTOMATION_PLAN="$ZAP_CONFIG_DIR/baseline.yaml"
 ZAP_AUTOMATION_PLAN_CONTAINER="/zap/configs/baseline.yaml"
@@ -42,7 +44,7 @@ docker network inspect "$NETWORK_NAME" >/dev/null 2>&1 || \
 "$SCRIPT_DIR/smoke-test.sh"
 mkdir -p "$REPORT_DIR"
 touch "$REPORT_DIR/.gitkeep"
-rm -f -- "$REPORT_FILE" "$META_FILE"
+rm -f -- "$REPORT_FILE" "$META_FILE" "$ENDPOINTS_FILE" "$SITE_TREE_FILE"
 "$SCRIPT_DIR/write-scan-metadata.sh" --tool zap --scan-profile baseline --report reports/raw/zap.json --base-url http://juice-shop:3000
 
 log "ZAP image: $ZAP_IMAGE"
