@@ -45,6 +45,25 @@ services:
         codeql database create /tmp/codeql-db --language=javascript-typescript --source-root=target-app/juice-shop --codescanning-config=/workspace/configs/codeql/code-scanning.yml
         codeql database analyze /tmp/codeql-db javascript-security-extended.qls --ram=3000 --format=sarif-latest --sarif-add-query-help --sarif-add-snippets --output=reports/raw/codeql.sarif
 
+  sqlmap-scan:
+    profiles: ["scan"]
+    image: ${SQLMAP_IMAGE:-sentinel/sqlmap:1.10.7}
+    build:
+      context: ./docker/sqlmap
+      args:
+        SQLMAP_VERSION: ${SQLMAP_VERSION:-}
+        SQLMAP_SHA256: ${SQLMAP_SHA256:-}
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    environment:
+      HOME: /tmp
+    working_dir: /workspace
+    volumes:
+      - ./reports/raw:/workspace/reports/raw:rw
+    networks:
+      - security
+    entrypoint:
+      - sqlmap
+
 networks:
   security:
     name: sentinel-security

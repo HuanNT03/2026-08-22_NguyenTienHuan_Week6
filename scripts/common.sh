@@ -63,19 +63,26 @@ load_target_lock() {
 load_tool_versions() {
   local versions_file="$1"
   validate_config_file "$versions_file" \
-    SEMGREP_VERSION SEMGREP_IMAGE ZAP_VERSION ZAP_IMAGE CODEQL_VERSION
+    SEMGREP_VERSION SEMGREP_IMAGE ZAP_VERSION ZAP_IMAGE CODEQL_VERSION \
+    SQLMAP_VERSION SQLMAP_IMAGE SQLMAP_SHA256
 
   SEMGREP_VERSION="$(config_value "$versions_file" SEMGREP_VERSION)"
   SEMGREP_IMAGE="$(config_value "$versions_file" SEMGREP_IMAGE)"
   ZAP_VERSION="$(config_value "$versions_file" ZAP_VERSION)"
   ZAP_IMAGE="$(config_value "$versions_file" ZAP_IMAGE)"
   CODEQL_VERSION="$(config_value "$versions_file" CODEQL_VERSION)"
+  SQLMAP_VERSION="$(config_value "$versions_file" SQLMAP_VERSION)"
+  SQLMAP_IMAGE="$(config_value "$versions_file" SQLMAP_IMAGE)"
+  SQLMAP_SHA256="$(config_value "$versions_file" SQLMAP_SHA256)"
 
   [[ "$SEMGREP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "Invalid SEMGREP_VERSION: $SEMGREP_VERSION"
   [[ "$ZAP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "Invalid ZAP_VERSION: $ZAP_VERSION"
   [[ "$CODEQL_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "Invalid CODEQL_VERSION: $CODEQL_VERSION"
+  [[ "$SQLMAP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "Invalid SQLMAP_VERSION: $SQLMAP_VERSION"
   [[ "$SEMGREP_IMAGE" == *":$SEMGREP_VERSION" ]] || die "SEMGREP_IMAGE is not pinned to SEMGREP_VERSION"
   [[ "$ZAP_IMAGE" == *":$ZAP_VERSION" ]] || die "ZAP_IMAGE is not pinned to ZAP_VERSION"
+  [[ "$SQLMAP_IMAGE" == *":$SQLMAP_VERSION" ]] || die "SQLMAP_IMAGE is not pinned to SQLMAP_VERSION"
+  [[ "$SQLMAP_SHA256" =~ ^[0-9a-f]{64}$ ]] || die "SQLMAP_SHA256 must be 64 lowercase hexadecimal characters"
 }
 
 resolve_juice_shop_port() {

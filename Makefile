@@ -8,7 +8,7 @@ VENV_PYTHON := $(VENV)/bin/python
 VENV_PIP := $(VENV)/bin/pip
 
 .PHONY: help venv install doctor setup-target verify-target build up wait smoke down logs status \
-	lint test test-contracts test-python quality sast sast-semgrep sast-codeql dast dast-zap-fullscan validate-reports week1 normalize clean-reports clean
+	lint test test-contracts test-python quality sast sast-semgrep sast-codeql dast dast-zap-fullscan dast-sqlmap validate-reports week1 normalize clean-reports clean
 
 help: ## Show available commands.
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -90,6 +90,9 @@ dast: ## Run ZAP Baseline against the already-running target.
 
 dast-zap-fullscan: ## Run ZAP Full Scan with mandatory Client Spider against the running target.
 	@./scripts/run-dast-zap-fullscan.sh
+
+dast-sqlmap: ## Run bounded sqlmap detection and DBMS fingerprinting against the running target.
+	@./scripts/run-dast-sqlmap.sh
 
 validate-reports: ## Validate all raw scanner reports and metadata sidecars.
 	@./scripts/validate-reports.sh all

@@ -2,8 +2,9 @@
 
 Môi trường DevSecOps có thể tái lập để chạy OWASP Juice Shop `v20.1.1`, quét mã nguồn
 bằng Semgrep cùng CodeQL, quét web thụ động bằng OWASP ZAP Baseline và chạy ZAP Full Scan
-chủ động theo yêu cầu. Source Juice Shop, generated raw reports và runtime logs không được commit
-vào repository Sentinel.
+chủ động theo yêu cầu. Repository cũng có sqlmap local, được giới hạn vào một tham số search của
+Juice Shop đã pin để phát hiện SQL injection và fingerprint DBMS. Source Juice Shop, generated raw
+reports và runtime logs không được commit vào repository Sentinel.
 
 ## Mục lục
 
@@ -105,6 +106,33 @@ Baseline và Full Scan dùng chung `reports/raw/zap.json`; profile chạy sau gh
 trước. Hãy sao chép hoặc upload report trước khi chuyển profile nếu cần giữ cả hai. Không chạy hai
 profile đồng thời. Với cả hai lifecycle, nếu một bước lỗi trước cleanup thì vẫn chạy `make down`.
 
+### Chạy sqlmap local (bounded active scan)
+
+sqlmap là active DAST: Juice Shop phải đang chạy trước khi scan. Runner không nhận URL hoặc cờ
+từ người dùng; nó chỉ gửi request tới `GET /rest/products/search` với tham số `q` trong Docker
+network `sentinel-security`.
+
+```bash
+make setup-target
+make build
+make up
+make wait
+make smoke
+make dast-sqlmap
+make down
+```
+
+Lệnh tự build image local `sentinel/sqlmap:1.10.7` từ package sqlmap đã pin hash. Nó chỉ dùng
+`level=1`, `risk=1`, các technique boolean/error/union và DBMS fingerprinting; không crawl, không
+đọc request/proxy log, không enumerate database/table, dump dữ liệu, chạy SQL tùy ý, đọc/ghi file
+hoặc OS takeover. Kết quả ghi đè tại `reports/raw/sqlmap.json`; log chẩn đoán tại
+`logs/sqlmap-runner.log`. Session sqlmap chỉ ở `/tmp` trong container và bị xóa khi container kết
+thúc.
+
+sqlmap report và log là scanner output không đáng tin cậy, có thể chứa payload hoặc response; không
+đưa trực tiếp vào prompt/Agent. V1 này không tạo metadata sidecar, không được `make validate-reports`
+kiểm tra, và chưa đi vào Unified Findings/CI.
+
 Hoặc chạy toàn bộ luồng với cleanup runtime tự động:
 
 ```bash
@@ -128,7 +156,7 @@ Chạy `make help` để xem danh sách đầy đủ. Các nhóm lệnh chính:
 | Môi trường | `doctor`, `lint`, `test`, `quality` |
 | Target | `setup-target`, `verify-target` |
 | Runtime | `build`, `up`, `wait`, `smoke`, `status`, `logs`, `down` |
-| Scanner | `sast`, `sast-semgrep`, `sast-codeql`, `dast`, `dast-zap-fullscan`, `validate-reports` |
+| Scanner | `sast`, `sast-semgrep`, `sast-codeql`, `dast`, `dast-zap-fullscan`, `dast-sqlmap`, `validate-reports` |
 | Normalization | `normalize` |
 | Knowledge Base | `kb-validate`, `kb-build-documents`, `kb-build-index`, `kb-build`, `kb-rebuild` |
 | Knowledge Search | `kb-search`, `kb-inspect`, `kb-stats`, `kb-test`, `kb-lint` |
@@ -205,8 +233,8 @@ dựa vào Docker layer cache, vì vậy lần chạy sau chỉ rebuild khi vers
 Service `codeql-scan` thuộc Compose profile `scan`, nên không chạy theo `docker compose up`.
 Không cần cài CodeQL trên host; cần chạy `make setup-target` trước khi scan.
 
-`make dast` và `make dast-zap-fullscan` chỉ scan; chúng không build, start hoặc stop target.
-Hãy chạy `make build`, `make up`, `make wait` và `make smoke` trước. Cả hai dùng image đã pin
+`make dast`, `make dast-zap-fullscan` và `make dast-sqlmap` chỉ scan; chúng không build, start hoặc
+stop target. Hãy chạy `make build`, `make up`, `make wait` và `make smoke` trước. Hai ZAP command dùng image đã pin
 `ghcr.io/zaproxy/zaproxy:2.17.0` và chỉ nhận target cố định `http://juice-shop:3000` trong
 network `sentinel-security`; runner không nhận target URL tùy ý.
 
@@ -285,6 +313,8 @@ Mỗi scanner cần một cặp report/metadata trong `reports/raw/`:
 Metadata là input bắt buộc vì cung cấp scan run ID, thời điểm quét, phiên bản CLI và target
 identity cần cho audit/provenance của Unified Finding. `semgrep.sarif` và `zap.yaml` không phải
 input của normalizer; hai export ZAP cũng chỉ phục vụ inventory/audit, không tạo Unified Finding.
+`sqlmap.json` là raw report local độc lập trong v1, nên không thuộc bảng này và không được
+normalizer đọc.
 
 ZAP normalizer giữ raw report nguyên vẹn nhưng chỉ phát finding có HTTP origin trùng chính xác
 với `target.base_url`. Không nên lọc bằng substring hoặc chỉ lọc sau khi xuất báo cáo vì hostname

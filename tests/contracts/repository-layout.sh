@@ -12,8 +12,8 @@ required_files=(
   configs/tool-versions.env target-app/TARGET.lock target-app/README.md
   configs/semgrep/includes.txt configs/semgrep/.semgrepignore configs/codeql/code-scanning.yml
   scripts/setup-target.sh scripts/verify-target.sh scripts/wait-for-target.sh scripts/smoke-test.sh
-  scripts/run-sast.sh scripts/run-dast.sh scripts/run-dast-zap-fullscan.sh scripts/validate-reports.sh scripts/validate-sast-scope.py
-  scripts/clean.sh docker/codeql/Dockerfile
+  scripts/run-sast.sh scripts/run-dast.sh scripts/run-dast-zap-fullscan.sh scripts/run-dast-sqlmap.sh scripts/validate-reports.sh scripts/validate-sast-scope.py
+  scripts/clean.sh docker/codeql/Dockerfile docker/sqlmap/Dockerfile
   docs/reports/week1/architecture.md docs/reports/week1/endpoints.md
   docs/reports/week1/week-1-findings.md
   .github/workflows/ci.yml .github/workflows/sast-scan.yml .github/workflows/dast-scan.yml
@@ -59,13 +59,19 @@ commit_sha="$(awk -F= '$1 == "COMMIT_SHA" {print $2}' "$lock_file")"
 pass "target lock keys and commit format are valid"
 
 versions_file="$PROJECT_ROOT/configs/tool-versions.env"
-validate_config_file "$versions_file" SEMGREP_VERSION SEMGREP_IMAGE ZAP_VERSION ZAP_IMAGE CODEQL_VERSION
+validate_config_file "$versions_file" SEMGREP_VERSION SEMGREP_IMAGE ZAP_VERSION ZAP_IMAGE CODEQL_VERSION SQLMAP_VERSION SQLMAP_IMAGE SQLMAP_SHA256
 if awk -F= '/_IMAGE=/ && $2 ~ /:(latest|stable|weekly|canary)$/ {bad = 1} END {exit !bad}' "$versions_file"; then
   fail "scanner image uses a moving tag"
 fi
 codeql_version="$(config_value "$versions_file" CODEQL_VERSION)"
 [[ "$codeql_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "CODEQL_VERSION is not semantic version"
 [[ "$(grep -c '^CODEQL_VERSION=' "$versions_file")" -eq 1 ]] || fail "CODEQL_VERSION must be declared once"
+sqlmap_version="$(config_value "$versions_file" SQLMAP_VERSION)"
+sqlmap_image="$(config_value "$versions_file" SQLMAP_IMAGE)"
+sqlmap_sha256="$(config_value "$versions_file" SQLMAP_SHA256)"
+[[ "$sqlmap_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "SQLMAP_VERSION is not semantic version"
+[[ "$sqlmap_image" == *":$sqlmap_version" ]] || fail "SQLMAP_IMAGE is not pinned to SQLMAP_VERSION"
+[[ "$sqlmap_sha256" =~ ^[0-9a-f]{64}$ ]] || fail "SQLMAP_SHA256 must be a lowercase SHA-256 digest"
 if grep -q '^CODEQL_BUNDLE_URL=' "$versions_file"; then
   fail "CodeQL bundle URL must be derived from CODEQL_VERSION by each installer"
 fi
