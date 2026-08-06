@@ -19,7 +19,7 @@ def _metadata() -> dict[str, object]:
             "name": "juice-shop",
             "version": "20.1.1",
             "commit_sha": "f915bddd82790d0f3018902d36ae9b4241a5f51f",
-            "base_url": None,
+            "base_url": "http://juice-shop:3000",
         },
     }
 
@@ -289,7 +289,7 @@ def test_all_missing_inputs_exit_nonzero_without_success_output(tmp_path: Path, 
     assert "Traceback" not in captured.err
 
 
-def test_full_curated_fixture_run_writes_210_v2_records(tmp_path: Path) -> None:
+def test_full_curated_fixture_run_filters_external_zap_records(tmp_path: Path) -> None:
     raw_dir = tmp_path / "raw"
     raw_dir.mkdir()
     fixture_dir = ROOT / "tests/fixtures/scanners"
@@ -328,14 +328,18 @@ def test_full_curated_fixture_run_writes_210_v2_records(tmp_path: Path) -> None:
 
     assert status == 0
     assert clock_calls == 1
-    assert len(findings) == 210
+    assert len(findings) == 160
     assert {finding["schema_version"] for finding in findings} == {"2.0.0"}
     assert {finding["normalization"]["normalized_at"] for finding in findings} == {"2026-08-05T01:00:00Z"}
     assert sum(finding["tool"]["name"] == "semgrep" for finding in findings) == 37
     assert sum(finding["tool"]["name"] == "codeql" for finding in findings) == 87
     zap_findings = [finding for finding in findings if finding["tool"]["name"] == "zap"]
-    assert len(zap_findings) == 86
+    assert len(zap_findings) == 36
     assert {
         quality: sum(finding["evidence"]["quality"] == quality for finding in zap_findings)
         for quality in ("direct", "inferred", "none")
-    } == {"direct": 59, "inferred": 14, "none": 13}
+    } == {"direct": 24, "inferred": 5, "none": 7}
+    summary_payload = json.loads(summary.read_text(encoding="utf-8"))
+    assert summary_payload["tools"]["zap"]["status"] == "partial"
+    assert summary_payload["tools"]["zap"]["warnings"]["out_of_scope_instances_filtered"] == 50
+    assert summary_payload["tools"]["zap"]["warnings"]["out_of_scope_unique_uri_count"] == 19

@@ -9,13 +9,8 @@ from src.normalizers.zap import normalize_zap_report
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_zap_report_normalizes_one_finding_per_instance():
+def test_zap_report_normalizes_only_target_instances():
     report = json.loads((ROOT / "tests/fixtures/scanners/zap.json").read_text(encoding="utf-8"))
-    expected_count = sum(
-        len(alert.get("instances", []))
-        for site in report["site"]
-        for alert in site.get("alerts", [])
-    )
     context = NormalizationContext(
         schema_version="2.0.0",
         normalizer_version="2.0.0",
@@ -29,8 +24,18 @@ def test_zap_report_normalizes_one_finding_per_instance():
         report_path="tests/fixtures/scanners/zap.json",
     )
     result = normalize_zap_report(report, context, normalized_at="2026-08-01T01:00:00Z")
-    assert len(result.findings) == expected_count
-    assert expected_count == 86
+    assert len(result.findings) == 36
+    assert result.raw_counts == {
+        "raw_alerts": 28,
+        "raw_instances": 86,
+        "findings_written": 36,
+    }
+    assert result.warnings["out_of_scope_instances_filtered"] == 50
+    assert result.warnings["out_of_scope_unique_uri_count"] == 19
+    assert result.warnings["out_of_scope_uris_truncated"] is False
+    assert len(result.warnings["out_of_scope_uris"]) == 19
+    assert "https://github.com/juice-shop/juice-shop" in result.warnings["out_of_scope_uris"]
+    assert all(finding["location"]["uri"].startswith("http://juice-shop:3000") for finding in result.findings)
     assert result.warnings["text_parse_errors"] == 0
     validator = build_validator(load_schema(ROOT / "schemas/unified_findings.schema.json"))
     for finding in result.findings:
@@ -54,4 +59,4 @@ def test_zap_report_normalizes_one_finding_per_instance():
         quality: sum(finding["evidence"]["quality"] == quality for finding in result.findings)
         for quality in ("direct", "inferred", "none")
     }
-    assert quality_counts == {"direct": 59, "inferred": 14, "none": 13}
+    assert sum(quality_counts.values()) == 36

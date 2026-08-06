@@ -29,7 +29,7 @@ def _context(tool: str, report_path: Path, base_url: str | None) -> Normalizatio
     )
 
 
-def test_evidence_v2_preserves_v1_identity_and_raw_order(monkeypatch) -> None:
+def test_scope_filter_preserves_identity_and_raw_order_for_retained_findings(monkeypatch) -> None:
     sequence = count(1)
     monkeypatch.setattr(finding_module, "uuid4", lambda: UUID(int=next(sequence)))
     configurations = [
@@ -56,5 +56,5 @@ def test_evidence_v2_preserves_v1_identity_and_raw_order(monkeypatch) -> None:
     canonical = json.dumps(identities, sort_keys=True, separators=(",", ":")).encode()
     expected = (FIXTURES / "identity-v1.sha256").read_text(encoding="utf-8").strip()
 
-    assert len(identities) == 210
+    assert len(identities) == 160
     assert hashlib.sha256(canonical).hexdigest() == expected

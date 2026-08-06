@@ -15,8 +15,15 @@ from src.normalizers.common.models import ToolNormalizationResult
 from src.normalizers.common.severity import normalize_severity
 from src.normalizers.common.taxonomy import normalize_cwe_ids, normalize_wasc_ids
 from src.normalizers.common.text import strip_html_with_status
-from src.normalizers.common.urls import canonicalize_endpoint, extract_urls_with_status
+from src.normalizers.common.urls import (
+    canonicalize_endpoint,
+    extract_urls_with_status,
+    normalized_http_origin,
+    sanitize_uri_for_summary,
+)
 from src.normalizers.context import NormalizationContext
+
+MAX_OUT_OF_SCOPE_URIS = 100
 
 
 def _sites(report: dict[str, Any]) -> list[tuple[int | None, dict[str, Any]]]:
@@ -87,12 +94,25 @@ def normalize_zap_report(
     *,
     normalized_at: str | None = None,
 ) -> ToolNormalizationResult:
+    """Normalize in-scope ZAP instances and summarize filtered external scanner data.
+
+    ``report`` is an untrusted ZAP JSON object and ``context.target_base_url`` defines the sole
+    authorized HTTP origin. The result retains raw counts and JSON Pointer provenance while
+    omitting every instance outside that origin. Invalid target metadata raises ``ValueError``;
+    malformed report records retain the existing explicit ``TypeError``/``ValueError`` failures.
+    The function performs no I/O.
+    """
     normalized_at = normalized_at or utc_now()
+    target_origin = normalized_http_origin(context.target_base_url)
+    if target_origin is None:
+        raise ValueError("ZAP target base URL must be an absolute HTTP(S) origin without user information")
     findings: list[dict[str, Any]] = []
     raw_alerts = 0
     raw_instances = 0
     alerts_without_instances = 0
     text_parse_errors = 0
+    out_of_scope_instances = 0
+    out_of_scope_uris: set[str] = set()
     for site_index, site in _sites(report):
         alerts = site.get("alerts")
         if not isinstance(alerts, list):
@@ -129,8 +149,14 @@ def normalize_zap_report(
                 if not isinstance(instance, dict):
                     raise TypeError(f"ZAP instance {instance_index} must be an object")
                 uri = optional_string(instance.get("uri"))
+                if uri is None:
+                    raise ValueError(f"ZAP instance {instance_index} is missing URI location")
+                if normalized_http_origin(uri) != target_origin:
+                    out_of_scope_instances += 1
+                    out_of_scope_uris.add(sanitize_uri_for_summary(uri))
+                    continue
                 endpoint = canonicalize_endpoint(uri)
-                if uri is None or endpoint is None:
+                if endpoint is None:
                     raise ValueError(f"ZAP instance {instance_index} is missing URI location")
                 method_value = optional_string(instance.get("method"))
                 method = method_value.upper() if method_value is not None else None
@@ -203,6 +229,7 @@ def normalize_zap_report(
                     }],
                 })
                 findings.append(finding)
+    sorted_out_of_scope_uris = sorted(out_of_scope_uris)
     return ToolNormalizationResult(
         findings=findings,
         raw_counts={
@@ -214,5 +241,9 @@ def normalize_zap_report(
             "alerts_without_instances": alerts_without_instances,
             "text_parse_errors": text_parse_errors,
             "fingerprint_collisions": fingerprint_collision_count(findings),
+            "out_of_scope_instances_filtered": out_of_scope_instances,
+            "out_of_scope_unique_uri_count": len(sorted_out_of_scope_uris),
+            "out_of_scope_uris": sorted_out_of_scope_uris[:MAX_OUT_OF_SCOPE_URIS],
+            "out_of_scope_uris_truncated": len(sorted_out_of_scope_uris) > MAX_OUT_OF_SCOPE_URIS,
         },
     )
