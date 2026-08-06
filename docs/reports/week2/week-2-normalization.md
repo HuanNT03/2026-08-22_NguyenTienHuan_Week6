@@ -84,3 +84,23 @@ failure, and the CLI exits non-zero.
 
 Scanner diagnostics and recoverable parsing issues produce `partial` status. They are summary
 warnings, never unified findings.
+
+## ZAP scope hardening (post-Week 2)
+
+The raw ZAP report remains unchanged for provenance, but the current normalizer emits findings
+only when each instance URI has the exact HTTP origin of `target.base_url`. Scheme, normalized
+host, and effective port must all match; relative, malformed, or userinfo-bearing URIs fail
+closed. This output filter is defense in depth after the strict Automation Framework context,
+not a substitute for constraining spider and active scan traffic before requests are sent.
+
+For auditability, the ZAP entry in `normalization-summary.json` can include:
+
+- `out_of_scope_instances_filtered`: total raw instances excluded;
+- `out_of_scope_unique_uri_count`: number of distinct excluded URIs;
+- `out_of_scope_uris`: a deterministic, sorted sample capped at 100 entries;
+- `out_of_scope_uris_truncated`: whether the cap omitted additional unique URIs.
+
+Summary URIs are sanitized before storage: userinfo and fragments are removed, query parameter
+names may remain, and query values are discarded. Invalid values are represented as
+`<invalid-uri>`. These warning fields do not change the Unified Finding schema and do not modify
+the raw scanner artifact or its JSON Pointer provenance.

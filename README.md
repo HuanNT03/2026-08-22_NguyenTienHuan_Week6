@@ -79,8 +79,9 @@ make dast
 make down
 ```
 
-Kết quả nằm tại `reports/raw/zap.json`; metadata `reports/raw/zap.meta.json` có
-`scan_profile=baseline`. Nếu một bước lỗi trước cleanup, vẫn chạy `make down`.
+Kết quả gồm `reports/raw/zap.json`, metadata `reports/raw/zap.meta.json` có
+`scan_profile=baseline`, inventory `reports/raw/zap-endpoints.txt` và site tree
+`reports/raw/zap-site-tree.yaml`. Nếu một bước lỗi trước cleanup, vẫn chạy `make down`.
 
 ### Chạy ZAP Full Scan local (active)
 
@@ -97,8 +98,8 @@ make dast-zap-fullscan
 make down
 ```
 
-Ngoài `zap.json` và metadata có `scan_profile=full`, log chẩn đoán được ghi tại
-`logs/zap-fullscan-runner.log` và `logs/zap-fullscan-zap.out`.
+Ngoài bốn artifact ZAP giống Baseline và metadata có `scan_profile=full`, log chẩn đoán được
+ghi tại `logs/zap-fullscan-runner.log` và `logs/zap-fullscan-zap.out`.
 
 Baseline và Full Scan dùng chung `reports/raw/zap.json`; profile chạy sau ghi đè kết quả profile
 trước. Hãy sao chép hoặc upload report trước khi chuyển profile nếu cần giữ cả hai. Không chạy hai
@@ -206,29 +207,45 @@ Không cần cài CodeQL trên host; cần chạy `make setup-target` trước k
 
 `make dast` và `make dast-zap-fullscan` chỉ scan; chúng không build, start hoặc stop target.
 Hãy chạy `make build`, `make up`, `make wait` và `make smoke` trước. Cả hai dùng image đã pin
-`ghcr.io/zaproxy/zaproxy:2.17.0` và chỉ truy cập URL cố định `http://juice-shop:3000` trong
+`ghcr.io/zaproxy/zaproxy:2.17.0` và chỉ nhận target cố định `http://juice-shop:3000` trong
 network `sentinel-security`; runner không nhận target URL tùy ý.
 
-ZAP Baseline chạy passive scan. Khi Docker có ít nhất 4 GiB RAM, runner truyền đồng thời
-`-j --client-spider`; nếu thiếu RAM, Baseline dùng Traditional Spider. Client Spider render
-JavaScript để khám phá Angular routes/endpoints mà Traditional Spider chỉ đọc HTML và
-`<a href>` không nhìn thấy.
+Ba ZAP Automation Framework plan được version-control trong `configs/zap/`:
+`baseline.yaml`, `baseline-low-memory.yaml` và `full.yaml`. Mỗi plan dùng context `juice-shop`
+với exact origin `http://juice-shop:3000`, chạy ở protected mode, chỉ passive-scan message trong
+scope và đặt `scopeCheck: Strict` cho Client Spider. Full Scan còn gắn active scan tường minh vào
+context và URL này. Đây là guardrail ở scanner/proxy; Docker network hiện không phải egress
+firewall, vì vậy validator và normalizer vẫn kiểm tra fail-closed ở boundary đầu ra.
 
-ZAP Full Scan chạy spider rồi active scan có gửi payload kiểm thử. Runner Full Scan luôn truyền
-cả `-j` và `--client-spider`; thiếu một flag sẽ không đạt repository contract. Full Scan fail-fast
-khi Docker có dưới 4 GiB RAM thay vì âm thầm bỏ Client Spider. Traditional/Client Spider được
-giới hạn 10 phút, passive/start wait 10 phút và toàn bộ active scan 30 phút bằng
-`scanner.maxScanDurationInMins=30`.
+ZAP Baseline chạy Traditional Spider, Client Spider và passive scan. Khi Docker dưới 4 GiB RAM,
+runner chọn `baseline-low-memory.yaml` để bỏ Client Spider nhưng giữ nguyên context/scope.
+Client Spider render JavaScript để khám phá Angular routes/endpoints mà Traditional Spider chỉ
+đọc HTML và `<a href>` không nhìn thấy. ZAP Full Scan chạy thêm active scan có gửi payload kiểm
+thử; profile này fail-fast khi Docker dưới 4 GiB. Traditional/Client Spider được giới hạn 10
+phút, passive wait 10 phút và active scan tối đa 30 phút.
 
-Trước Full Scan, runner xác nhận core version khớp `ZAP_VERSION` và packaged script hỗ trợ
-`--client-spider`. ZAP daemon ghi `/zap/zap.out` qua bind mount thuộc UID/GID host; log được giữ
-tại `logs/zap-fullscan-zap.out`, còn stdout/stderr của packaged scan nằm tại
+Trước scan, runner dùng `zap.sh -autocheck` để validate plan. Full Scan còn xác nhận core version
+khớp `ZAP_VERSION`. ZAP daemon ghi `/zap/zap.out` qua bind mount thuộc UID/GID host; log được giữ
+tại `logs/zap-fullscan-zap.out`, còn stdout/stderr Automation Framework nằm tại
 `logs/zap-fullscan-runner.log` để dùng được cả local và CI.
 
-Cả Baseline và Full Scan ghi `reports/raw/zap.json` cùng `zap.meta.json`. Metadata phân biệt
-`scan_profile` là `baseline` hoặc `full`; scanner chạy sau ghi đè report ZAP trước đó và
-`make normalize` sẽ dùng report mới nhất. Exit code `1` hoặc `2` biểu thị findings và vẫn được
-xem là scan hoàn tất; exit code `3`, code lạ hoặc report không hợp lệ làm task thất bại.
+Cả Baseline và Full Scan ghi bốn artifact: `zap.json`, `zap.meta.json`,
+`zap-endpoints.txt` (toàn bộ URL export từ context) và `zap-site-tree.yaml` (site tree ZAP đã
+tạo). Validator yêu cầu hai export không rỗng và mọi URL phải thuộc exact Juice Shop origin.
+Các artifact này vẫn là raw, không đáng tin cậy và có thể chứa query value; không đưa trực tiếp
+vào prompt hoặc log. Metadata phân biệt `scan_profile` là `baseline` hoặc `full`; profile chạy
+sau ghi đè artifact trước. Automation exit code `0` là thành công, `2` là warning được chấp nhận;
+code khác hoặc artifact không hợp lệ làm task thất bại.
+
+URI `https://github.com/juice-shop/juice-shop` từng xuất hiện vì giao diện Juice Shop có link
+đi qua route same-origin `./redirect?to=https://github.com/juice-shop/juice-shop`. Với Client
+Spider ở chế độ mặc định Flexible, trình duyệt có thể điều hướng ra GitHub và tải thêm resource
+ngoài scope; Firefox/Client Spider cũng có thể tạo background request tới dịch vụ Mozilla.
+Flexible vì vậy có thể khiến passive findings và site tree chứa URI ngoài target, và trong một
+luồng Full Scan cấu hình scope không chặt có nguy cơ đưa endpoint đã khám phá ra ngoài vào các
+bước sau. Cấu hình Strict ngăn browser proxy request ngoài context; active scan còn bị khóa vào
+context/URL Juice Shop. Tác động dự kiến là các flow phụ thuộc OAuth, social link hoặc external
+provider không được đi hết, còn API same-origin cốt lõi vẫn được scan.
 
 Runner truyền `-silent` để không tự update hoặc cài add-on trong lúc scan; scanner behavior vì
 vậy bám theo image đã pin. Chỉ chạy Full Scan trên target được cấp phép và không dùng script
@@ -267,13 +284,22 @@ Mỗi scanner cần một cặp report/metadata trong `reports/raw/`:
 
 Metadata là input bắt buộc vì cung cấp scan run ID, thời điểm quét, phiên bản CLI và target
 identity cần cho audit/provenance của Unified Finding. `semgrep.sarif` và `zap.yaml` không phải
-input của normalizer.
+input của normalizer; hai export ZAP cũng chỉ phục vụ inventory/audit, không tạo Unified Finding.
+
+ZAP normalizer giữ raw report nguyên vẹn nhưng chỉ phát finding có HTTP origin trùng chính xác
+với `target.base_url`. Không nên lọc bằng substring hoặc chỉ lọc sau khi xuất báo cáo vì hostname
+giả mạo, scheme/port khác và active-scan input vẫn có thể lọt qua. Summary ghi số instance bị bỏ
+trong `out_of_scope_instances_filtered`, số URI duy nhất trong
+`out_of_scope_unique_uri_count`, danh sách đã sanitize trong `out_of_scope_uris` và cờ
+`out_of_scope_uris_truncated`. Danh sách được sort ổn định, bỏ userinfo/fragment/query value và
+giới hạn 100 URI để vừa audit được scope drift vừa tránh rò secret hoặc làm summary tăng vô hạn.
 
 Khi tải artifact từ GitHub Actions, giải nén report và sidecar tương ứng vào cùng
 `reports/raw/`. Với Full Scan, dùng cả `zap.json` và `zap.meta.json` trong artifact
 `zap-fullscan-raw-<run_id>`; không ghép report của một workflow với metadata của workflow khác.
 
-`make validate-reports` kiểm tra cả sáu artifact và liệt kê toàn bộ file thiếu hoặc không hợp lệ
+`make validate-reports` kiểm tra các report/metadata bắt buộc cùng hai export ZAP và liệt kê toàn
+bộ file thiếu hoặc không hợp lệ
 trước khi exit non-zero. `make normalize` vẫn tạo output nếu còn ít nhất một cặp hợp lệ: scanner
 thiếu report/metadata có `status: "skipped"`, `reason: "missing_input"` trong summary. File đã
 tồn tại nhưng rỗng, malformed hoặc metadata không hợp lệ có `status: "failed"`; findings hợp lệ
@@ -526,7 +552,8 @@ Trong trang GitHub Actions, mở workflow run và tải artifact:
 
 Ngoài artifact raw, `reports/raw/codeql.sarif` được upload bằng
 `github/codeql-action/upload-sarif@v4` để hiển thị trong tab **Security** của repository.
-Artifacts được giữ 14 ngày.
+Mỗi ZAP raw artifact chứa `zap.json`, `zap.meta.json`, `zap-endpoints.txt` và
+`zap-site-tree.yaml`. Artifacts được giữ 14 ngày.
 
 ## Cleanup
 
@@ -561,9 +588,8 @@ Sentinel. Để tải lại target mà vẫn giữ kết quả scan: `make clean
   version/asset trên release chính thức trước khi thử lại.
 - CodeQL báo `out of Java heap`: tăng memory Docker Engine/Desktop lên ít nhất 4 GiB rồi chạy
   lại; không giảm query suite hoặc bỏ qua query bị lỗi.
-- ZAP code 3 kèm `Failed to access summary file /tmp/zap_out.json`: kiểm tra Docker OOM events
-  và cấp ít nhất 4 GiB memory cho Docker Engine/Desktop; Client Spider chạy browser thật nên
-  cần nhiều memory hơn Traditional Spider.
+- ZAP Automation báo lỗi trước scan: chạy lại và đọc output `-autocheck`; không bỏ qua lỗi YAML
+  hoặc đổi sang packaged scan flags vì plan trong `configs/zap/` là scope contract.
 - Target dirty: không reset tự động; chạy `git -C target-app/juice-shop status`, review thay đổi,
   rồi dùng `make clean && make setup-target` nếu muốn tải lại hoàn toàn.
 - Sai commit/remote/tag: `make verify-target` in expected/actual; dùng full reset nếu clone không đúng.
@@ -571,10 +597,13 @@ Sentinel. Để tải lại target mà vẫn giữ kết quả scan: `make clean
   Client Spider là bắt buộc.
 - ZAP Full Scan hết thời gian: kiểm tra log spider/active scan; giới hạn local là 10/30 phút và
   GitHub job timeout là 75 phút.
-- ZAP Full Scan báo `Failed to start ZAP :(` hoặc code `3`: xem
+- ZAP Full Scan không khởi động hoặc trả code ngoài `0`/`2`: xem
   `logs/zap-fullscan-runner.log` và `logs/zap-fullscan-zap.out`; validator không chạy khi scanner
   chưa tạo report.
-- Full Scan preflight báo thiếu `--client-spider` hoặc sai version: image ứng với tag hiện tại
-  không đáp ứng contract; không bỏ flag hoặc bỏ qua kiểm tra để tạo report không tương thích.
-- ZAP code 1/2: đây là findings, không phải scanner crash; code 3 mới là execution failure.
+- Full Scan preflight báo sai version hoặc Automation plan không hợp lệ: image/config hiện tại
+  không đáp ứng contract; không bỏ qua preflight để tạo report không tương thích.
+- Thiếu/rỗng `zap-endpoints.txt` hoặc `zap-site-tree.yaml`: scan chưa hoàn tất export job; xem
+  Automation output. Nếu export chứa origin ngoài Juice Shop, coi là scope regression và không
+  upload report như một scan hợp lệ.
+- ZAP code `2` là warning được chấp nhận; code `1`, `3` hoặc code khác là execution failure.
 - ZAP không thấy network: bảo đảm `make up` thành công và network `sentinel-security` tồn tại.

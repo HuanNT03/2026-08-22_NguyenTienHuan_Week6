@@ -57,4 +57,16 @@ grep -A2 'name: Stop Compose resources' "$fullscan_workflow" | grep -q 'if: alwa
   fail "Full Scan workflow must always stop Compose resources"
 grep -q '^### Chạy ZAP Baseline local (passive)$' "$PROJECT_ROOT/README.md" || fail "README must separate the local Baseline flow"
 grep -q '^### Chạy ZAP Full Scan local (active)$' "$PROJECT_ROOT/README.md" || fail "README must separate the local Full Scan flow"
+grep -q 'configs/zap/' "$PROJECT_ROOT/README.md" || fail "README must document ZAP Automation plans"
+grep -q 'scopeCheck.*Strict' "$PROJECT_ROOT/README.md" || fail "README must document strict Client Spider scope"
+grep -q 'zap-endpoints.txt' "$PROJECT_ROOT/README.md" || fail "README must document the endpoint inventory"
+grep -q 'zap-site-tree.yaml' "$PROJECT_ROOT/README.md" || fail "README must document the ZAP site tree"
+grep -q 'out_of_scope_instances_filtered' "$PROJECT_ROOT/README.md" || \
+  fail "README must document normalization scope warnings"
+grep -q 'github.com/juice-shop/juice-shop' "$PROJECT_ROOT/README.md" || \
+  fail "README must explain the observed GitHub URI"
+grep -q 'zap-endpoints.txt' "$PROJECT_ROOT/docs/reports/week1/endpoints.md" || \
+  fail "Endpoint review guidance must reference the generated inventory"
+grep -q 'post-Week 2' "$PROJECT_ROOT/docs/reports/week2/week-2-normalization.md" || \
+  fail "Historical normalization documentation must label the later scope hardening"
 pass "ZAP Full Scan workflow is manual-only, bounded, auditable and always cleaned up"

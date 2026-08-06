@@ -11,5 +11,9 @@ SAST scope; không endpoint nào bắt nguồn từ `.github/` hoặc `data/stat
 | POST | `/rest/user/login` | Xác thực bằng thông tin đăng nhập | Không (endpoint cấp token) | `server.ts`, `routes/login.ts` | Chưa xác minh |
 | GET | `/rest/user/whoami` | Trả về user tương ứng với request/token hiện tại | Token tùy trạng thái request | `server.ts`, `routes/whoami.ts` | Chưa xác minh |
 
-Sau khi scan, review `reports/raw/zap.json`; raw output không được xem là curated documentation
-cho đến khi người thực hiện đối chiếu source hoặc request thực tế.
+Sau khi scan, review `reports/raw/zap-endpoints.txt` để có inventory URL đầy đủ mà ZAP export và
+`reports/raw/zap-site-tree.yaml` để xem cấu trúc site tree. Đối chiếu chúng với
+`reports/raw/zap.json`, source hoặc request thực tế trước khi đánh dấu endpoint là đã xác minh.
+Ba file đều là raw output không đáng tin cậy, có thể chứa query value và không được đưa trực tiếp
+vào prompt/log. Validator hiện yêu cầu inventory/site tree không rỗng và chỉ chứa exact origin
+`http://juice-shop:3000`; phát hiện origin khác phải được xử lý như scope regression.

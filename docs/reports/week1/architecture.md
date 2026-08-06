@@ -20,12 +20,16 @@ flowchart LR
   App --> ZAP[ZAP Baseline]
   Semgrep --> SRaw[semgrep.json]
   ZAP --> ZRaw[zap.json]
+  ZAP --> ZInventory[endpoint inventory]
+  ZAP --> ZTree[site tree]
   SRaw --> Normalize[Unified normalizer]
   ZRaw --> Normalize
   CodeQL[CodeQL SARIF] --> Normalize
   Normalize --> Unified[unified-findings.jsonl]
   SRaw --> Artifacts[CI artifacts]
   ZRaw --> Artifacts
+  ZInventory --> Artifacts
+  ZTree --> Artifacts
   Unified --> Artifacts
   Quality[quality] --> SemgrepJob[SAST job]
   Quality --> DASTJob[DAST job]
@@ -34,9 +38,11 @@ flowchart LR
 Semgrep và CodeQL đọc source read-only; chỉ report mount có quyền ghi. Cả hai dùng cùng một
 chính sách runtime nhưng giữ cấu hình riêng: `configs/semgrep/includes.txt` + `.semgrepignore`
 cho Semgrep, `configs/codeql/code-scanning.yml` cho CodeQL. Validator hậu kiểm mọi source path
-trong JSON/SARIF để ngăn scope drift giữa local và CI. ZAP spider và passive scan target qua
-Docker network. Raw reports nằm trong `reports/raw/` ở local và được upload làm CI artifact,
-không commit vào Git.
+trong JSON/SARIF để ngăn scope drift giữa local và CI. ZAP dùng Automation Framework plan trong
+`configs/zap/`: exact Juice Shop context, protected mode, passive scan chỉ trong scope và Client
+Spider `scopeCheck: Strict`; Full Scan khóa active scan vào cùng context/URL. ZAP export thêm
+`zap-endpoints.txt` và `zap-site-tree.yaml` để audit phần đã khám phá. Raw reports nằm trong
+`reports/raw/` ở local và được upload làm CI artifact, không commit vào Git.
 
 Scope runtime gồm Express entry point/routes, business/data layer được runtime gọi, view/config
 và Angular source. CI/test/build output, `node_modules/` và `data/static/codefixes/` không tham
@@ -48,6 +54,8 @@ ground truth; đây là pipeline đánh giá riêng, không phải source đang 
 - Source target là dependency bên ngoài, được pin và kiểm tra nhưng không thuộc Sentinel.
 - Semgrep Registry rulesets được tải từ dịch vụ remote và chưa được pin nội dung.
 - Container scanner chỉ được cấp source/config read-only hoặc endpoint/network cần thiết.
+- ZAP scope là application guardrail, không phải network egress firewall; validator và normalizer
+  tiếp tục chặn dữ liệu ngoài exact target origin ở output boundary.
 - Dependency đã cài không được quét như first-party source; SCA/SBOM là trust boundary và job riêng.
 - Dữ liệu từ target và scanner output là dữ liệu chưa tin cậy cho các component AI tương lai.
 - CodeQL dùng `--sarif-add-snippets`, nên raw SARIF có thể chứa source code quanh từng result
