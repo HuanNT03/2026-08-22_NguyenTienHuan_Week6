@@ -33,6 +33,8 @@ fullscan_case_line="$(grep -n 'case "$zap_exit_code" in' "$fullscan_script" | he
 fullscan_validate_line="$(grep -n 'validate-reports.sh.*zap' "$fullscan_script" | head -n1 | cut -d: -f1)"
 ((fullscan_validate_line > fullscan_case_line)) || fail "Full Scan must classify the scanner exit code before validating its report"
 grep -q '^dast-zap-fullscan:' "$PROJECT_ROOT/Makefile" || fail "ZAP Full Scan Make target is missing"
+grep -q '^dast-zap-admin:' "$PROJECT_ROOT/Makefile" || fail "ZAP Admin Baseline Make target is missing"
+grep -q '^dast-zap-fullscan-admin:' "$PROJECT_ROOT/Makefile" || fail "ZAP Admin Full Scan Make target is missing"
 grep -q 'ZAP_CLIENT_SPIDER_MIN_BYTES' "$fullscan_script" || fail "Full Scan must enforce its Client Spider memory floor"
 grep -q 'requires at least 4 GiB Docker memory' "$fullscan_script" || fail "Full Scan must fail clearly below the memory floor"
 grep -q -- '--scan-profile full' "$fullscan_script" || fail "ZAP Full Scan metadata must declare its scan profile"

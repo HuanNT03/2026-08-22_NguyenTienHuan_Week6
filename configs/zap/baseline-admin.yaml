@@ -22,10 +22,10 @@ env:
           headerName: Authorization
           headerPayload: Bearer {%response:json:data.token%}
       users:
-        - name: user
+        - name: admin
           credentials:
-            username: user@juice-sh.op
-            password: user123
+            username: admin@juice-sh.op
+            password: admin123
   configs:
     view.mode: protect
   parameters:
@@ -41,9 +41,16 @@ jobs:
   - type: spider
     parameters:
       context: juice-shop
-      user: user
+      user: admin
       url: http://juice-shop:3000
       maxDuration: 1
+  - type: spiderClient
+    parameters:
+      context: juice-shop
+      user: admin
+      url: http://juice-shop:3000
+      maxDuration: 1
+      scopeCheck: Strict
   - type: passiveScan-wait
     parameters:
       maxDuration: 10

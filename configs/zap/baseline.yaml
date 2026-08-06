@@ -6,6 +6,26 @@ env:
         - http://juice-shop:3000
       includePaths:
         - '^http://juice-shop:3000(?:$|[/?#].*)$'
+      authentication:
+        method: json
+        parameters:
+          loginPageUrl: http://juice-shop:3000/rest/user/login
+          loginRequestUrl: http://juice-shop:3000/rest/user/login
+          loginRequestBody: '{"email":"{%username%}","password":"{%password%"}'
+        verification:
+          method: response
+          loggedOutRegex: '(?i)invalid email or password|unauthorized'
+          loggedInRegex: '"status"\s*:\s*"success"'
+      sessionManagement:
+        method: headers
+        parameters:
+          headerName: Authorization
+          headerPayload: Bearer {%response:json:data.token%}
+      users:
+        - name: user
+          credentials:
+            username: user@juice-sh.op
+            password: user123
   configs:
     view.mode: protect
   parameters:
@@ -21,11 +41,13 @@ jobs:
   - type: spider
     parameters:
       context: juice-shop
+      user: user
       url: http://juice-shop:3000
       maxDuration: 1
   - type: spiderClient
     parameters:
       context: juice-shop
+      user: user
       url: http://juice-shop:3000
       maxDuration: 1
       scopeCheck: Strict

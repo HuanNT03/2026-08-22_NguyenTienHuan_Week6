@@ -156,7 +156,7 @@ Chạy `make help` để xem danh sách đầy đủ. Các nhóm lệnh chính:
 | Môi trường | `doctor`, `lint`, `test`, `quality` |
 | Target | `setup-target`, `verify-target` |
 | Runtime | `build`, `up`, `wait`, `smoke`, `status`, `logs`, `down` |
-| Scanner | `sast`, `sast-semgrep`, `sast-codeql`, `dast`, `dast-zap-fullscan`, `dast-sqlmap`, `validate-reports` |
+| Scanner | `sast`, `sast-semgrep`, `sast-codeql`, `dast`, `dast-zap-fullscan`, `dast-zap-admin`, `dast-zap-fullscan-admin`, `dast-sqlmap`, `validate-reports` |
 | Normalization | `normalize` |
 | Knowledge Base | `kb-validate`, `kb-build-documents`, `kb-build-index`, `kb-build`, `kb-rebuild` |
 | Knowledge Search | `kb-search`, `kb-inspect`, `kb-stats`, `kb-test`, `kb-lint` |
@@ -185,7 +185,10 @@ Sentinel sử dụng các công cụ SAST và DAST được cấu hình và gi�
 
 ### 3. OWASP ZAP DAST (Baseline & Full Scan)
 - **Image & Target**: Image `ghcr.io/zaproxy/zaproxy:2.17.0`, quét target cố định `http://juice-shop:3000` trong network `sentinel-security`.
-- **Automation Plans**: Đặt tại `configs/zap/` (`baseline.yaml`, `baseline-low-memory.yaml`, `full.yaml`).
+- **Lệnh Quét & Authentication**:
+  - Mặc định (`make dast` / `make dast-zap-fullscan`): Quét Authenticated bằng tài khoản User (`user@juice-sh.op`).
+  - Quét riêng Admin (`make dast-zap-admin` / `make dast-zap-fullscan-admin`): Quét Authenticated bằng tài khoản Admin (`admin@juice-sh.op`).
+- **Automation Plans**: Đặt tại `configs/zap/` (`baseline.yaml`, `full.yaml` cho User; `baseline-admin.yaml`, `full-admin.yaml` cho Admin).
 - **Strict Scope Guardrail**: Đặt `scopeCheck: Strict` cho Client Spider để ngăn browser điều hướng ra bên ngoài target (ví dụ URI `https://github.com/juice-shop/juice-shop`).
 - **Artifacts**: Xuất 4 file: `zap.json`, `zap.meta.json`, `zap-endpoints.txt` (endpoint inventory) và `zap-site-tree.yaml` (ZAP site tree). Log Full Scan ghi tại `logs/zap-fullscan-runner.log`.
 

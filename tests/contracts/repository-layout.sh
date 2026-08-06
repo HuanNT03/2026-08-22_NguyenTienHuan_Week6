@@ -12,7 +12,7 @@ required_files=(
   configs/tool-versions.env target-app/TARGET.lock target-app/README.md
   configs/semgrep/includes.txt configs/semgrep/.semgrepignore configs/codeql/code-scanning.yml
   scripts/setup-target.sh scripts/verify-target.sh scripts/wait-for-target.sh scripts/smoke-test.sh
-  scripts/run-sast.sh scripts/run-dast.sh scripts/run-dast-zap-fullscan.sh scripts/run-dast-sqlmap.sh scripts/validate-reports.sh scripts/validate-sast-scope.py
+  scripts/run-sast.sh scripts/run-dast.sh scripts/run-dast-zap-fullscan.sh scripts/run-dast-admin.sh scripts/run-dast-zap-fullscan-admin.sh scripts/run-dast-sqlmap.sh scripts/validate-reports.sh scripts/validate-sast-scope.py
   scripts/clean.sh docker/codeql/Dockerfile docker/sqlmap/Dockerfile
   docs/reports/week1/architecture.md docs/reports/week1/endpoints.md
   docs/reports/week1/week-1-findings.md
