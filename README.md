@@ -169,179 +169,48 @@ và Python scripts, sau đó kiểm tra Bash syntax cùng Docker Compose configu
 
 ## SAST và DAST
 
-`make sast-semgrep` chạy Semgrep theo đúng luồng hiện có; `make sast` gọi target này trước rồi
-gọi `make sast-codeql`. Semgrep chạy image `semgrep/semgrep:1.171.0` trên duy nhất
-phần runtime của `target-app/juice-shop/`, dùng các Registry ruleset `p/owasp-top-ten`,
-`p/javascript`, `p/nodejs` và `p/expressjs`. Report được ghi tại
-`reports/raw/semgrep.json`.
+Sentinel sử dụng các công cụ SAST và DAST được cấu hình và giới hạn scope chặt chẽ:
 
-Scope SAST được quản lý bằng allowlist `configs/semgrep/includes.txt` và denylist
-`configs/semgrep/.semgrepignore`. Semgrep chuyển hai danh sách này thành `--include`/`--exclude`;
-CodeQL có cấu hình tương đương, độc lập tại `configs/codeql/code-scanning.yml`. Phần được quét
-gồm entry point `app.ts`, `server.ts`, backend `routes/`, `lib/`, `models/`, runtime data/config,
-views và Angular `frontend/src/`. Test/spec, CI config, output build, dependency đã cài và
-`data/static/codefixes/` bị loại. Mỗi scanner chạy validator hậu kiểm report; chỉ một artifact
-ngoài scope cũng làm job thất bại.
+### 1. Semgrep SAST
+- **Lệnh**: `make sast-semgrep` (chạy riêng) hoặc `make sast` (chạy Semgrep rồi CodeQL).
+- **Cấu hình**: Image `semgrep/semgrep:1.171.0`, rulesets `p/owasp-top-ten`, `p/javascript`, `p/nodejs`, `p/expressjs`.
+- **Scope**: Cho phép theo `configs/semgrep/includes.txt` và loại trừ theo `configs/semgrep/.semgrepignore`. Loại bỏ `node_modules/`, test, CI và static codefixes.
+- **Yêu cầu**: Biến môi trường `SEMGREP_APP_TOKEN` (export trong shell hoặc đặt trong `.env`). Output: `reports/raw/semgrep.json`.
 
-`node_modules/` không được đưa vào SAST. Semgrep và CodeQL ở pipeline này phân tích source để
-tìm lỗi luồng dữ liệu/cách dùng API; chúng không thay thế Software Composition Analysis (SCA)
-để đối chiếu package/version với cơ sở dữ liệu CVE. Khi bổ sung SCA, nên quét manifest/lockfile
-hoặc SBOM bằng một job riêng và giữ kết quả tách khỏi phép đo overlap SAST/DAST.
+### 2. CodeQL SAST
+- **Lệnh**: `make sast-codeql`.
+- **Image & Build**: Build từ `ubuntu:24.04` và CodeQL bundle dựa trên `CODEQL_VERSION` trong `configs/tool-versions.env`.
+- **Phân tích & Snippets**: Chạy suite `javascript-security-extended.qls`. Truyền `--sarif-add-snippets` để đưa 2 dòng ngữ cảnh mã nguồn vào raw SARIF.
+- **Output**: `reports/raw/codeql.sarif`. Database tạm trong container tự xóa sau khi hoàn tất.
 
-Scan SAST yêu cầu `SEMGREP_APP_TOKEN` hợp lệ. Local runner ưu tiên biến đã export, sau đó đọc
-đúng khóa này từ `.env` mà không thực thi toàn bộ file:
+### 3. OWASP ZAP DAST (Baseline & Full Scan)
+- **Image & Target**: Image `ghcr.io/zaproxy/zaproxy:2.17.0`, quét target cố định `http://juice-shop:3000` trong network `sentinel-security`.
+- **Automation Plans**: Đặt tại `configs/zap/` (`baseline.yaml`, `baseline-low-memory.yaml`, `full.yaml`).
+- **Strict Scope Guardrail**: Đặt `scopeCheck: Strict` cho Client Spider để ngăn browser điều hướng ra bên ngoài target (ví dụ URI `https://github.com/juice-shop/juice-shop`).
+- **Artifacts**: Xuất 4 file: `zap.json`, `zap.meta.json`, `zap-endpoints.txt` (endpoint inventory) và `zap-site-tree.yaml` (ZAP site tree). Log Full Scan ghi tại `logs/zap-fullscan-runner.log`.
 
-```bash
-export SEMGREP_APP_TOKEN='<token>'
-make sast-semgrep
-```
-
-Có thể thay bằng cách điền token vào `.env`. Không echo, truyền token trên command line hoặc
-commit `.env`. Scanner chỉ truyền tên biến vào container và sẽ fail trước khi scan nếu token
-thiếu, rỗng hoặc còn là placeholder. Sau scan, task cũng từ chối report nếu metadata finding
-vẫn chứa `"requires login"`.
-
-Đăng nhập Registry cho phép Semgrep trả metadata đầy đủ và các rule/tính năng bổ sung tùy theo
-entitlement của deployment. Luồng này vẫn dùng `semgrep scan`, không upload kết quả bằng
-`semgrep ci` và không tự thay đổi sản phẩm đã bật trên Semgrep AppSec Platform.
-
-Scanner image được pin version, nhưng Semgrep Registry là cấu hình remote: nội dung ruleset
-có thể thay đổi dù image không đổi. Đây là giới hạn được chấp nhận trong Week 1. Ruleset mở
-rộng chưa bật mặc định gồm `p/typescript`, `p/security-audit`, `p/cwe-top-25`, `p/docker`;
-secret scanning nên là bước riêng trong tương lai.
-
-`make sast-codeql` build image nội bộ từ `ubuntu:24.04` và CodeQL bundle chính thức. Version
-được đọc duy nhất từ `CODEQL_VERSION` trong `configs/tool-versions.env`; Dockerfile và CI tự
-dựng URL release tương ứng. Bundle cùng file `.checksum.txt` được tải từ
-`github/codeql-action/releases` và phải vượt qua `sha256sum -c` trước khi giải nén.
-
-CodeQL tạo database JavaScript/TypeScript tại `/tmp/codeql-db` trong container, sau đó chạy
-suite `javascript-security-extended.qls` với ngân sách RAM 3000 MiB, query help và ghi SARIF
-tại `reports/raw/codeql.sarif`. Cả local runner và CI truyền `--sarif-add-snippets`; CodeQL vì
-vậy thêm `physicalLocation.region.snippet.text` cho các vị trí kết quả, gồm hai dòng ngữ cảnh
-trước và sau vị trí được báo cáo. Cờ này chỉ bổ sung code snippet vào raw SARIF, không thêm toàn
-bộ nội dung file như `--sarif-add-file-contents`.
-
-Unified Findings v2 đưa scanner snippet và source context vào structured `evidence`, nhưng vẫn
-không copy snippet vào `data_flow.content`. Evidence chưa được redaction hoặc truncation và phải
-được coi là dữ liệu không đáng tin cậy, có thể nhạy cảm; không đưa trực tiếp vào prompt của Agent
-trước khi có guardrail phù hợp. Database CodeQL không được mount nên tự mất khi container `--rm`
-kết thúc. Source Juice Shop và cấu hình scope được mount read-only; report được ghi bằng UID/GID
-của host để tránh file thuộc sở hữu root. Target luôn gọi `docker compose build` trước scan và
-dựa vào Docker layer cache, vì vậy lần chạy sau chỉ rebuild khi version hoặc Dockerfile thay đổi.
-
-Service `codeql-scan` thuộc Compose profile `scan`, nên không chạy theo `docker compose up`.
-Không cần cài CodeQL trên host; cần chạy `make setup-target` trước khi scan.
-
-`make dast`, `make dast-zap-fullscan` và `make dast-sqlmap` chỉ scan; chúng không build, start hoặc
-stop target. Hãy chạy `make build`, `make up`, `make wait` và `make smoke` trước. Hai ZAP command dùng image đã pin
-`ghcr.io/zaproxy/zaproxy:2.17.0` và chỉ nhận target cố định `http://juice-shop:3000` trong
-network `sentinel-security`; runner không nhận target URL tùy ý.
-
-Ba ZAP Automation Framework plan được version-control trong `configs/zap/`:
-`baseline.yaml`, `baseline-low-memory.yaml` và `full.yaml`. Mỗi plan dùng context `juice-shop`
-với exact origin `http://juice-shop:3000`, chạy ở protected mode, chỉ passive-scan message trong
-scope và đặt `scopeCheck: Strict` cho Client Spider. Full Scan còn gắn active scan tường minh vào
-context và URL này. Đây là guardrail ở scanner/proxy; Docker network hiện không phải egress
-firewall, vì vậy validator và normalizer vẫn kiểm tra fail-closed ở boundary đầu ra.
-
-ZAP Baseline chạy Traditional Spider, Client Spider và passive scan. Khi Docker dưới 4 GiB RAM,
-runner chọn `baseline-low-memory.yaml` để bỏ Client Spider nhưng giữ nguyên context/scope.
-Client Spider render JavaScript để khám phá Angular routes/endpoints mà Traditional Spider chỉ
-đọc HTML và `<a href>` không nhìn thấy. ZAP Full Scan chạy thêm active scan có gửi payload kiểm
-thử; profile này fail-fast khi Docker dưới 4 GiB. Traditional/Client Spider được giới hạn 10
-phút, passive wait 10 phút và active scan tối đa 30 phút.
-
-Trước scan, runner dùng `zap.sh -autocheck` để validate plan. Full Scan còn xác nhận core version
-khớp `ZAP_VERSION`. ZAP daemon ghi `/zap/zap.out` qua bind mount thuộc UID/GID host; log được giữ
-tại `logs/zap-fullscan-zap.out`, còn stdout/stderr Automation Framework nằm tại
-`logs/zap-fullscan-runner.log` để dùng được cả local và CI.
-
-Cả Baseline và Full Scan ghi bốn artifact: `zap.json`, `zap.meta.json`,
-`zap-endpoints.txt` (toàn bộ URL export từ context) và `zap-site-tree.yaml` (site tree ZAP đã
-tạo). Validator yêu cầu hai export không rỗng và mọi URL phải thuộc exact Juice Shop origin.
-Các artifact này vẫn là raw, không đáng tin cậy và có thể chứa query value; không đưa trực tiếp
-vào prompt hoặc log. Metadata phân biệt `scan_profile` là `baseline` hoặc `full`; profile chạy
-sau ghi đè artifact trước. Automation exit code `0` là thành công, `2` là warning được chấp nhận;
-code khác hoặc artifact không hợp lệ làm task thất bại.
-
-URI `https://github.com/juice-shop/juice-shop` từng xuất hiện vì giao diện Juice Shop có link
-đi qua route same-origin `./redirect?to=https://github.com/juice-shop/juice-shop`. Với Client
-Spider ở chế độ mặc định Flexible, trình duyệt có thể điều hướng ra GitHub và tải thêm resource
-ngoài scope; Firefox/Client Spider cũng có thể tạo background request tới dịch vụ Mozilla.
-Flexible vì vậy có thể khiến passive findings và site tree chứa URI ngoài target, và trong một
-luồng Full Scan cấu hình scope không chặt có nguy cơ đưa endpoint đã khám phá ra ngoài vào các
-bước sau. Cấu hình Strict ngăn browser proxy request ngoài context; active scan còn bị khóa vào
-context/URL Juice Shop. Tác động dự kiến là các flow phụ thuộc OAuth, social link hoặc external
-provider không được đi hết, còn API same-origin cốt lõi vẫn được scan.
-
-Runner truyền `-silent` để không tự update hoặc cài add-on trong lúc scan; scanner behavior vì
-vậy bám theo image đã pin. Chỉ chạy Full Scan trên target được cấp phép và không dùng script
-này để scan production hay hệ thống ngoài `TARGET.lock`.
-
-Các scanner container chạy bằng UID/GID của host để raw reports không thuộc sở hữu root.
+### 4. sqlmap DAST (Bounded Active Scan)
+- **Lệnh**: `make dast-sqlmap`.
+- **Scope**: Chỉ kiểm thử tham số `q` tại `GET /rest/products/search?q=apple` bằng image `sentinel/sqlmap:1.10.7`.
+- **Output**: `reports/raw/sqlmap.json` và log `logs/sqlmap-runner.log`.
 
 ## Unified findings normalization
 
-Mỗi scanner tạo raw report cùng sidecar metadata tại scan boundary. Sau khi chạy đủ SAST và
-DAST, `make normalize` ghi `reports/normalized/unified-findings-YYYYMMDDTHHMMSSZ.jsonl` và
-`normalization-summary.json`. Lệnh in exact JSONL path ra stdout để downstream truyền path một
-cách tường minh, không tìm file mới nhất bằng glob. Contract v1 lịch sử nằm tại
-[`docs/reports/week2/week-2-normalization.md`](docs/reports/week2/week-2-normalization.md); evidence
-v2 và migration được mô tả tại
-[`docs/reports/week3/week-3-evidence-enrichment.md`](docs/reports/week3/week-3-evidence-enrichment.md).
+Lệnh `make normalize` chuẩn hóa các raw report từ scanner thành định dạng thống nhất tại `reports/normalized/unified-findings-YYYYMMDDTHHMMSSZ.jsonl` và `normalization-summary.json`.
 
-Normalizer dùng các dependency Python đã cài trong project virtualenv. Luôn kích hoạt `.venv`
-trong shell hiện tại trước khi validate hoặc normalize report:
-
-```bash
-make install
-source .venv/bin/activate
-make validate-reports
-normalized_path="$(make normalize)"
-printf '%s\n' "$normalized_path"
-```
-
-Mỗi scanner cần một cặp report/metadata trong `reports/raw/`:
-
-| Scanner | Finding report | Metadata sidecar |
+### Các cặp Report & Metadata bắt buộc (`reports/raw/`)
+| Scanner | Raw Finding Report | Sidecar Metadata |
 | --- | --- | --- |
 | Semgrep | `semgrep.json` | `semgrep.meta.json` |
-| ZAP Baseline hoặc Full Scan | `zap.json` | `zap.meta.json` |
+| ZAP | `zap.json` | `zap.meta.json` |
 | CodeQL | `codeql.sarif` | `codeql.meta.json` |
 
-Metadata là input bắt buộc vì cung cấp scan run ID, thời điểm quét, phiên bản CLI và target
-identity cần cho audit/provenance của Unified Finding. `semgrep.sarif` và `zap.yaml` không phải
-input của normalizer; hai export ZAP cũng chỉ phục vụ inventory/audit, không tạo Unified Finding.
-`sqlmap.json` là raw report local độc lập trong v1, nên không thuộc bảng này và không được
-normalizer đọc.
+*(Lưu ý: `sqlmap.json` là raw report local v1 độc lập, không đưa vào normalizer).*
 
-ZAP normalizer giữ raw report nguyên vẹn nhưng chỉ phát finding có HTTP origin trùng chính xác
-với `target.base_url`. Không nên lọc bằng substring hoặc chỉ lọc sau khi xuất báo cáo vì hostname
-giả mạo, scheme/port khác và active-scan input vẫn có thể lọt qua. Summary ghi số instance bị bỏ
-trong `out_of_scope_instances_filtered`, số URI duy nhất trong
-`out_of_scope_unique_uri_count`, danh sách đã sanitize trong `out_of_scope_uris` và cờ
-`out_of_scope_uris_truncated`. Danh sách được sort ổn định, bỏ userinfo/fragment/query value và
-giới hạn 100 URI để vừa audit được scope drift vừa tránh rò secret hoặc làm summary tăng vô hạn.
-
-Khi tải artifact từ GitHub Actions, giải nén report và sidecar tương ứng vào cùng
-`reports/raw/`. Với Full Scan, dùng cả `zap.json` và `zap.meta.json` trong artifact
-`zap-fullscan-raw-<run_id>`; không ghép report của một workflow với metadata của workflow khác.
-
-`make validate-reports` kiểm tra các report/metadata bắt buộc cùng hai export ZAP và liệt kê toàn
-bộ file thiếu hoặc không hợp lệ
-trước khi exit non-zero. `make normalize` vẫn tạo output nếu còn ít nhất một cặp hợp lệ: scanner
-thiếu report/metadata có `status: "skipped"`, `reason: "missing_input"` trong summary. File đã
-tồn tại nhưng rỗng, malformed hoặc metadata không hợp lệ có `status: "failed"`; findings hợp lệ
-từ scanner khác vẫn được ghi nhưng command exit non-zero. Nếu không có cặp nào thành công,
-normalizer không tạo success output giả.
-
-Inventory và quyết định thiết kế cho Security Knowledge Base được theo dõi tại
-[`docs/reports/week2/week-2-knowledgebase.md`](docs/reports/week2/week-2-knowledgebase.md).
-
-Integration tests dùng các scanner snapshot cố định trong `tests/fixtures/scanners/`. Các file
-cùng tên dưới `reports/raw/` chỉ là output runtime đã được ignore; chạy scanner hoặc
-`make clean-reports` vì vậy không sửa hay xóa fixture của test.
+### Quy tắc xử lý
+- **Lọc Out-of-Scope**: ZAP normalizer chỉ giữ lại các finding có HTTP origin trùng khớp chính xác với `target.base_url`. Số instance ngoài scope bị bỏ được ghi vào `out_of_scope_instances_filtered` trong summary.
+- **Validation & Partial Failure**: `make validate-reports` kiểm tra các file rỗng/thiếu/malformed trước khi scan. Khi normalize, nếu thiếu input scanner sẽ có status `skipped` (`missing_input`), scanner hỏng có status `failed`. Chỉ cần ít nhất 1 cặp scanner hợp lệ, output normalized vẫn được tạo.
+- **Thực thi**: Kích hoạt môi trường `.venv`, chạy `make validate-reports` rồi `make normalize`.
 
 ## Tìm kiếm tài liệu bảo mật bằng từ khóa
 
