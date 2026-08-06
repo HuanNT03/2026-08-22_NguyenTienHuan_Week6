@@ -12,17 +12,19 @@ VERSIONS_FILE="$PROJECT_ROOT/configs/tool-versions.env"
 REPORT_DIR="$PROJECT_ROOT/reports/raw"
 REPORT_FILE="$REPORT_DIR/zap.json"
 META_FILE="$REPORT_DIR/zap.meta.json"
+ZAP_CONFIG_DIR="$PROJECT_ROOT/configs/zap"
+ZAP_AUTOMATION_PLAN="$ZAP_CONFIG_DIR/baseline.yaml"
+ZAP_AUTOMATION_PLAN_CONTAINER="/zap/configs/baseline.yaml"
 HOST_USER="$(id -u):$(id -g)"
 NETWORK_NAME="sentinel-security"
 
 readonly ZAP_MODERN_SPIDER_MIN_BYTES=$((4 * 1024 * 1024 * 1024))
 docker_memory_bytes="$(docker info --format '{{.MemTotal}}')"
-zap_spider_args=()
-
 if (( docker_memory_bytes >= ZAP_MODERN_SPIDER_MIN_BYTES )); then
-  zap_spider_args=(-j --client-spider)
   log "ZAP modern spider enabled (${docker_memory_bytes} bytes available)."
 else
+  ZAP_AUTOMATION_PLAN="$ZAP_CONFIG_DIR/baseline-low-memory.yaml"
+  ZAP_AUTOMATION_PLAN_CONTAINER="/zap/configs/baseline-low-memory.yaml"
   log "ZAP modern spider disabled: ${docker_memory_bytes} bytes available; using traditional spider."
 fi
 
@@ -51,6 +53,15 @@ docker run --rm \
   "$ZAP_IMAGE" \
   zap.sh -version
 
+log "ZAP Automation plan: $ZAP_AUTOMATION_PLAN"
+docker run --rm \
+  --user "$HOST_USER" \
+  -e HOME=/tmp \
+  -e JAVA_TOOL_OPTIONS=-Duser.home=/tmp \
+  --mount "type=bind,src=$ZAP_CONFIG_DIR,dst=/zap/configs,ro" \
+  "$ZAP_IMAGE" \
+  zap.sh -cmd -silent -autocheck "$ZAP_AUTOMATION_PLAN_CONTAINER"
+
 set +e
 docker run --rm \
   --user "$HOST_USER" \
@@ -58,12 +69,9 @@ docker run --rm \
   -e JAVA_TOOL_OPTIONS=-Duser.home=/tmp \
   --network "$NETWORK_NAME" \
   -v "$REPORT_DIR:/zap/wrk:rw" \
+  --mount "type=bind,src=$ZAP_CONFIG_DIR,dst=/zap/configs,ro" \
   "$ZAP_IMAGE" \
-  zap-baseline.py \
-  -t http://juice-shop:3000 \
-  "${zap_spider_args[@]}" \
-  -J zap.json \
-  -z "-silent"
+  zap.sh -cmd -silent -autorun "$ZAP_AUTOMATION_PLAN_CONTAINER"
 zap_exit_code=$?
 set -e
 
@@ -71,9 +79,7 @@ log "ZAP Baseline exit code: $zap_exit_code"
 "$SCRIPT_DIR/validate-reports.sh" zap
 
 case "$zap_exit_code" in
-  0) log "ZAP Baseline completed without WARN or FAIL findings." ;;
-  1) log "ZAP Baseline completed with FAIL findings; accepted for Week 1." ;;
-  2) log "ZAP Baseline completed with WARN findings; accepted for Week 1." ;;
-  3) die "ZAP Baseline execution failed (exit code 3)." ;;
-  *) die "ZAP Baseline returned unexpected exit code: $zap_exit_code" ;;
+  0) log "ZAP Baseline Automation plan completed successfully." ;;
+  2) log "ZAP Baseline Automation plan completed with warnings." ;;
+  *) die "ZAP Baseline Automation plan failed (exit code $zap_exit_code)." ;;
 esac

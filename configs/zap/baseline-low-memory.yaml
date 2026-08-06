@@ -1,0 +1,35 @@
+---
+env:
+  contexts:
+    - name: juice-shop
+      urls:
+        - http://juice-shop:3000
+      includePaths:
+        - '^http://juice-shop:3000(?:$|[/?#].*)$'
+  configs:
+    view.mode: protect
+  parameters:
+    failOnError: true
+    failOnWarning: false
+    continueOnFailure: false
+    progressToStdout: true
+
+jobs:
+  - type: passiveScan-config
+    parameters:
+      scanOnlyInScope: true
+  - type: spider
+    parameters:
+      context: juice-shop
+      url: http://juice-shop:3000
+      maxDuration: 1
+  - type: passiveScan-wait
+    parameters:
+      maxDuration: 10
+  - type: report
+    parameters:
+      template: traditional-json
+      reportDir: /zap/wrk
+      reportFile: zap.json
+      displayReport: false
+    alwaysRun: true

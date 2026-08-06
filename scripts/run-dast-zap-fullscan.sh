@@ -12,6 +12,9 @@ VERSIONS_FILE="$PROJECT_ROOT/configs/tool-versions.env"
 REPORT_DIR="$PROJECT_ROOT/reports/raw"
 REPORT_FILE="$REPORT_DIR/zap.json"
 META_FILE="$REPORT_DIR/zap.meta.json"
+ZAP_CONFIG_DIR="$PROJECT_ROOT/configs/zap"
+ZAP_AUTOMATION_PLAN="$ZAP_CONFIG_DIR/full.yaml"
+ZAP_AUTOMATION_PLAN_CONTAINER="/zap/configs/full.yaml"
 LOG_DIR="$PROJECT_ROOT/logs"
 ZAP_DAEMON_LOG="$LOG_DIR/zap-fullscan-zap.out"
 ZAP_RUNNER_LOG="$LOG_DIR/zap-fullscan-runner.log"
@@ -19,9 +22,6 @@ HOST_USER="$(id -u):$(id -g)"
 NETWORK_NAME="sentinel-security"
 TARGET_URL="http://juice-shop:3000"
 readonly ZAP_CLIENT_SPIDER_MIN_BYTES=$((4 * 1024 * 1024 * 1024))
-readonly ZAP_SPIDER_MAX_MINUTES=10
-readonly ZAP_PASSIVE_MAX_MINUTES=10
-readonly ZAP_ACTIVE_MAX_MINUTES=30
 
 load_tool_versions "$VERSIONS_FILE"
 "$SCRIPT_DIR/verify-target.sh"
@@ -68,18 +68,18 @@ actual_zap_version="$(awk '/^[0-9]+\.[0-9]+\.[0-9]+\r?$/ { gsub(/\r/, ""); versi
 [[ "$actual_zap_version" == "$ZAP_VERSION" ]] || \
   die "ZAP image version mismatch: expected '$ZAP_VERSION', found '${actual_zap_version:-unknown}'."
 
-if ! zap_fullscan_help="$(docker run --rm \
+if ! zap_automation_check="$(docker run --rm \
     --user "$HOST_USER" \
     -e HOME=/tmp \
     -e JAVA_TOOL_OPTIONS=-Duser.home=/tmp \
+    --mount "type=bind,src=$ZAP_CONFIG_DIR,dst=/zap/configs,ro" \
     "$ZAP_IMAGE" \
-    zap-full-scan.py -h 2>&1)"; then
-  printf '%s\n' "$zap_fullscan_help" >&2
-  die "Unable to inspect zap-full-scan.py in image '$ZAP_IMAGE'."
+    zap.sh -cmd -silent -autocheck "$ZAP_AUTOMATION_PLAN_CONTAINER" 2>&1)"; then
+  printf '%s\n' "$zap_automation_check" >&2
+  die "ZAP Automation plan failed validation: $ZAP_AUTOMATION_PLAN"
 fi
-grep -Fq -- '--client-spider' <<<"$zap_fullscan_help" || \
-  die "ZAP image '$ZAP_IMAGE' does not support the required --client-spider option."
-log "ZAP Full Scan preflight passed (version $actual_zap_version, Client Spider supported)."
+printf '%s\n' "$zap_automation_check"
+log "ZAP Full Scan preflight passed (version $actual_zap_version, Automation plan valid)."
 
 set +e
 docker run --rm \
@@ -88,29 +88,21 @@ docker run --rm \
   -e JAVA_TOOL_OPTIONS=-Duser.home=/tmp \
   --network "$NETWORK_NAME" \
   -v "$REPORT_DIR:/zap/wrk:rw" \
+  --mount "type=bind,src=$ZAP_CONFIG_DIR,dst=/zap/configs,ro" \
   --mount "type=bind,src=$ZAP_DAEMON_LOG,dst=/zap/zap.out" \
   "$ZAP_IMAGE" \
-  zap-full-scan.py \
-  -t "$TARGET_URL" \
-  -j \
-  --client-spider \
-  -m "$ZAP_SPIDER_MAX_MINUTES" \
-  -T "$ZAP_PASSIVE_MAX_MINUTES" \
-  -J zap.json \
-  -z "-silent -config scanner.maxScanDurationInMins=$ZAP_ACTIVE_MAX_MINUTES" \
+  zap.sh -cmd -silent -autorun "$ZAP_AUTOMATION_PLAN_CONTAINER" \
   2>&1 | tee "$ZAP_RUNNER_LOG"
 zap_exit_code="${PIPESTATUS[0]}"
 set -e
 
 log "ZAP Full Scan exit code: $zap_exit_code"
 case "$zap_exit_code" in
-  0|1|2) "$SCRIPT_DIR/validate-reports.sh" zap ;;
-  3) die "ZAP Full Scan execution failed (exit code 3). See $ZAP_RUNNER_LOG and $ZAP_DAEMON_LOG." ;;
+  0|2) "$SCRIPT_DIR/validate-reports.sh" zap ;;
   *) die "ZAP Full Scan returned unexpected exit code $zap_exit_code. See $ZAP_RUNNER_LOG and $ZAP_DAEMON_LOG." ;;
 esac
 
 case "$zap_exit_code" in
-  0) log "ZAP Full Scan completed without WARN or FAIL findings." ;;
-  1) log "ZAP Full Scan completed with FAIL findings; report accepted." ;;
-  2) log "ZAP Full Scan completed with WARN findings; report accepted." ;;
+  0) log "ZAP Full Scan Automation plan completed successfully." ;;
+  2) log "ZAP Full Scan Automation plan completed with warnings." ;;
 esac
