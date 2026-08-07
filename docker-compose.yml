@@ -64,6 +64,29 @@ services:
     entrypoint:
       - sqlmap
 
+  sentinel-ui:
+    build:
+      context: .
+      dockerfile: docker/ui/Dockerfile
+    container_name: sentinel-ui
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/workspace:rw
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_BASE_URL=${LLM_BASE_URL:-}
+      - LLM_MODEL=${LLM_MODEL:-qwen-plus}
+      - LLM_TEMPERATURE=${LLM_TEMPERATURE:-0.1}
+      - LLM_MAX_RETRIES=${LLM_MAX_RETRIES:-2}
+      - SEMGREP_APP_TOKEN=${SEMGREP_APP_TOKEN:-}
+      - JUICE_SHOP_PORT=${JUICE_SHOP_PORT:-3000}
+    networks:
+      - security
+
 networks:
   security:
     name: sentinel-security
+

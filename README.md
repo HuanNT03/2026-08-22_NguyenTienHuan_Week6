@@ -11,7 +11,9 @@ Week 3 tích hợp **Security Analysis Agent** — AI Agent đọc Unified Findi
 
 - [Phạm vi](#phạm-vi)
 - [Yêu cầu hệ thống](#yêu-cầu-hệ-thống)
-- [Quickstart](#quickstart)
+- [Quickstart (Giao diện Web App)](#quickstart-giao-diện-web-app)
+- [Cấu hình biến môi trường (.env)](#cấu-hình-biến-môi-trường-env)
+- [Luồng thực thi bằng CLI](#luồng-thực-thi-bằng-cli)
 - [Các lệnh Make](#các-lệnh-make)
 - [SAST và DAST](#sast-và-dast)
 - [Unified Findings Normalization](#unified-findings-normalization)
@@ -49,14 +51,55 @@ Gitleaks `v8.30.1` trở lên được khuyến nghị để chạy secret-scann
 
 Không cần cài Node.js, Semgrep, CodeQL hoặc ZAP trên host. Chạy `make doctor` để kiểm tra môi trường.
 
-## Quickstart
+## Quickstart (Giao diện Web App)
+
+Khởi chạy ứng dụng **Sentinel Web UI Dashboard** trực quan bằng Docker:
 
 ```bash
 make doctor
 make install
 . .venv/bin/activate
 cp .env.example .env
-# Thay SEMGREP_APP_TOKEN placeholder trong .env bằng token thật.
+# Chỉnh sửa biến môi trường trong .env (xem phần Cấu hình bên dưới)
+make ui-build
+make ui
+```
+
+Sau khi chạy `make ui`, mở trình duyệt tại địa chỉ: **`http://localhost:8501`** để bắt đầu sử dụng.
+
+### Quản lý Web UI Container
+```bash
+make ui-logs   # Xem log real-time của container UI
+make ui-down   # Dừng container Web UI
+```
+
+### 3 Trang Chức năng trên Web App:
+1. 🛡️ **Scan & Normalize**: Kích hoạt quét SAST/DAST trực tiếp hoặc upload/chọn raw report có sẵn để normalize sang Unified Findings.
+2. 📚 **Knowledge Base**: Tra cứu từ khóa FTS5 trên 442+ tài liệu CWE và OWASP Top 10.
+3. 🤖 **AI Security Analysis**: Kích hoạt AI Agent phân tích lỗ hổng và xem Dashboard 5 thẻ đa chiều (Executive Threat, Nhóm Lỗ hổng, Nguyên nhân, Vá lỗi & Trích dẫn KB).
+
+## Cấu hình biến môi trường (.env)
+
+Yêu cầu khai báo các giá trị cấu hình trong tập tin `.env`:
+
+```env
+# Cấu hình LLM Provider cho Security Analysis Agent
+LLM_API_KEY=your-llm-api-key-here
+LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+LLM_MODEL=qwen-plus
+LLM_TEMPERATURE=0.1
+LLM_MAX_RETRIES=2
+
+# Cấu hình Scanner & Target App
+SEMGREP_APP_TOKEN=your-semgrep-token-here
+JUICE_SHOP_PORT=3000
+```
+
+## Luồng thực thi bằng CLI
+
+Nếu muốn thực thi thủ công từng công đoạn quét, chuẩn hóa và phân tích qua terminal mà không dùng Web UI:
+
+```bash
 make setup-target
 make build
 make up
@@ -66,6 +109,7 @@ make sast
 make dast
 make validate-reports
 make normalize
+make agent-analyze FINDINGS=reports/normalized/unified-findings-YYYYMMDDTHHMMSSZ.jsonl
 make down
 ```
 
@@ -172,6 +216,8 @@ Chạy `make help` để xem danh sách đầy đủ. Các nhóm lệnh chính:
 | Knowledge Base | `kb-validate`, `kb-build-documents`, `kb-build-index`, `kb-build`, `kb-rebuild` |
 | Knowledge Search | `kb-search`, `kb-inspect`, `kb-stats`, `kb-test`, `kb-lint` |
 | Orchestration | `week1` |
+| Web UI | `ui-build`, `ui`, `ui-down`, `ui-logs` |
+| Security Agent | `agent-analyze`, `agent-test`, `agent-lint` |
 | Cleanup | `kb-clean`, `clean-reports`, `clean` |
 
 `wait` polling HTTP cho đến khi ứng dụng thực sự ready. `smoke` là kiểm tra riêng từ host,

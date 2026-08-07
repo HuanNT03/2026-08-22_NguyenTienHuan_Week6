@@ -8,7 +8,8 @@ VENV_PYTHON := $(VENV)/bin/python
 VENV_PIP := $(VENV)/bin/pip
 
 .PHONY: help venv install doctor setup-target verify-target build up wait smoke down logs status \
-	lint test test-contracts test-python quality sast sast-semgrep sast-codeql dast dast-zap-fullscan dast-zap-admin dast-zap-fullscan-admin dast-sqlmap validate-reports week1 normalize clean-reports clean
+	lint test test-contracts test-python quality sast sast-semgrep sast-codeql dast dast-zap-fullscan dast-zap-admin dast-zap-fullscan-admin dast-sqlmap validate-reports week1 normalize clean-reports clean \
+	ui-build ui ui-down ui-logs
 
 help: ## Show available commands.
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -176,3 +177,19 @@ agent-test: kb-python-check ## Run Security Analysis Agent tests.
 
 agent-lint: kb-python-check ## Lint Security Analysis Agent code.
 	@$(VENV_PYTHON) -m ruff check src/agent tests/agent
+
+.PHONY: ui-build ui ui-down ui-logs
+
+ui-build: ## Build the Streamlit Web UI Docker container.
+	docker compose build sentinel-ui
+
+ui: ## Start the Sentinel Web UI in the background.
+	docker compose up -d sentinel-ui
+	@echo "Sentinel UI is running at http://localhost:8501"
+
+ui-down: ## Stop the Sentinel Web UI container.
+	docker compose stop sentinel-ui
+
+ui-logs: ## Follow Sentinel Web UI logs.
+	docker compose logs --follow sentinel-ui
+
