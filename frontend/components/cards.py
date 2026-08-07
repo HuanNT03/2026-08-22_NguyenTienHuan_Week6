@@ -12,7 +12,7 @@ except ImportError:
 def render_metric_card(title: str, content: str, description: str = "", key: str | None = None):
     """Render Metric Card bằng streamlit-shadcn-ui hoặc fallback HTML."""
     if SHADCN_AVAILABLE and hasattr(ui, "metric_card"):
-        ui.metric_card(title=title, content=content, description=description, key=key)
+        ui.metric_card(label=title, value=content, description=description, key=key)
     else:
         st.markdown(
             f"""
