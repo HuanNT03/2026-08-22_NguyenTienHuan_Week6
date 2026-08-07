@@ -1,10 +1,11 @@
-# Project Sentinel — Week 2
+# Project Sentinel — Week 3
 
 Môi trường DevSecOps có thể tái lập để chạy OWASP Juice Shop `v20.1.1`, quét mã nguồn
 bằng Semgrep cùng CodeQL, quét web thụ động bằng OWASP ZAP Baseline và chạy ZAP Full Scan
 chủ động theo yêu cầu. Repository cũng có sqlmap local, được giới hạn vào một tham số search của
-Juice Shop đã pin để phát hiện SQL injection và fingerprint DBMS. Source Juice Shop, generated raw
-reports và runtime logs không được commit vào repository Sentinel.
+Juice Shop đã pin để phát hiện SQL injection và fingerprint DBMS.
+
+Week 3 tích hợp **Security Analysis Agent** — AI Agent đọc Unified Findings đã chuẩn hóa và Knowledge Base để tạo ra báo cáo phân tích lỗ hổng có cấu trúc (JSONL), thực hiện quan hệ SAST↔DAST correlation, che giấu dữ liệu nhạy cảm (redaction) và đảm bảo 100% coverage.
 
 ## Mục lục
 
@@ -13,7 +14,9 @@ reports và runtime logs không được commit vào repository Sentinel.
 - [Quickstart](#quickstart)
 - [Các lệnh Make](#các-lệnh-make)
 - [SAST và DAST](#sast-và-dast)
+- [Unified Findings Normalization](#unified-findings-normalization)
 - [Tìm kiếm tài liệu bảo mật bằng từ khóa](#tìm-kiếm-tài-liệu-bảo-mật-bằng-từ-khóa)
+- [Security Analysis Agent (Week 3)](#security-analysis-agent-week-3)
 - [Gitleaks Git hooks](#gitleaks-git-hooks)
 - [GitHub Actions](#github-actions)
 - [Cleanup](#cleanup)
@@ -23,9 +26,17 @@ reports và runtime logs không được commit vào repository Sentinel.
 
 Week 1 triển khai target pinning, Docker lifecycle, Semgrep/CodeQL SAST, ZAP Baseline DAST,
 raw report validation và CI artifacts. Week 2 bổ sung unified findings normalizer cho Semgrep,
-ZAP và CodeQL, cùng Security Knowledge Base hỗ trợ keyword search bằng SQLite FTS5. Semantic
-Search, RAG, AI Agent, Gateway, guardrails, ground-truth evaluation và correlation nâng cao được
-dành cho các task sau.
+ZAP và CodeQL, cùng Security Knowledge Base hỗ trợ keyword search bằng SQLite FTS5.
+
+**Week 3** xây dựng **Security Analysis Agent**:
+1. Đọc Unified Findings v2 và tự động gom nhóm lỗ hổng (Hybrid Grouping: group_key, CWE intersection, title similarity, location proximity).
+2. Thiết lập cơ chế cầu nối **SAST ↔ DAST correlation** (phát hiện mối liên hệ giữa code location và http location).
+3. Tự động truy hồi tri thức bảo mật từ SQLite Knowledge Base theo từng CWE ID.
+4. Lọc che dữ liệu nhạy cảm (PII/secrets redaction) trước khi đưa vào LLM prompt.
+5. Gọi LLM qua OpenAI-compatible API (Alibaba Qwen / OpenRouter), trả về định dạng JSON hợp lệ (1 entry / fingerprint) kèm khuyến nghị kiểm thử an toàn dạng dữ liệu (`proposed_test_request`).
+6. Đảm bảo **100% coverage** với cơ chế fallback error handling.
+
+Gateway, Human-in-the-loop approval và guardrails HTTP request nâng cao sẽ dành cho các tuần tiếp theo.
 
 ## Yêu cầu hệ thống
 
@@ -278,6 +289,115 @@ make kb-rebuild
 
 Python code không cần gọi CLI bằng subprocess; dùng trực tiếp `KnowledgeSearchService` theo hướng
 dẫn trong [`knowledge-base/README.md`](knowledge-base/README.md).
+
+## Security Analysis Agent (Week 3)
+
+### Cấu hình môi trường (.env)
+
+Khai báo thông tin LLM Provider trong `.env`:
+
+```env
+LLM_API_KEY=your-llm-api-key-here
+LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+LLM_MODEL=qwen-plus
+LLM_TEMPERATURE=0.1
+LLM_MAX_RETRIES=2
+```
+
+### Chạy Agent Phân Tích Lỗ Hổng
+
+Sử dụng Makefile:
+
+```bash
+make agent-analyze FINDINGS=reports/normalized/unified-findings-20260806T061400Z.jsonl
+```
+
+Hoặc sử dụng Python CLI trực tiếp:
+
+```bash
+.venv/bin/python -m src.agent.cli analyze --findings reports/normalized/unified-findings-20260806T061400Z.jsonl
+```
+
+Kiểm tra unit/integration test suite của Agent:
+
+```bash
+make agent-test
+make agent-lint
+```
+
+### Quy Trình Xử Lý 3 Giai Đoạn (3-Phase Pipeline)
+
+1. **Phase 1: Pre-Grouping & Correlation Engine**
+   - Đọc tệp normalized JSONL (`reports/normalized/unified-findings-*.jsonl`).
+   - Gom nhóm lỗ hổng theo `group_key` chuẩn hóa từ scanner.
+   - Quét quan hệ tương quan cross-tool SAST ↔ DAST dựa trên **CWE Intersection**, **Title Similarity** và **Parameter-to-DataFlow Matching**. Đánh dấu `correlation_type = "sast_dast_suspected"`.
+   - Áp dụng bộ lọc bảo vệ đối với các CWE quá rộng (`CWE-400`, `CWE-20`, `CWE-116`...) để tránh false grouping.
+   - Safety Net (Orphan Check) tạo nhóm đơn lẻ cho findings còn lại.
+
+2. **Phase 2: Agentic Analysis Loop & Knowledge Retrieval**
+   - Vòng lặp item-by-item theo từng nhóm phân tích (AnalysisGroup), giữ ngữ cảnh sạch (context isolation).
+   - Truy hồi tri thức từ SQLite Knowledge Base theo từng CWE ID và từ khóa lỗ hổng qua `KnowledgeSearchService`.
+   - Lọc che dữ liệu nhạy cảm (Email, Phone, JWT/Bearer Tokens, Passwords) trước khi xây dựng prompt.
+   - Gửi yêu cầu phân tích tới LLM qua OpenAI-compatible API với System Prompt `src/agent/prompts/system_v1.md`.
+   - Yêu cầu kết quả trả về dưới dạng JSON mode, áp dụng validation Pydantic v2 `ReportEntry`. Cơ chế retry tự động tối đa 2 lần khi format không hợp lệ.
+
+3. **Phase 3: Post-Processing & Coverage Verification**
+   - Xác minh 100% fingerprints đầu vào đều có câu trả lời phân tích trong tập đầu ra. Nếu LLM fail sau max retries, tự động sinh fallback entry với `analysis_status = "error"`.
+   - Ghi báo cáo kết quả theo định dạng JSONL (1 entry / 1 fingerprint, có `analysis_group_id` để UI gom nhóm) tại `reports/analyzed/security-analysis-report-YYYYMMDDTHHMMSSZ.jsonl`.
+   - Xuất file tổng hợp metadata tại `reports/analyzed/analysis-summary-YYYYMMDDTHHMMSSZ.json`.
+
+### Định Dạng Báo Cáo JSONL Xuất Ra (`reports/analyzed/`)
+
+Mỗi dòng JSONL đại diện cho 1 phát hiện đã được phân tích đầy đủ:
+
+```json
+{
+  "schema_version": "1.0.0",
+  "analysis_id": "analysis_0123456789abcdef0123456789abcdef",
+  "analysis_group_id": "grp_cwe89_006",
+  "analysis_status": "success",
+  "fingerprint": "fp_sha256:v1:6ca605d6bc9b986648cca85b723baa342b7169a6768a488395bb649163cd0fec",
+  "finding_id": "fnd_a689857577ca49699eabb461b806505a",
+  "tool": "semgrep",
+  "scan_type": "SAST",
+  "title": "SQL Injection tại Chức năng Đăng nhập (Login)",
+  "primary_cwe_id": "CWE-89",
+  "all_cwe_ids": ["CWE-89"],
+  "owasp_category": "OWASP-A03:2021",
+  "location_summary": "routes/login.ts dòng 34",
+  "severity": {
+    "agent_assessment": "critical",
+    "original_scanner": "CRITICAL",
+    "rationale": "Chuỗi SQL được nối trực tiếp từ req.body.email mà không dùng Parameterized Query."
+  },
+  "confidence": {
+    "level": "confirmed",
+    "rationale": "Được xác nhận bởi cả SAST (Semgrep phát hiện taint flow) và DAST (ZAP kích hoạt lỗi SQL)."
+  },
+  "correlation_type": "sast_dast_suspected",
+  "correlated_with": ["fp_sha256:v1:..."],
+  "evidence_summary": "Semgrep phát hiện data flow từ req.body.email vào câu truy vấn SQL...",
+  "explanation": "Lỗ hổng SQL Injection xảy ra do...",
+  "recommended_action": "Sử dụng Parameterized Queries hoặc ORM...",
+  "proposed_test_request": {
+    "method": "POST",
+    "endpoint": "/rest/user/login",
+    "headers": {"Content-Type": "application/json"},
+    "payload": {"email": "admin' --", "password": "123"},
+    "rationale": "Kiểm tra SQL Injection qua endpoint đăng nhập"
+  },
+  "knowledge_references": [
+    {"doc_id": "cwe-89", "title": "CWE-89: SQL Injection", "relevance": "Mô tả chi tiết lỗ hổng và giải pháp"}
+  ],
+  "metadata": {
+    "analyzed_at": "2026-08-07T10:00:00Z",
+    "model": "qwen3.5-27b",
+    "prompt_version": "system_v1",
+    "grouping_source": "cwe_title_hybrid",
+    "retry_count": 0
+  }
+}
+```
 
 ## Gitleaks Git hooks
 

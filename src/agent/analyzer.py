@@ -89,6 +89,159 @@ def create_fallback_error_entry(
     )
 
 
+def sanitize_llm_entry_dict(
+    item: dict[str, Any],
+    group: AnalysisGroup,
+    idx: int,
+    cfg: AgentConfig,
+    retry_count: int,
+) -> dict[str, Any]:
+    """Sanitize and normalize raw LLM output dictionary before Pydantic validation."""
+    if not isinstance(item, dict):
+        return item
+
+    # 1. Match finding context if available
+    if "finding_id" not in item and "entry_id" in item:
+        item["finding_id"] = item["entry_id"]
+
+    finding_context = None
+    if "finding_id" in item:
+        for f in group.findings:
+            if f.get("finding_id") == item["finding_id"]:
+                finding_context = f
+                break
+    if not finding_context and "fingerprint" in item:
+        for f in group.findings:
+            if f.get("fingerprint") == item["fingerprint"]:
+                finding_context = f
+                break
+    if not finding_context and len(group.findings) > idx:
+        finding_context = group.findings[idx]
+
+    # 2. Fix fingerprint & finding_id
+    if finding_context:
+        item.setdefault("fingerprint", finding_context.get("fingerprint"))
+        item.setdefault("finding_id", finding_context.get("finding_id"))
+        tool_data = finding_context.get("tool", {})
+        if isinstance(tool_data, dict):
+            item.setdefault("tool", tool_data.get("name", "semgrep"))
+            item.setdefault("scan_type", tool_data.get("scan_type", "SAST"))
+
+    # Fix tool if LLM returned object like {"name": "semgrep", ...}
+    if isinstance(item.get("tool"), dict):
+        item["tool"] = item["tool"].get("name", "semgrep")
+    if item.get("tool") not in ("semgrep", "zap", "codeql"):
+        item["tool"] = "semgrep"
+
+    if item.get("scan_type") not in ("SAST", "DAST"):
+        item["scan_type"] = "SAST"
+
+    # 3. Fix analysis_id pattern (^analysis_[0-9a-f]{32}$)
+    raw_aid = str(item.get("analysis_id", ""))
+    if not (raw_aid.startswith("analysis_") and len(raw_aid) == 41):
+        fp = item.get("fingerprint") or f"idx_{idx}"
+        id_hash = hashlib.md5(f"{group.group_id}_{fp}_{idx}".encode()).hexdigest()
+        item["analysis_id"] = f"analysis_{id_hash}"
+
+    # 4. Fix analysis_group_id
+    item["analysis_group_id"] = group.group_id
+    item["schema_version"] = "1.0.0"
+    item.setdefault("analysis_status", "success")
+
+    # 5. Fix severity
+    sev = item.get("severity")
+    orig_sev = finding_context.get("severity") if finding_context else "unknown"
+    if isinstance(sev, str):
+        sev_lower = sev.lower()
+        agent_assessment = "unknown"
+        for level in ("critical", "high", "medium", "low", "info"):
+            if level in sev_lower:
+                agent_assessment = level
+                break
+        item["severity"] = {
+            "agent_assessment": agent_assessment,
+            "original_scanner": orig_sev,
+            "rationale": sev,
+        }
+    elif isinstance(sev, dict):
+        ag = str(sev.get("agent_assessment", "")).lower()
+        valid_ag = "unknown"
+        for level in ("critical", "high", "medium", "low", "info"):
+            if level in ag:
+                valid_ag = level
+                break
+        sev["agent_assessment"] = valid_ag
+        sev.setdefault("original_scanner", orig_sev)
+        sev.setdefault("rationale", "Phân tích tác động lỗ hổng.")
+
+    # 6. Fix confidence
+    conf = item.get("confidence")
+    if isinstance(conf, str):
+        conf_lower = conf.lower()
+        level = "unknown"
+        for l_key in ("confirmed", "high", "medium", "low", "false_positive"):
+            if l_key in conf_lower:
+                level = l_key
+                break
+        item["confidence"] = {
+            "level": level,
+            "rationale": conf,
+        }
+    elif isinstance(conf, dict):
+        lvl = str(conf.get("level", "")).lower()
+        valid_lvl = "unknown"
+        for l_key in ("confirmed", "high", "medium", "low", "false_positive"):
+            if l_key in lvl:
+                valid_lvl = l_key
+                break
+        conf["level"] = valid_lvl
+        conf.setdefault("rationale", "Đánh giá độ tin cậy.")
+
+    # 7. Fix correlation_type
+    c_type = item.get("correlation_type")
+    if c_type not in ("sast_only", "dast_only", "sast_dast_confirmed", "sast_dast_suspected", "multi_sast"):
+        item["correlation_type"] = group.correlation_type
+
+    # 8. Fix primary_cwe_id
+    primary = item.get("primary_cwe_id")
+    if not (isinstance(primary, str) and primary.startswith("CWE-")):
+        item["primary_cwe_id"] = group.primary_cwe if (group.primary_cwe and group.primary_cwe.startswith("CWE-")) else None
+
+    # 9. Fix location_summary
+    if not item.get("location_summary"):
+        loc = finding_context.get("location") if finding_context else {}
+        if isinstance(loc, dict) and loc.get("kind") == "code":
+            item["location_summary"] = f"{loc.get('path', 'unknown')} dòng {loc.get('start_line', 1)}"
+        elif isinstance(loc, dict) and loc.get("kind") == "http":
+            item["location_summary"] = f"{loc.get('endpoint', '/')} param={loc.get('parameter')}"
+        else:
+            item["location_summary"] = "Vị trí không xác định"
+
+    # 10. Fix proposed_test_request
+    ptr = item.get("proposed_test_request")
+    if ptr is not None:
+        if isinstance(ptr, dict):
+            m = str(ptr.get("method", "")).upper()
+            ep = str(ptr.get("endpoint", ""))
+            if m not in ("GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS") or not ep.startswith("/"):
+                item["proposed_test_request"] = None
+        else:
+            item["proposed_test_request"] = None
+
+    # 9. Fix metadata
+    meta = item.get("metadata")
+    if not isinstance(meta, dict):
+        meta = {}
+    meta.setdefault("analyzed_at", datetime.now(UTC).isoformat())
+    meta.setdefault("model", cfg.model)
+    meta.setdefault("prompt_version", cfg.prompt_version)
+    meta.setdefault("grouping_source", group.source)
+    meta.setdefault("retry_count", retry_count)
+    item["metadata"] = meta
+
+    return item
+
+
 def analyze_group(
     group: AnalysisGroup,
     kb_service: KnowledgeSearchService,
@@ -142,20 +295,9 @@ def analyze_group(
                 raise ValueError("LLM response format must be a JSON object with 'entries' key or array.")
 
             validated_entries: list[ReportEntry] = []
-            for item in entries_raw:
-                # Fill missing schema_version or metadata defaults if omitted by LLM
-                if isinstance(item, dict):
-                    item.setdefault("schema_version", "1.0.0")
-                    item.setdefault("analysis_group_id", group.group_id)
-                    item.setdefault("analysis_status", "success")
-                    if "metadata" in item and isinstance(item["metadata"], dict):
-                        item["metadata"].setdefault("analyzed_at", datetime.now(UTC).isoformat())
-                        item["metadata"].setdefault("model", cfg.model)
-                        item["metadata"].setdefault("prompt_version", cfg.prompt_version)
-                        item["metadata"].setdefault("grouping_source", group.source)
-                        item["metadata"].setdefault("retry_count", attempt)
-                
-                entry = ReportEntry.model_validate(item)
+            for idx, raw_item in enumerate(entries_raw):
+                sanitized_item = sanitize_llm_entry_dict(raw_item, group, idx, cfg, attempt)
+                entry = ReportEntry.model_validate(sanitized_item)
                 validated_entries.append(entry)
 
             # Verify that every finding in the group has a matching entry

@@ -9,9 +9,17 @@ from rich.console import Console
 from src.agent.config import AgentConfig
 from src.agent.orchestrator import run_analysis
 
-app = typer.Typer(no_args_is_help=True, help="Run AI Security Analysis Agent on normalized findings.")
+app = typer.Typer(
+    no_args_is_help=True,
+    help="Run AI Security Analysis Agent on normalized findings.",
+)
 console = Console()
 error_console = Console(stderr=True)
+
+
+@app.callback()
+def main_callback() -> None:
+    """Project Sentinel Security Analysis Agent CLI."""
 
 
 @app.command("analyze")
