@@ -92,6 +92,35 @@ with tab2:
         else:
             st.info("Thư mục reports/raw/ chưa tồn tại.")
 
+def _get_tool_name(item: dict) -> str:
+    tool_val = item.get("tool")
+    if isinstance(tool_val, dict):
+        return str(tool_val.get("name") or "unknown")
+    return str(tool_val or "unknown")
+
+
+def _get_scan_type(item: dict) -> str:
+    tool_val = item.get("tool")
+    if isinstance(tool_val, dict):
+        return str(tool_val.get("scan_type") or "unknown")
+    return str(item.get("scan_type") or "unknown")
+
+
+def _get_location_str(item: dict) -> str:
+    loc = item.get("location", {})
+    if not isinstance(loc, dict):
+        return "N/A"
+    if loc.get("kind") == "code" or "path" in loc:
+        path = loc.get("path", "N/A")
+        start_line = loc.get("start_line")
+        return f"{path}:L{start_line}" if start_line else str(path)
+    elif loc.get("kind") == "http" or "uri" in loc or "endpoint" in loc:
+        method = loc.get("method") or "GET"
+        endpoint = loc.get("endpoint") or loc.get("uri") or "N/A"
+        return f"{method} {endpoint}"
+    return "N/A"
+
+
 # TAB 3: NORMALIZE & VIEW FINDINGS
 with tab3:
     render_section_header("Chuẩn hóa Findings sang Unified Format", "Chuyển đổi raw scanner reports sang JSONL tuân thủ unified_findings.schema.json")
@@ -121,33 +150,28 @@ with tab3:
                 # Filters
                 col_f1, col_f2 = st.columns(2)
                 with col_f1:
-                    tools = list({f.get("tool", "unknown") for f in findings})
+                    tools = list({_get_tool_name(f) for f in findings})
                     filter_tool = st.multiselect("Lọc theo Scanner Tool:", options=tools, default=tools)
                 with col_f2:
-                    severities = list({f.get("severity", "unknown") for f in findings})
+                    severities = list({str(f.get("severity", "unknown")) for f in findings})
                     filter_sev = st.multiselect("Lọc theo Severity:", options=severities, default=severities)
 
                 filtered = [
                     f for f in findings
-                    if f.get("tool") in filter_tool and f.get("severity") in filter_sev
+                    if _get_tool_name(f) in filter_tool and str(f.get("severity", "unknown")) in filter_sev
                 ]
 
                 # Display table
                 table_data = []
                 for item in filtered:
                     cwe_list = ", ".join(item.get("cwe_ids", [])) or "None"
-                    loc = item.get("location", {})
-                    loc_str = loc.get("path") or loc.get("url") or "N/A"
-                    if loc.get("start_line"):
-                        loc_str += f":L{loc.get('start_line')}"
-                    
                     table_data.append({
-                        "Fingerprint": item.get("fingerprint", "")[:20] + "...",
-                        "Tool": item.get("tool", "").upper(),
-                        "Scan Type": item.get("scan_type", ""),
-                        "Severity": item.get("severity", "").upper(),
-                        "Title": item.get("title", ""),
-                        "Location": loc_str,
+                        "Fingerprint": str(item.get("fingerprint", ""))[:20] + "...",
+                        "Tool": _get_tool_name(item).upper(),
+                        "Scan Type": _get_scan_type(item),
+                        "Severity": str(item.get("severity", "unknown")).upper(),
+                        "Title": str(item.get("title") or "N/A"),
+                        "Location": _get_location_str(item),
                         "CWE IDs": cwe_list,
                     })
 
