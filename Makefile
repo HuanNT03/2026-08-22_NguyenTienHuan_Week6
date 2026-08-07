@@ -106,10 +106,10 @@ validate-reports: ## Validate all raw scanner reports and metadata sidecars.
 week1: ## Run the complete Week 1 flow with guaranteed runtime cleanup.
 	@./scripts/run-week1.sh
 
-normalize: kb-python-check ## Normalize all raw scanner reports into unified JSONL.
+normalize: kb-python-check ## Normalize reports into unified JSONL (optional: SUMMARY=path/to/summary.json).
 	@./scripts/verify-target.sh >&2
 	@$(VENV_PYTHON) -m src.normalizers.cli normalize-all --raw-dir reports/raw \
-		--output-dir reports/normalized --source-root target-app/juice-shop
+		--output-dir reports/normalized --source-root target-app/juice-shop $(if $(SUMMARY),--summary "$(SUMMARY)",)
 
 clean-reports: ## Remove generated reports while preserving tracked directories.
 	@./scripts/clean.sh reports
@@ -166,10 +166,10 @@ kb-clean: kb-python-check ## Remove only generated knowledge-base artifacts.
 
 .PHONY: agent-analyze agent-test agent-lint
 
-agent-analyze: kb-python-check ## Run Security Analysis Agent on FINDINGS=path/to/findings.jsonl.
+agent-analyze: kb-python-check ## Run Security Analysis Agent on FINDINGS=path (optional: OUTPUT_DIR=path, MODEL=model).
 	@test -n "$(FINDINGS)" || \
 		(echo 'Usage: make agent-analyze FINDINGS=reports/normalized/unified-findings-YYYYMMDDTHHMMSSZ.jsonl' && exit 1)
-	@$(VENV_PYTHON) -m src.agent.cli analyze --findings "$(FINDINGS)"
+	@$(VENV_PYTHON) -m src.agent.cli analyze --findings "$(FINDINGS)" $(if $(OUTPUT_DIR),--output-dir "$(OUTPUT_DIR)",) $(if $(MODEL),--model "$(MODEL)",)
 
 agent-test: kb-python-check ## Run Security Analysis Agent tests.
 	@$(VENV_PYTHON) -m pytest tests/agent -v

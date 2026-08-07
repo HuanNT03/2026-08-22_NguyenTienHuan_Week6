@@ -52,7 +52,7 @@ def _all_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output-dir", default="reports/normalized")
     parser.add_argument("--source-root", default="target-app/juice-shop")
     parser.add_argument("--schema", default="schemas/unified_findings.schema.json")
-    parser.add_argument("--summary", default="reports/normalized/normalization-summary.json")
+    parser.add_argument("--summary")
     return parser
 
 
@@ -151,14 +151,19 @@ def _run(
     selected: tuple[str, ...],
     paths: dict[str, tuple[Path, Path]],
     output_dir: Path,
-    summary_path: Path,
+    summary_path: Path | None,
     schema_path: Path,
     source_root: Path,
     clock: Callable[[], str],
 ) -> int:
     normalized_at, filename_timestamp = _run_timestamp(clock)
     output_path = output_dir / f"unified-findings-{filename_timestamp}.jsonl"
-    _remove_old(output_path, summary_path)
+    resolved_summary_path = (
+        summary_path
+        if summary_path is not None
+        else output_dir / f"normalization-summary-{filename_timestamp}.json"
+    )
+    _remove_old(output_path, resolved_summary_path)
     all_findings: list[dict[str, Any]] = []
     tool_summaries: dict[str, dict[str, Any]] = {}
     try:
@@ -167,7 +172,7 @@ def _run(
         for tool in TOOLS:
             tool_summaries[tool] = failed_tool_summary(exc) if tool in selected else skipped_tool_summary()
         print(f"schema: normalization setup failed: {exc}", file=sys.stderr)
-        _write_summary(summary_path, build_summary(
+        _write_summary(resolved_summary_path, build_summary(
             schema_version=SCHEMA_VERSION,
             normalizer_version=NORMALIZER_VERSION,
             normalized_at=normalized_at,
@@ -203,7 +208,7 @@ def _run(
         successful = True
     if successful:
         _write_jsonl(output_path, all_findings)
-    _write_summary(summary_path, build_summary(
+    _write_summary(resolved_summary_path, build_summary(
         schema_version=SCHEMA_VERSION,
         normalizer_version=NORMALIZER_VERSION,
         normalized_at=normalized_at,
@@ -225,7 +230,7 @@ def main(argv: list[str] | None = None, *, clock: Callable[[], str] | None = Non
             TOOLS,
             {tool: (raw_dir / REPORT_NAMES[tool], raw_dir / META_NAMES[tool]) for tool in TOOLS},
             Path(args.output_dir),
-            Path(args.summary),
+            Path(args.summary) if args.summary else None,
             Path(args.schema),
             Path(args.source_root),
             clock,
@@ -236,7 +241,7 @@ def main(argv: list[str] | None = None, *, clock: Callable[[], str] | None = Non
         (args.tool,),
         {args.tool: (Path(args.input), Path(args.metadata))},
         output_dir,
-        Path(args.summary) if args.summary else output_dir / "normalization-summary.json",
+        Path(args.summary) if args.summary else None,
         Path(args.schema),
         Path(args.source_root),
         clock,
