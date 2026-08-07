@@ -1,5 +1,13 @@
 """Trang Tra cứu Kiến thức Bảo mật (Security Knowledge Base Search)."""
 
+import sys
+from pathlib import Path
+
+# Ensure project root is in sys.path for Streamlit execution
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
 import streamlit as st
 
 from frontend.components.cards import render_badge, render_section_header
