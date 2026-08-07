@@ -27,3 +27,7 @@ __pycache__/
 # Generated knowledge-base index.
 /knowledge-base/index/*
 !/knowledge-base/index/.gitkeep
+
+# Generated security analysis agent reports.
+/reports/analyzed/*
+!/reports/analyzed/.gitkeep

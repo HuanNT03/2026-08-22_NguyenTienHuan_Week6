@@ -217,6 +217,12 @@ def sanitize_llm_entry_dict(
         else:
             item["location_summary"] = "Vị trí không xác định"
 
+    # Fix string fields if LLM returned a list of strings
+    for str_field in ("recommended_action", "explanation", "evidence_summary", "location_summary", "title"):
+        val = item.get(str_field)
+        if isinstance(val, list):
+            item[str_field] = "\n".join(str(v) for v in val)
+
     # 10. Fix proposed_test_request
     ptr = item.get("proposed_test_request")
     if ptr is not None:
