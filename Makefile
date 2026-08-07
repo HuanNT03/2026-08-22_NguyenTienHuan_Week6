@@ -163,3 +163,16 @@ kb-lint: kb-python-check ## Lint knowledge-base source and tests.
 
 kb-clean: kb-python-check ## Remove only generated knowledge-base artifacts.
 	@$(VENV_PYTHON) -m src.retrieval.cli clean
+
+.PHONY: agent-analyze agent-test agent-lint
+
+agent-analyze: kb-python-check ## Run Security Analysis Agent on FINDINGS=path/to/findings.jsonl.
+	@test -n "$(FINDINGS)" || \
+		(echo 'Usage: make agent-analyze FINDINGS=reports/normalized/unified-findings-YYYYMMDDTHHMMSSZ.jsonl' && exit 1)
+	@$(VENV_PYTHON) -m src.agent.cli analyze --findings "$(FINDINGS)"
+
+agent-test: kb-python-check ## Run Security Analysis Agent tests.
+	@$(VENV_PYTHON) -m pytest tests/agent -v
+
+agent-lint: kb-python-check ## Lint Security Analysis Agent code.
+	@$(VENV_PYTHON) -m ruff check src/agent tests/agent

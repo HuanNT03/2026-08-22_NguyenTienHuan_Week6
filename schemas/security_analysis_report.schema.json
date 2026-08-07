@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sentinel.local/schemas/security-analysis-report/1.0.0/schema.json",
+  "title": "Project Sentinel Security Analysis Report Entry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "analysis_id",
+    "analysis_group_id",
+    "analysis_status",
+    "fingerprint",
+    "finding_id",
+    "tool",
+    "scan_type",
+    "title",
+    "primary_cwe_id",
+    "all_cwe_ids",
+    "owasp_category",
+    "location_summary",
+    "severity",
+    "confidence",
+    "correlation_type",
+    "correlated_with",
+    "evidence_summary",
+    "explanation",
+    "recommended_action",
+    "proposed_test_request",
+    "knowledge_references",
+    "metadata"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "analysis_id": { "type": "string", "pattern": "^analysis_[0-9a-f]{32}$" },
+    "analysis_group_id": { "type": "string", "pattern": "^grp_[a-zA-Z0-9_:-]+$" },
+    "analysis_status": { "enum": ["success", "error"] },
+    "fingerprint": { "type": "string", "pattern": "^fp_sha256:v1:[0-9a-f]{64}$" },
+    "finding_id": { "type": "string", "pattern": "^fnd_[0-9a-f]{32}$" },
+    "tool": { "enum": ["semgrep", "zap", "codeql"] },
+    "scan_type": { "enum": ["SAST", "DAST"] },
+    "title": { "type": "string", "minLength": 1 },
+    "primary_cwe_id": { "type": ["string", "null"], "pattern": "^CWE-[1-9][0-9]*$" },
+    "all_cwe_ids": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^CWE-[1-9][0-9]*$" },
+      "uniqueItems": true
+    },
+    "owasp_category": { "type": ["string", "null"], "pattern": "^OWASP-A(0[1-9]|10):[0-9]{4}$" },
+    "location_summary": { "type": "string", "minLength": 1 },
+    "severity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agent_assessment", "original_scanner", "rationale"],
+      "properties": {
+        "agent_assessment": { "enum": ["info", "low", "medium", "high", "critical", "unknown"] },
+        "original_scanner": { "type": ["string", "null"] },
+        "rationale": { "type": "string", "minLength": 1 }
+      }
+    },
+    "confidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "rationale"],
+      "properties": {
+        "level": { "enum": ["false_positive", "low", "medium", "high", "confirmed", "unknown"] },
+        "rationale": { "type": "string", "minLength": 1 }
+      }
+    },
+    "correlation_type": {
+      "enum": ["sast_only", "dast_only", "sast_dast_confirmed", "sast_dast_suspected", "multi_sast"]
+    },
+    "correlated_with": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^fp_sha256:v1:[0-9a-f]{64}$" },
+      "uniqueItems": true
+    },
+    "evidence_summary": { "type": "string", "minLength": 1 },
+    "explanation": { "type": "string", "minLength": 1 },
+    "recommended_action": { "type": "string", "minLength": 1 },
+    "proposed_test_request": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["method", "endpoint", "headers", "payload", "rationale"],
+          "properties": {
+            "method": { "type": "string", "pattern": "^[A-Z]+$" },
+            "endpoint": { "type": "string", "pattern": "^/" },
+            "headers": { "type": "object" },
+            "payload": {},
+            "rationale": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    },
+    "knowledge_references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["doc_id", "title", "relevance"],
+        "properties": {
+          "doc_id": { "type": "string", "minLength": 1 },
+          "title": { "type": "string", "minLength": 1 },
+          "relevance": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["analyzed_at", "model", "prompt_version", "grouping_source", "retry_count"],
+      "properties": {
+        "analyzed_at": { "type": "string", "format": "date-time" },
+        "model": { "type": "string", "minLength": 1 },
+        "prompt_version": { "type": "string", "minLength": 1 },
+        "grouping_source": { "type": "string", "minLength": 1 },
+        "retry_count": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}
