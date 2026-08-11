@@ -27,7 +27,7 @@ st.set_page_config(page_title="Scan & Normalize - Sentinel", page_icon="🛡️"
 inject_bento_css()
 
 st.title("🛡️ Quét Lỗ hổng & Chuẩn hóa Kết quả")
-st.caption("Kích hoạt trực tiếp các công cụ SAST/DAST/Full Scan Admin, quản lý tập tin raw report dạng checkbox và chuẩn hóa sang Unified Findings JSONL.")
+st.caption("Kích hoạt trực tiếp các công cụ SAST/DAST/Full Scan Admin, quản lý vòng đời Target App và chuẩn hóa sang Unified Findings JSONL.")
 
 tab1, tab2, tab3 = st.tabs([
     "🚀 Quét Trực tiếp (Direct Scan)",
@@ -39,21 +39,24 @@ tab1, tab2, tab3 = st.tabs([
 # TAB 1: DIRECT SCAN & TARGET CONTROL (BENTO CARDS)
 # ==========================================
 with tab1:
-    render_bento_header("Quản lý Vòng đời Target App (OWASP Juice Shop)", "Bật/Tắt và kiểm tra trạng thái hoạt động của Target App trước khi chạy DAST", icon="🎯")
+    render_bento_header("Quản lý Vòng đời Target App (OWASP Juice Shop)", "Khởi động, dừng và kiểm tra kết nối Target App trước khi thực thi DAST", icon="🎯")
 
     is_alive, http_code, target_url = check_target_health()
 
-    col_tg1, col_tg2, col_tg3 = st.columns([1.4, 1.3, 1.3])
+    # Equal 3-column Bento Grid for Target App Lifecycle
+    col_tg1, col_tg2, col_tg3 = st.columns(3)
 
     with col_tg1:
         if is_alive:
             status_text = f"🟢 HTTP {http_code} Online"
             badge_var = "success"
-            desc_text = f"Sẵn sàng kết nối DAST tại {target_url}"
+            desc_text = f"Container đang chạy & phản hồi tại {target_url}"
+            link_target = target_url
         else:
             status_text = "🔴 Offline / Stopped"
             badge_var = "critical"
             desc_text = f"Không thể kết nối HTTP tới {target_url}"
+            link_target = None
 
         render_bento_card(
             title="Target Health Status",
@@ -62,58 +65,84 @@ with tab1:
             icon="🌐",
             badge_text="Target Container",
             badge_variant=badge_var,
+            link_url=link_target,
+            link_label="🌐 Mở Web Target App ↗",
         )
+        if st.button("🔄 Refresh Health Connection", use_container_width=True, key="btn_refresh_health"):
+            st.rerun()
 
     with col_tg2:
-        st.markdown("#### Control Actions (`Makefile`)")
-        btn_start_target = st.button("🚀 Start Target App (`make up`)", type="primary", use_container_width=True)
-        btn_stop_target = st.button("🛑 Stop Target App (`make down`)", use_container_width=True)
-        btn_status_target = st.button("🔄 Check Status (`make status`)", use_container_width=True)
+        st.markdown(
+            """
+            <div style="color: #a6adc8; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">
+                ⚡ Lifecycle Control Center
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        btn_start_target = st.button("🚀 Start Target (`make up & wait`)", type="primary", use_container_width=True)
+        btn_stop_target = st.button("🛑 Stop Target (`make down`)", use_container_width=True)
+        btn_status_target = st.button("📊 Docker Status (`make status`)", use_container_width=True)
 
     with col_tg3:
         render_bento_card(
-            title="Pinned Target Details",
+            title="Pinned Target Specs",
             value="Juice Shop v20.1.1",
-            description="Target path: target-app/juice-shop\nDocker Port: 3000",
+            description="Target lock: target-app/TARGET.lock\nHost Port: 3000 | Container: juice-shop",
             icon="📦",
-            badge_text="Target Lock",
+            badge_text="Target Pinned",
             badge_variant="info",
         )
 
+    # Unified Terminal Execution Output Log for Lifecycle Actions
+    target_action_log = None
+    log_title = ""
+
     if btn_start_target:
-        with st.spinner("Đang khởi động Target App và chờ HTTP readiness..."):
-            success, target_log = run_target_command("up")
+        with st.spinner("Đang khởi động Target App và kiểm tra HTTP readiness..."):
+            success, target_action_log = run_target_command("up")
+            log_title = "🚀 Log Khởi động Target App (`make up & wait`)"
             if success:
                 st.success("Target App đã khởi động thành công và sẵn sàng nhận kết nối DAST!")
             else:
-                st.error("Khởi động Target App thất bại.")
-            with st.expander("📄 Xem Log khởi động Target App (`make up & wait`)", expanded=True):
-                st.code(target_log, language="bash")
+                st.error("Khởi động Target App thất bại. Vui lòng kiểm tra log bên dưới.")
 
     if btn_stop_target:
         with st.spinner("Đang dừng Target App..."):
-            success, target_log = run_target_command("down")
+            success, target_action_log = run_target_command("down")
+            log_title = "🛑 Log Đóng Target App (`make down`)"
             if success:
                 st.success("Target App đã được đóng thành công!")
             else:
-                st.error("Lỗi khi dừng Target App.")
-            with st.expander("📄 Xem Log đóng Target App (`make down`)", expanded=True):
-                st.code(target_log, language="bash")
+                st.error("Lỗi khi dừng Target App. Vui lòng kiểm tra log bên dưới.")
 
     if btn_status_target:
-        with st.spinner("Đang kiểm tra Docker compose status..."):
-            success, target_log = run_target_command("status")
-            with st.expander("📄 Kết quả Compose Status (`make status`)", expanded=True):
-                st.code(target_log, language="bash")
+        with st.spinner("Đang lấy thông tin Compose Status..."):
+            success, target_action_log = run_target_command("status")
+            log_title = "📊 Log Trạng thái Docker Compose (`make status`)"
+
+    if target_action_log:
+        with st.expander(f"📄 {log_title}", expanded=True):
+            st.code(target_action_log, language="bash")
 
     st.divider()
 
     render_bento_header("Bento Tool Selection & Direct Scan", "Chọn công cụ quét SAST, DAST hoặc Full Scan Admin", icon="⚡")
 
+    # Smart DAST Scanner Readiness Warning Banner
+    if not is_alive:
+        st.warning(
+            "⚠️ **Target App (OWASP Juice Shop) hiện đang Offline!**\n\n"
+            "Các công cụ quét DAST (OWASP ZAP, sqlmap) cần Target App hoạt động để gửi HTTP request kiểm thử. "
+            "Vui lòng bấm nút **'🚀 Start Target'** ở phần Quản lý Vòng đời ở trên trước khi khởi động quét DAST."
+        )
+    else:
+        st.success("🟢 **Target App đang Online tại `http://localhost:3000`** — Sẵn sàng nhận kết nối quét DAST!")
+
     st.markdown("### 1. Chọn Phân nhóm Công cụ Quét:")
-    
+
     col_sast, col_dast, col_admin = st.columns(3)
-    
+
     with col_sast:
         render_bento_card(
             title="SAST Tools (Static)",
@@ -131,7 +160,7 @@ with tab1:
             description="Quét động Baseline, Full Scan Crawl, sqlmap injection test.",
             icon="🌐",
             badge_text="Dynamic Scan",
-            badge_variant="warning" if "warning" in ["warning"] else "high",
+            badge_variant="success" if is_alive else "critical",
         )
 
     with col_admin:
@@ -145,7 +174,7 @@ with tab1:
         )
 
     st.divider()
-    
+
     tool_options = {
         "semgrep": "🔍 Semgrep SAST — Quét mã nguồn tĩnh nhanh",
         "codeql": "🔬 CodeQL SAST — Phân tích Dataflow & Taint tracking chuyên sâu",
@@ -168,15 +197,18 @@ with tab1:
         start_button = st.button("▶️ Khởi động Bài quét Ngay", type="primary", use_container_width=True)
 
     if start_button:
-        with st.spinner(f"Đang thực thi bài quét {selected_tool}... (Quá trình có thể mất từ 30s tới vài phút)"):
-            success, log_output = run_scanner(selected_tool)
-            if success:
-                st.success(f"Bài quét {selected_tool} đã thực thi thành công!")
-            else:
-                st.error(f"Bài quét {selected_tool} thất bại hoặc có cảnh báo.")
-            
-            with st.expander("📄 Xem Output & Terminal Logs chi tiết", expanded=True):
-                st.code(log_output, language="bash")
+        if not is_alive and selected_tool in ("zap_baseline", "zap_fullscan", "zap_admin", "zap_fullscan_admin", "sqlmap", "full_scan_admin"):
+            st.error("❌ Không thể chạy bài quét DAST khi Target App đang Offline! Vui lòng bấm '🚀 Start Target' ở trên trước.")
+        else:
+            with st.spinner(f"Đang thực thi bài quét {selected_tool}... (Quá trình có thể mất từ 30s tới vài phút)"):
+                success, log_output = run_scanner(selected_tool)
+                if success:
+                    st.success(f"Bài quét {selected_tool} đã thực thi thành công!")
+                else:
+                    st.error(f"Bài quét {selected_tool} thất bại hoặc có cảnh báo.")
+
+                with st.expander("📄 Xem Output & Terminal Logs chi tiết", expanded=True):
+                    st.code(log_output, language="bash")
 
 
 # ==========================================
@@ -206,7 +238,7 @@ with tab2:
             st.info("Chưa có file raw report nào trong thư mục `reports/raw/`.")
         else:
             st.markdown("Tích chọn các tập tin bạn muốn đưa vào tiến trình xử lý:")
-            
+
             col_sel1, col_sel2 = st.columns([1, 1])
             with col_sel1:
                 if st.button("☑️ Chọn tất cả (Select All)"):
