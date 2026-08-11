@@ -78,6 +78,26 @@ def save_uploaded_report(file_name: str, file_bytes: bytes, raw_dir: str = "repo
     return str(destination)
 
 
+def list_raw_report_files(raw_dir: str = "reports/raw") -> list[dict[str, Any]]:
+    """Trả về danh sách chi tiết các file raw report trong raw_dir."""
+    target_dir = Path(raw_dir)
+    if not target_dir.exists():
+        return []
+
+    files = [f for f in target_dir.glob("*") if f.is_file() and not f.name.startswith(".")]
+    files.sort(key=os.path.getmtime, reverse=True)
+    
+    results = []
+    for f in files:
+        results.append({
+            "name": f.name,
+            "path": str(f),
+            "size": f.stat().st_size,
+            "mtime": f.stat().st_mtime,
+        })
+    return results
+
+
 def list_normalized_files(output_dir: str = "reports/normalized") -> list[str]:
     """Trả về danh sách file normalized JSONL đã sắp xếp theo thời gian mới nhất."""
     target_dir = Path(output_dir)

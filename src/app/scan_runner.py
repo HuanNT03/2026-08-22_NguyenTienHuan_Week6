@@ -10,7 +10,10 @@ TOOL_COMMANDS: Mapping[str, list[str]] = {
     "codeql": ["make", "sast-codeql"],
     "zap_baseline": ["./scripts/run-dast.sh"],
     "zap_fullscan": ["./scripts/run-dast-zap-fullscan.sh"],
+    "zap_admin": ["./scripts/run-dast-admin.sh"],
+    "zap_fullscan_admin": ["./scripts/run-dast-zap-fullscan-admin.sh"],
     "sqlmap": ["./scripts/run-dast-sqlmap.sh"],
+    "full_scan_admin": ["./scripts/run-week1.sh"],
 }
 
 
@@ -24,7 +27,7 @@ def run_scanner(tool_name: str, cwd: str = ".", timeout_seconds: int = 1800) -> 
     Thực thi bài quét bảo mật theo tool_name.
 
     Args:
-        tool_name: Tên scanner (vd: 'semgrep', 'codeql', 'zap_baseline', 'zap_fullscan', 'sqlmap')
+        tool_name: Tên scanner (vd: 'semgrep', 'codeql', 'zap_baseline', 'zap_fullscan', 'zap_admin', 'zap_fullscan_admin', 'sqlmap', 'full_scan_admin')
         cwd: Thư mục thực thi lệnh (mặc định là gốc project '.')
         timeout_seconds: Thời gian chờ tối đa bằng giây (mặc định 1800s / 30 phút)
 
