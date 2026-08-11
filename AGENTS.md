@@ -191,6 +191,10 @@ agent logic trong `src/retrieval/` hoặc `src/normalizers/`.
 Đọc file liên quan và test hiện có trước khi sửa. Giữ thay đổi nhỏ, có test tương ứng và
 không sửa unrelated user changes trong working tree.
 
+### Phân tách task nhỏ và Git commit
+- Khi thực hiện các công việc phức tạp hoặc gồm nhiều bước, agent cần phân tách yêu cầu thành từng task nhỏ, độc lập và rõ ràng.
+- Sau khi thực hiện xong mỗi task nhỏ (bao gồm chỉnh sửa file, kiểm thử/validate), agent phải commit ngay thay đổi vào git với commit message mô tả rõ nội dung task trước khi chuyển sang task tiếp theo.
+
 ### Test-first và function contract
 
 - Trước khi triển khai hoặc thay đổi bất kỳ function nào, phải xác định và viết rõ các
