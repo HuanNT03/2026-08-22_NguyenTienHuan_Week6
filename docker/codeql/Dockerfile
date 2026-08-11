@@ -12,8 +12,8 @@ RUN set -eux; \
     release_url="https://github.com/github/codeql-action/releases/download/codeql-bundle-v${CODEQL_VERSION}"; \
     mkdir -p /tmp/codeql-download; \
     cd /tmp/codeql-download; \
-    curl --fail --location --retry 3 --output "$asset" "$release_url/$asset"; \
-    curl --fail --location --retry 3 --output "$asset.checksum.txt" "$release_url/$asset.checksum.txt"; \
+    curl --fail --location --retry 10 --retry-all-errors --retry-delay 5 -C - --output "$asset" "$release_url/$asset"; \
+    curl --fail --location --retry 10 --retry-all-errors --retry-delay 5 -C - --output "$asset.checksum.txt" "$release_url/$asset.checksum.txt"; \
     sha256sum -c "$asset.checksum.txt"; \
     tar -xzf "$asset" -C /opt; \
     ln -s /opt/codeql/codeql /usr/local/bin/codeql; \
