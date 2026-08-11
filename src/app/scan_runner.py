@@ -113,20 +113,33 @@ def check_target_health() -> tuple[bool, int, str]:
     """
     Kiểm tra xem Target App (Juice Shop) có đang phản hồi HTTP hay không.
 
+    Thử lần lượt các URL endpoint khả dĩ:
+    1. http://127.0.0.1:{port}/ (khi chạy ngoài máy Host)
+    2. http://juice-shop:3000/ (khi chạy từ container UI trong mạng Docker Compose sentinel-security)
+    3. http://localhost:{port}/ (fallback khác)
+
     Returns:
-        tuple[bool, int, str]: (Đang hoạt động hay không, HTTP Status Code / 0, URL target)
+        tuple[bool, int, str]: (Đang hoạt động hay không, HTTP Status Code / 0, URL target phản hồi thành công hoặc mặc định)
     """
     import urllib.error
     import urllib.request
 
     port = os.getenv("JUICE_SHOP_PORT", "3000")
-    target_url = f"http://127.0.0.1:{port}/"
-    try:
-        req = urllib.request.Request(target_url, headers={"User-Agent": "Sentinel-HealthCheck"})
-        with urllib.request.urlopen(req, timeout=3) as resp:
-            return True, resp.status, target_url
-    except urllib.error.HTTPError as exc:
-        return True, exc.code, target_url
-    except Exception:  # noqa: BLE001
-        return False, 0, target_url
+    candidate_urls = [
+        f"http://127.0.0.1:{port}/",
+        "http://juice-shop:3000/",
+        f"http://localhost:{port}/",
+    ]
+
+    for target_url in candidate_urls:
+        try:
+            req = urllib.request.Request(target_url, headers={"User-Agent": "Sentinel-HealthCheck"})
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                return True, resp.status, target_url
+        except urllib.error.HTTPError as exc:
+            return True, exc.code, target_url
+        except Exception:  # noqa: BLE001, S112
+            continue
+
+    return False, 0, f"http://127.0.0.1:{port}/"
 

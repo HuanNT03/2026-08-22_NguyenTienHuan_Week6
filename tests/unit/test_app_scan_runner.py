@@ -73,4 +73,48 @@ def test_check_target_health():
     assert "http://" in url
 
 
+def test_check_target_health_fallback_success(monkeypatch):
+    """Kiểm tra check_target_health tự động fallback sang URL thứ 2 khi URL 1 bị Connection Refused."""
+    import urllib.error
+    import urllib.request
+
+    class DummyResponse:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            pass
+
+    def mock_urlopen(req, timeout=3):
+        url = req.full_url
+        if "127.0.0.1" in url:
+            raise urllib.error.URLError("Connection Refused")
+        if "juice-shop" in url:
+            return DummyResponse()
+        raise urllib.error.URLError("Failed")
+
+    monkeypatch.setattr(urllib.request, "urlopen", mock_urlopen)
+    is_alive, code, url = check_target_health()
+    assert is_alive is True
+    assert code == 200
+    assert url == "http://juice-shop:3000/"
+
+
+def test_check_target_health_all_fail(monkeypatch):
+    """Kiểm tra check_target_health trả về False khi tất cả candidate URL đều lỗi."""
+    import urllib.request
+
+    def mock_urlopen(req, timeout=3):
+        raise urllib.error.URLError("Connection Refused")
+
+    monkeypatch.setattr(urllib.request, "urlopen", mock_urlopen)
+    is_alive, code, url = check_target_health()
+    assert is_alive is False
+    assert code == 0
+    assert "http://127.0.0.1:" in url
+
+
+
 
