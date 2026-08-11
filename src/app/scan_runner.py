@@ -60,5 +60,8 @@ def run_scanner(tool_name: str, cwd: str = ".", timeout_seconds: int = 1800) -> 
         stdout = exc.stdout or ""
         stderr = exc.stderr or ""
         return False, f"Bài quét {tool_name} vượt quá thời gian cho phép ({timeout_seconds}s):\nSTDOUT: {stdout}\nSTDERR: {stderr}"
+    except FileNotFoundError as exc:
+        cmd_str = exc.filename or command[0]
+        return False, f"Lỗi thực thi {tool_name}: Không tìm thấy lệnh '{cmd_str}' trong hệ thống. Vui lòng kiểm tra xem công cụ/tiện ích (ví dụ: make, jq, docker) đã được cài đặt chưa."
     except Exception as exc:  # noqa: BLE001
         return False, f"Ngoại lệ không xác định khi chạy {tool_name}: {exc}"

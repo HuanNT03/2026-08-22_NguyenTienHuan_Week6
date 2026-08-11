@@ -32,6 +32,7 @@ actual_tag_commit="$(git -C "$TARGET_DIR" rev-parse "$TAG^{commit}" 2>/dev/null 
 dirty_state="$(git -C "$TARGET_DIR" status --porcelain --untracked-files=all)"
 [[ -z "$dirty_state" ]] || die "Target working tree is dirty; do not modify files under target-app/juice-shop"
 
+command -v jq >/dev/null 2>&1 || die "Required command 'jq' not found. Please install jq."
 [[ -f "$TARGET_DIR/package.json" ]] || die "Target package.json not found"
 actual_version="$(jq -er '.version | strings' "$TARGET_DIR/package.json" 2>/dev/null || true)"
 [[ "$actual_version" == "20.1.1" ]] || \
