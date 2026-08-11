@@ -71,7 +71,7 @@ def inject_bento_css() -> None:
 
         .bento-value {
             color: #cdd6f4;
-            font-size: 26px;
+            font-size: 24px;
             font-weight: 700;
             line-height: 1.2;
             margin-bottom: 6px;
@@ -81,6 +81,40 @@ def inject_bento_css() -> None:
             color: #6c7086;
             font-size: 12px;
             font-weight: 400;
+        }
+
+        /* Quick link button inside Bento Cards */
+        .bento-link-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(90deg, #a6e3a1 0%, #94e2d5 100%);
+            color: #11111b !important;
+            font-size: 13px;
+            font-weight: 700;
+            padding: 8px 14px;
+            border-radius: 12px;
+            text-decoration: none !important;
+            margin-top: 10px;
+            box-shadow: 0 4px 15px rgba(166, 227, 161, 0.25);
+            transition: all 0.2s ease;
+        }
+
+        .bento-link-btn:hover {
+            transform: scale(1.03);
+            box-shadow: 0 6px 20px rgba(166, 227, 161, 0.4);
+            color: #11111b !important;
+        }
+
+        /* Control Bento Box Wrapper */
+        .bento-control-box {
+            background: linear-gradient(135deg, rgba(24, 24, 37, 0.95) 0%, rgba(30, 30, 46, 0.85) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 20px 24px;
+            margin-bottom: 16px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.36);
+            backdrop-filter: blur(12px);
         }
 
         /* Grouped Vulnerability Card */
@@ -147,11 +181,17 @@ def render_bento_card(
     icon: str = "🛡️",
     badge_text: str | None = None,
     badge_variant: str = "info",
+    link_url: str | None = None,
+    link_label: str = "Mở liên kết ↗",
 ) -> None:
-    """Render 1 thẻ Bento Card chuẩn visual design."""
+    """Render 1 thẻ Bento Card chuẩn visual design kèm tùy chọn nút Quick Link."""
     badge_html = ""
     if badge_text:
         badge_html = f'<span class="bento-badge {badge_variant.lower()}">{badge_text}</span>'
+
+    link_html = ""
+    if link_url:
+        link_html = f'<a href="{link_url}" target="_blank" class="bento-link-btn">{link_label}</a>'
 
     st.markdown(
         f"""
@@ -163,6 +203,7 @@ def render_bento_card(
             <div class="bento-title">{title}</div>
             <div class="bento-value">{value}</div>
             <div class="bento-desc">{description}</div>
+            {link_html}
         </div>
         """,
         unsafe_allow_html=True,
