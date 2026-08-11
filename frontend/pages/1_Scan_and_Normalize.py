@@ -1,7 +1,7 @@
-"""Trang Quét lỗ hổng trực tiếp và Chuẩn hóa Scanner Reports."""
+"""Trang Quét lỗ hổng trực tiếp và Chuẩn hóa Scanner Reports (Bento Box Enhanced)."""
 
-import sys
 from pathlib import Path
+import sys
 
 # Ensure project root is in sys.path for Streamlit execution
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
@@ -10,88 +10,162 @@ if str(ROOT_DIR) not in sys.path:
 
 import streamlit as st
 
-from frontend.components.cards import render_section_header
+from frontend.components.bento import inject_bento_css, render_bento_card, render_bento_header
+from frontend.components.cards import render_badge
 from src.app.normalizer_bridge import (
     execute_normalization,
     list_normalized_files,
+    list_raw_report_files,
     load_unified_findings,
     save_uploaded_report,
 )
-from src.app.scan_runner import get_supported_scanners, run_scanner
+from src.app.scan_runner import run_scanner
 
 st.set_page_config(page_title="Scan & Normalize - Sentinel", page_icon="🛡️", layout="wide")
 
-st.title("🛡️ Quét Lỗ hổng & Chuẩn hóa Kết quả (Scan & Normalize)")
-st.caption("Kích hoạt trực tiếp bài quét SAST/DAST, tải lên tập tin scanner report hoặc chuẩn hóa sang Unified Findings JSONL.")
+# Inject Bento CSS
+inject_bento_css()
 
-tab1, tab2, tab3 = st.tabs(["🚀 Quét Trực tiếp (Direct Scan)", "📁 Tải lên / Chọn Raw Report", "⚡ Normalize & View Findings"])
+st.title("🛡️ Quét Lỗ hổng & Chuẩn hóa Kết quả")
+st.caption("Kích hoạt trực tiếp các công cụ SAST/DAST/Full Scan Admin, quản lý tập tin raw report dạng checkbox và chuẩn hóa sang Unified Findings JSONL.")
 
-# TAB 1: DIRECT SCAN
+tab1, tab2, tab3 = st.tabs([
+    "🚀 Quét Trực tiếp (Direct Scan)",
+    "📁 Quản lý File Raw Reports (Checkbox)",
+    "⚡ Normalize & View Findings",
+])
+
+# ==========================================
+# TAB 1: DIRECT SCAN (BENTO CARDS)
+# ==========================================
 with tab1:
-    render_section_header("Kích hoạt Bài quét Bảo mật Trực tiếp", "Chạy trực tiếp các công cụ SAST và DAST từ giao diện Web")
+    render_bento_header("Bento Tool Selection & Direct Scan", "Chọn công cụ quét SAST, DAST hoặc Full Scan Admin", icon="⚡")
+
+    st.markdown("### 1. Chọn Phân nhóm Công cụ Quét:")
     
-    col_scanner, col_action = st.columns([3, 1])
-    with col_scanner:
-        scanners = get_supported_scanners()
-        scanner_names = {
-            "semgrep": "Semgrep SAST (Quét mã nguồn nhanh)",
-            "codeql": "CodeQL SAST (Phân tích Dataflow chuyên sâu)",
-            "zap_baseline": "OWASP ZAP Baseline DAST (Passive Scan)",
-            "zap_fullscan": "OWASP ZAP Full Scan DAST (Active Crawl & Attack)",
-            "sqlmap": "sqlmap DAST (Kiểm thử SQL Injection)",
-        }
-        selected_tool = st.selectbox(
-            "Chọn Scanner muốn thực thi:",
-            options=scanners,
-            format_func=lambda x: scanner_names.get(x, x),
+    col_sast, col_dast, col_admin = st.columns(3)
+    
+    with col_sast:
+        render_bento_card(
+            title="SAST Tools (Static)",
+            value="Semgrep & CodeQL",
+            description="Quét mã nguồn & dataflow analysis trực tiếp trên target codebase.",
+            icon="🔍",
+            badge_text="Static Scan",
+            badge_variant="info",
         )
+
+    with col_dast:
+        render_bento_card(
+            title="DAST Tools (Dynamic)",
+            value="ZAP & sqlmap",
+            description="Quét động Baseline, Full Scan Crawl, sqlmap injection test.",
+            icon="🌐",
+            badge_text="Dynamic Scan",
+            badge_variant="warning" if "warning" in ["warning"] else "high",
+        )
+
+    with col_admin:
+        render_bento_card(
+            title="Admin & Full Pipeline",
+            value="DAST Admin & Week 1",
+            description="Quét với quyền Admin Auth (Cookie/Token) & chạy toàn bộ scanner.",
+            icon="👑",
+            badge_text="Full Scan Admin",
+            badge_variant="critical",
+        )
+
+    st.divider()
     
-    with col_action:
-        st.write(" ")
-        st.write(" ")
-        start_button = st.button("▶️ Khởi động Scan", type="primary", use_container_width=True)
+    tool_options = {
+        "semgrep": "🔍 Semgrep SAST — Quét mã nguồn tĩnh nhanh",
+        "codeql": "🔬 CodeQL SAST — Phân tích Dataflow & Taint tracking chuyên sâu",
+        "zap_baseline": "🌐 OWASP ZAP Baseline DAST — Passive Scan web app",
+        "zap_fullscan": "🕷️ OWASP ZAP Full Scan DAST — Active Crawl & Attack Surface",
+        "zap_admin": "🔐 OWASP ZAP Baseline DAST (Authenticated Admin Session)",
+        "zap_fullscan_admin": "👑 OWASP ZAP Full Scan DAST (Authenticated Admin Session)",
+        "sqlmap": "💉 sqlmap DAST — Automated SQL Injection Detection & Fingerprint",
+        "full_scan_admin": "🚀 Full Scan Admin Pipeline — Chạy toàn bộ SAST + DAST Admin Sequence",
+    }
+
+    selected_tool = st.selectbox(
+        "Chọn Công cụ Quét muốn Khởi động:",
+        options=list(tool_options.keys()),
+        format_func=lambda x: tool_options.get(x, x),
+    )
+
+    col_btn, col_empty = st.columns([2, 3])
+    with col_btn:
+        start_button = st.button("▶️ Khởi động Bài quét Ngay", type="primary", use_container_width=True)
 
     if start_button:
-        with st.spinner(f"Đang thực thi bài quét {selected_tool}... (Có thể mất từ vài giây đến vài phút)"):
+        with st.spinner(f"Đang thực thi bài quét {selected_tool}... (Quá trình có thể mất từ 30s tới vài phút)"):
             success, log_output = run_scanner(selected_tool)
             if success:
-                st.success(f"Quét thành công bằng {selected_tool}!")
+                st.success(f"Bài quét {selected_tool} đã thực thi thành công!")
             else:
-                st.error(f"Quét thất bại hoặc xuất hiện cảnh báo cho {selected_tool}.")
+                st.error(f"Bài quét {selected_tool} thất bại hoặc có cảnh báo.")
             
-            with st.expander("📄 Xem Terminal Execution Log", expanded=True):
+            with st.expander("📄 Xem Output & Terminal Logs chi tiết", expanded=True):
                 st.code(log_output, language="bash")
 
-# TAB 2: UPLOAD & SELECT REPORTS
+
+# ==========================================
+# TAB 2: UPLOAD & CHECKBOX FILE SELECTION
+# ==========================================
 with tab2:
-    render_section_header("Quản lý Tập tin Scanner Reports", "Tải lên file log mới hoặc kiểm tra các tập tin hiện có trong reports/raw/")
-    
-    col_up, col_list = st.columns(2)
-    
-    with col_up:
-        st.markdown("#### Tải lên File Raw Report mới")
+    render_bento_header("Quản lý Scanner Raw Reports", "Tải lên file report mới hoặc tích chọn nhiều file trong reports/raw/", icon="📁")
+
+    col_upload, col_manage = st.columns([1.5, 2.5])
+
+    with col_upload:
+        st.markdown("#### Tải lên File Raw Report")
         uploaded_file = st.file_uploader(
-            "Kéo thả hoặc chọn file raw report (.json, .sarif):",
+            "Kéo thả hoặc bấm chọn file (.json, .sarif):",
             type=["json", "sarif"],
         )
         if uploaded_file is not None:
             file_bytes = uploaded_file.read()
             saved_path = save_uploaded_report(uploaded_file.name, file_bytes)
-            st.success(f"Đã lưu tập tin thành công tại: `{saved_path}`")
+            st.success(f"Đã lưu thành công: `{saved_path}`")
 
-    with col_list:
-        st.markdown("#### Các Raw Reports hiện có trong `reports/raw/`")
-        raw_dir = Path("reports/raw")
-        if raw_dir.exists():
-            files = list(raw_dir.glob("*"))
-            if files:
-                for f in files:
-                    st.text(f"📄 {f.name} ({f.stat().st_size} bytes)")
-            else:
-                st.info("Chưa có file raw report nào trong reports/raw/")
+    with col_manage:
+        st.markdown("#### Các Raw Reports hiện có (`reports/raw/`)")
+        raw_files = list_raw_report_files()
+
+        if not raw_files:
+            st.info("Chưa có file raw report nào trong thư mục `reports/raw/`.")
         else:
-            st.info("Thư mục reports/raw/ chưa tồn tại.")
+            st.markdown("Tích chọn các tập tin bạn muốn đưa vào tiến trình xử lý:")
+            
+            col_sel1, col_sel2 = st.columns([1, 1])
+            with col_sel1:
+                if st.button("☑️ Chọn tất cả (Select All)"):
+                    for f in raw_files:
+                        st.session_state[f"chk_raw_{f['name']}"] = True
+            with col_sel2:
+                if st.button("☐ Bỏ chọn tất cả"):
+                    for f in raw_files:
+                        st.session_state[f"chk_raw_{f['name']}"] = False
 
+            selected_raw_paths = []
+            for f in raw_files:
+                chk_key = f"chk_raw_{f['name']}"
+                default_val = st.session_state.get(chk_key, True)
+                is_selected = st.checkbox(
+                    f"📄 `{f['name']}` ({f['size']} bytes)",
+                    value=default_val,
+                    key=chk_key,
+                )
+                if is_selected:
+                    selected_raw_paths.append(f["path"])
+
+            st.caption(f"Đã chọn **{len(selected_raw_paths)} / {len(raw_files)}** tập tin raw report.")
+
+
+# ==========================================
+# HELPER FUNCTIONS FOR FINDINGS TABLE
+# ==========================================
 def _get_tool_name(item: dict) -> str:
     tool_val = item.get("tool")
     if isinstance(tool_val, dict):
@@ -121,32 +195,34 @@ def _get_location_str(item: dict) -> str:
     return "N/A"
 
 
+# ==========================================
 # TAB 3: NORMALIZE & VIEW FINDINGS
+# ==========================================
 with tab3:
-    render_section_header("Chuẩn hóa Findings sang Unified Format", "Chuyển đổi raw scanner reports sang JSONL tuân thủ unified_findings.schema.json")
+    render_bento_header("Chuẩn hóa Findings & Xem Kết quả", "Chuyển đổi các scanner report sang Unified Findings JSONL v2", icon="⚡")
 
     if st.button("⚡ Normalize Tất cả Raw Reports", type="primary"):
-        with st.spinner("Đang thực hiện chuẩn hóa..."):
+        with st.spinner("Đang thực hiện chuẩn hóa dữ liệu..."):
             success, summary = execute_normalization()
             if success:
-                st.success("Chuẩn hóa hoàn tất thành công!")
+                st.success("Chuẩn hóa hoàn tất 100%!")
             else:
-                st.warning("Chuẩn hóa hoàn tất với cảnh báo hoặc lỗi một phần.")
+                st.warning("Chuẩn hóa hoàn tất với một số cảnh báo.")
             st.json(summary)
 
     st.divider()
     st.markdown("### 📋 Danh sách Unified Findings đã Chuẩn hóa")
-    
+
     normalized_files = list_normalized_files()
     if not normalized_files:
         st.info("Chưa có file Unified Findings nào trong `reports/normalized/`. Vui lòng chạy Normalize ở trên.")
     else:
-        selected_file = st.selectbox("Chọn tập tin Normalized Findings:", options=normalized_files)
+        selected_file = st.selectbox("Chọn tập tin Normalized Findings để kiểm tra:", options=normalized_files)
         if selected_file:
             try:
                 findings = load_unified_findings(selected_file)
-                st.markdown(f"**Tổng số findings:** `{len(findings)}` phát hiện")
-                
+                st.markdown(f"**Tổng số findings:** `{len(findings)}` phát hiện trong tập tin `{Path(selected_file).name}`")
+
                 # Filters
                 col_f1, col_f2 = st.columns(2)
                 with col_f1:
@@ -167,6 +243,7 @@ with tab3:
                     cwe_list = ", ".join(item.get("cwe_ids", [])) or "None"
                     table_data.append({
                         "Fingerprint": str(item.get("fingerprint", ""))[:20] + "...",
+                        "Group Key": str(item.get("group_key", ""))[:20] + "...",
                         "Tool": _get_tool_name(item).upper(),
                         "Scan Type": _get_scan_type(item),
                         "Severity": str(item.get("severity", "unknown")).upper(),
