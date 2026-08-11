@@ -47,6 +47,10 @@ touch "$REPORT_DIR/.gitkeep"
 rm -f -- "$REPORT_FILE" "$META_FILE" "$ENDPOINTS_FILE" "$SITE_TREE_FILE"
 "$SCRIPT_DIR/write-scan-metadata.sh" --tool zap --scan-profile baseline --report reports/raw/zap.json --base-url http://juice-shop:3000
 
+HOST_PROJECT_ROOT="$(resolve_host_project_root "$PROJECT_ROOT")"
+HOST_REPORT_DIR="$HOST_PROJECT_ROOT/reports/raw"
+HOST_ZAP_CONFIG_DIR="$HOST_PROJECT_ROOT/configs/zap"
+
 log "ZAP image: $ZAP_IMAGE"
 docker run --rm \
   --user "$HOST_USER" \
@@ -60,7 +64,7 @@ docker run --rm \
   --user "$HOST_USER" \
   -e HOME=/tmp \
   -e JAVA_TOOL_OPTIONS=-Duser.home=/tmp \
-  --mount "type=bind,src=$ZAP_CONFIG_DIR,dst=/zap/configs,ro" \
+  --mount "type=bind,src=$HOST_ZAP_CONFIG_DIR,dst=/zap/configs,ro" \
   "$ZAP_IMAGE" \
   zap.sh -cmd -silent -autocheck "$ZAP_AUTOMATION_PLAN_CONTAINER"
 
@@ -70,8 +74,8 @@ docker run --rm \
   -e HOME=/tmp \
   -e JAVA_TOOL_OPTIONS=-Duser.home=/tmp \
   --network "$NETWORK_NAME" \
-  -v "$REPORT_DIR:/zap/wrk:rw" \
-  --mount "type=bind,src=$ZAP_CONFIG_DIR,dst=/zap/configs,ro" \
+  -v "$HOST_REPORT_DIR:/zap/wrk:rw" \
+  --mount "type=bind,src=$HOST_ZAP_CONFIG_DIR,dst=/zap/configs,ro" \
   "$ZAP_IMAGE" \
   zap.sh -cmd -silent -autorun "$ZAP_AUTOMATION_PLAN_CONTAINER"
 zap_exit_code=$?

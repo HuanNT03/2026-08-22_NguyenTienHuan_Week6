@@ -116,3 +116,10 @@ resolve_semgrep_app_token() {
 
   printf '%s\n' "$token"
 }
+
+resolve_host_project_root() {
+  local project_root="$1"
+  local host_path="${HOST_PROJECT_PATH:-$project_root}"
+  printf '%s\n' "$host_path"
+}
+

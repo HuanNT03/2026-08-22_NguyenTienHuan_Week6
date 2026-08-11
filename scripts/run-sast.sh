@@ -48,6 +48,9 @@ touch "$REPORT_DIR/.gitkeep"
 rm -f -- "$REPORT_FILE" "$SARIF_FILE" "$META_FILE"
 "$SCRIPT_DIR/write-scan-metadata.sh" --tool semgrep --report reports/raw/semgrep.json
 
+HOST_PROJECT_ROOT="$(resolve_host_project_root "$PROJECT_ROOT")"
+HOST_REPORT_DIR="$HOST_PROJECT_ROOT/reports/raw"
+
 log "Semgrep image: $SEMGREP_IMAGE"
 docker run --rm --user "$HOST_USER" -e HOME=/tmp "$SEMGREP_IMAGE" semgrep --version
 
@@ -55,8 +58,8 @@ docker run --rm \
   --user "$HOST_USER" \
   -e HOME=/tmp \
   -e SEMGREP_APP_TOKEN \
-  -v "$PROJECT_ROOT:/src:ro" \
-  -v "$REPORT_DIR:/src/reports/raw:rw" \
+  -v "$HOST_PROJECT_ROOT:/src:ro" \
+  -v "$HOST_REPORT_DIR:/src/reports/raw:rw" \
   "$SEMGREP_IMAGE" \
   semgrep scan \
   --config p/owasp-top-ten \
