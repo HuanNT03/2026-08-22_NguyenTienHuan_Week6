@@ -99,14 +99,14 @@ def run_target_command(action: str, cwd: str = ".") -> tuple[bool, str]:
         return False, f"Hành động target '{action}' không hợp lệ. Các hành động hỗ trợ: {supported}"
 
     if action == "up":
-        res_up, out_up = _execute_command(TARGET_COMMANDS["up"], cwd=cwd, timeout_seconds=120)
+        res_up, out_up = _execute_command(TARGET_COMMANDS["up"], cwd=cwd, timeout_seconds=300)
         if not res_up:
             return False, f"Lỗi khi khởi động Target App:\n{out_up}"
-        res_wait, out_wait = _execute_command(TARGET_COMMANDS["wait"], cwd=cwd, timeout_seconds=120)
+        res_wait, out_wait = _execute_command(TARGET_COMMANDS["wait"], cwd=cwd, timeout_seconds=300)
         output = f"{out_up}\n\n--- WAITING TARGET READINESS ---\n{out_wait}"
         return res_wait, output
     else:
-        return _execute_command(TARGET_COMMANDS[action], cwd=cwd, timeout_seconds=120)
+        return _execute_command(TARGET_COMMANDS[action], cwd=cwd, timeout_seconds=300)
 
 
 def check_target_health() -> tuple[bool, int, str]:
