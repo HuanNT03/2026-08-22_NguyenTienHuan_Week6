@@ -139,7 +139,7 @@ Mỗi phát hiện gồm: Tên lỗ hổng, Mức độ nghiêm trọng, Vị tr
 - Kết quả có định dạng ổn định.
 - Agent xử lý được trường hợp dữ liệu đầu vào trống hoặc không hợp lệ.
 
-## Tuần 4: API Gateway và kiểm thử request an toàn
+## Tuần 4: API Gateway và kiểm thử request an toàn (Repo riêng biệt, chưa thực hiện trong repo này)
 
 ## Mục tiêu
 
