@@ -19,7 +19,7 @@ from src.app.normalizer_bridge import (
     load_unified_findings,
     save_uploaded_report,
 )
-from src.app.scan_runner import run_scanner
+from src.app.scan_runner import check_target_health, run_scanner, run_target_command
 
 st.set_page_config(page_title="Scan & Normalize - Sentinel", page_icon="🛡️", layout="wide")
 
@@ -36,9 +36,78 @@ tab1, tab2, tab3 = st.tabs([
 ])
 
 # ==========================================
-# TAB 1: DIRECT SCAN (BENTO CARDS)
+# TAB 1: DIRECT SCAN & TARGET CONTROL (BENTO CARDS)
 # ==========================================
 with tab1:
+    render_bento_header("Quản lý Vòng đời Target App (OWASP Juice Shop)", "Bật/Tắt và kiểm tra trạng thái hoạt động của Target App trước khi chạy DAST", icon="🎯")
+
+    is_alive, http_code, target_url = check_target_health()
+
+    col_tg1, col_tg2, col_tg3 = st.columns([1.4, 1.3, 1.3])
+
+    with col_tg1:
+        if is_alive:
+            status_text = f"🟢 HTTP {http_code} Online"
+            badge_var = "success"
+            desc_text = f"Sẵn sàng kết nối DAST tại {target_url}"
+        else:
+            status_text = "🔴 Offline / Stopped"
+            badge_var = "critical"
+            desc_text = f"Không thể kết nối HTTP tới {target_url}"
+
+        render_bento_card(
+            title="Target Health Status",
+            value=status_text,
+            description=desc_text,
+            icon="🌐",
+            badge_text="Target Container",
+            badge_variant=badge_var,
+        )
+
+    with col_tg2:
+        st.markdown("#### Control Actions (`Makefile`)")
+        btn_start_target = st.button("🚀 Start Target App (`make up`)", type="primary", use_container_width=True)
+        btn_stop_target = st.button("🛑 Stop Target App (`make down`)", use_container_width=True)
+        btn_status_target = st.button("🔄 Check Status (`make status`)", use_container_width=True)
+
+    with col_tg3:
+        render_bento_card(
+            title="Pinned Target Details",
+            value="Juice Shop v20.1.1",
+            description="Target path: target-app/juice-shop\nDocker Port: 3000",
+            icon="📦",
+            badge_text="Target Lock",
+            badge_variant="info",
+        )
+
+    if btn_start_target:
+        with st.spinner("Đang khởi động Target App và chờ HTTP readiness..."):
+            success, target_log = run_target_command("up")
+            if success:
+                st.success("Target App đã khởi động thành công và sẵn sàng nhận kết nối DAST!")
+            else:
+                st.error("Khởi động Target App thất bại.")
+            with st.expander("📄 Xem Log khởi động Target App (`make up & wait`)", expanded=True):
+                st.code(target_log, language="bash")
+
+    if btn_stop_target:
+        with st.spinner("Đang dừng Target App..."):
+            success, target_log = run_target_command("down")
+            if success:
+                st.success("Target App đã được đóng thành công!")
+            else:
+                st.error("Lỗi khi dừng Target App.")
+            with st.expander("📄 Xem Log đóng Target App (`make down`)", expanded=True):
+                st.code(target_log, language="bash")
+
+    if btn_status_target:
+        with st.spinner("Đang kiểm tra Docker compose status..."):
+            success, target_log = run_target_command("status")
+            with st.expander("📄 Kết quả Compose Status (`make status`)", expanded=True):
+                st.code(target_log, language="bash")
+
+    st.divider()
+
     render_bento_header("Bento Tool Selection & Direct Scan", "Chọn công cụ quét SAST, DAST hoặc Full Scan Admin", icon="⚡")
 
     st.markdown("### 1. Chọn Phân nhóm Công cụ Quét:")

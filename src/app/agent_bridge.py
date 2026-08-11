@@ -9,6 +9,11 @@ from src.agent.config import AgentConfig
 from src.agent.orchestrator import run_analysis
 
 
+def get_configured_model() -> str:
+    """Trả về tên mô hình LLM được cấu hình trong file .env (mặc định 'qwen-plus')."""
+    return AgentConfig().model
+
+
 def run_agent_analysis(
     findings_path: str,
     model: str | None = None,

@@ -17,9 +17,47 @@ TOOL_COMMANDS: Mapping[str, list[str]] = {
 }
 
 
+# Mapping target management actions to executable commands
+TARGET_COMMANDS: Mapping[str, list[str]] = {
+    "up": ["make", "up"],
+    "wait": ["make", "wait"],
+    "down": ["make", "down"],
+    "status": ["make", "status"],
+}
+
+
 def get_supported_scanners() -> list[str]:
     """Trả về danh sách các scanner hỗ trợ."""
     return list(TOOL_COMMANDS.keys())
+
+
+def _execute_command(command: list[str], cwd: str = ".", timeout_seconds: int = 1800) -> tuple[bool, str]:
+    """Helper nội bộ để thực thi command subprocess và trả về (success, log)."""
+    env = os.environ.copy()
+    try:
+        process = subprocess.run(
+            command,
+            cwd=cwd,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds,
+            check=False,
+        )
+        output = f"--- STDOUT ---\n{process.stdout}\n\n--- STDERR ---\n{process.stderr}"
+        if process.returncode == 0:
+            return True, output
+        else:
+            return False, f"Exit code {process.returncode}:\n{output}"
+    except subprocess.TimeoutExpired as exc:
+        stdout = exc.stdout or ""
+        stderr = exc.stderr or ""
+        return False, f"Vượt quá thời gian cho phép ({timeout_seconds}s):\nSTDOUT: {stdout}\nSTDERR: {stderr}"
+    except FileNotFoundError as exc:
+        cmd_str = exc.filename or command[0]
+        return False, f"Không tìm thấy lệnh '{cmd_str}' trong hệ thống. Vui lòng kiểm tra xem công cụ (make, jq, docker) đã được cài đặt chưa."
+    except Exception as exc:  # noqa: BLE001
+        return False, f"Ngoại lệ không xác định: {exc}"
 
 
 def run_scanner(tool_name: str, cwd: str = ".", timeout_seconds: int = 1800) -> tuple[bool, str]:
@@ -39,29 +77,56 @@ def run_scanner(tool_name: str, cwd: str = ".", timeout_seconds: int = 1800) -> 
         return False, f"Scanner '{tool_name}' không được hỗ trợ. Các scanner hợp lệ: {supported}"
 
     command = TOOL_COMMANDS[tool_name]
-    env = os.environ.copy()
+    success, output = _execute_command(command, cwd=cwd, timeout_seconds=timeout_seconds)
+    if not success:
+        return False, f"Lỗi thực thi {tool_name} {output}"
+    return True, output
 
+
+def run_target_command(action: str, cwd: str = ".") -> tuple[bool, str]:
+    """
+    Quản lý vòng đời của Target App (OWASP Juice Shop) bằng các lệnh Makefile/Docker.
+
+    Args:
+        action: 'up' (kích hoạt & chờ target), 'down' (dừng target), 'status' (kiểm tra status)
+        cwd: Thư mục thực thi lệnh (mặc định '.')
+
+    Returns:
+        tuple[bool, str]: (Thành công hay không, Log output)
+    """
+    if action not in TARGET_COMMANDS:
+        supported = ", ".join(TARGET_COMMANDS.keys())
+        return False, f"Hành động target '{action}' không hợp lệ. Các hành động hỗ trợ: {supported}"
+
+    if action == "up":
+        res_up, out_up = _execute_command(TARGET_COMMANDS["up"], cwd=cwd, timeout_seconds=120)
+        if not res_up:
+            return False, f"Lỗi khi khởi động Target App:\n{out_up}"
+        res_wait, out_wait = _execute_command(TARGET_COMMANDS["wait"], cwd=cwd, timeout_seconds=120)
+        output = f"{out_up}\n\n--- WAITING TARGET READINESS ---\n{out_wait}"
+        return res_wait, output
+    else:
+        return _execute_command(TARGET_COMMANDS[action], cwd=cwd, timeout_seconds=120)
+
+
+def check_target_health() -> tuple[bool, int, str]:
+    """
+    Kiểm tra xem Target App (Juice Shop) có đang phản hồi HTTP hay không.
+
+    Returns:
+        tuple[bool, int, str]: (Đang hoạt động hay không, HTTP Status Code / 0, URL target)
+    """
+    import urllib.error
+    import urllib.request
+
+    port = os.getenv("JUICE_SHOP_PORT", "3000")
+    target_url = f"http://127.0.0.1:{port}/"
     try:
-        process = subprocess.run(
-            command,
-            cwd=cwd,
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=timeout_seconds,
-            check=False,
-        )
-        output = f"--- STDOUT ---\n{process.stdout}\n\n--- STDERR ---\n{process.stderr}"
-        if process.returncode == 0:
-            return True, output
-        else:
-            return False, f"Lỗi thực thi {tool_name} (Exit code {process.returncode}):\n{output}"
-    except subprocess.TimeoutExpired as exc:
-        stdout = exc.stdout or ""
-        stderr = exc.stderr or ""
-        return False, f"Bài quét {tool_name} vượt quá thời gian cho phép ({timeout_seconds}s):\nSTDOUT: {stdout}\nSTDERR: {stderr}"
-    except FileNotFoundError as exc:
-        cmd_str = exc.filename or command[0]
-        return False, f"Lỗi thực thi {tool_name}: Không tìm thấy lệnh '{cmd_str}' trong hệ thống. Vui lòng kiểm tra xem công cụ/tiện ích (ví dụ: make, jq, docker) đã được cài đặt chưa."
-    except Exception as exc:  # noqa: BLE001
-        return False, f"Ngoại lệ không xác định khi chạy {tool_name}: {exc}"
+        req = urllib.request.Request(target_url, headers={"User-Agent": "Sentinel-HealthCheck"})
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            return True, resp.status, target_url
+    except urllib.error.HTTPError as exc:
+        return True, exc.code, target_url
+    except Exception:  # noqa: BLE001
+        return False, 0, target_url
+

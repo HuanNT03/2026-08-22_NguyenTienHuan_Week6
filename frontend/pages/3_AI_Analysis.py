@@ -18,6 +18,7 @@ from frontend.components.bento import (
 )
 from frontend.components.cards import render_badge
 from src.app.agent_bridge import (
+    get_configured_model,
     list_analyzed_reports,
     load_analysis_report,
     run_agent_analysis,
@@ -46,13 +47,32 @@ with tab_run:
         st.warning("Chưa tìm thấy tập tin Unified Findings nào trong `reports/normalized/`. Vui lòng sang trang 1 để chạy Normalize trước.")
     else:
         selected_findings = st.selectbox("Chọn tập tin Unified Findings để phân tích:", options=normalized_files)
-        model_name = st.text_input("Tên mô hình LLM (Model Name):", value="qwen-plus", help="Mặc định qwen-plus hoặc model đã cấu hình trong .env")
+
+        # Dynamic model loading from .env
+        default_env_model = get_configured_model()
+
+        model_input = st.text_input(
+            "Tên mô hình LLM (Model Name):",
+            value=default_env_model,
+            help=f"Mô hình đang được cấu hình trong file .env hiện tại là '{default_env_model}'. Nhập tên mô hình khác nếu muốn thay đổi, hoặc để trống để sử dụng giá trị cấu hình trong .env.",
+        )
+
+        # Resolution logic: custom input -> .env model -> default fallback
+        if model_input and model_input.strip():
+            active_model = model_input.strip()
+            if active_model == default_env_model:
+                st.caption(f"📌 Đang sử dụng mô hình được cấu hình trong `.env`: **`{active_model}`**")
+            else:
+                st.caption(f"✏️ Đang sử dụng mô hình tùy chỉnh do người dùng nhập: **`{active_model}`** *(Cấu hình gốc trong .env: `{default_env_model}`)*")
+        else:
+            active_model = default_env_model or "qwen-plus"
+            st.caption(f"🔄 Ô nhập để trống — Tự động fallback về mô hình trong `.env`: **`{active_model}`**")
 
         if st.button("🚀 Chạy AI Analysis Agent", type="primary"):
-            with st.spinner("Security Analysis Agent đang thực thi pipeline 3 giai đoạn (Grouping -> KB Search -> LLM Synthesis)..."):
-                success, result_summary = run_agent_analysis(findings_path=selected_findings, model=model_name)
+            with st.spinner(f"Security Analysis Agent đang thực thi pipeline bằng mô hình '{active_model}' (Grouping -> KB Search -> LLM Synthesis)..."):
+                success, result_summary = run_agent_analysis(findings_path=selected_findings, model=active_model)
                 if success:
-                    st.success("Phân tích AI hoàn tất 100% coverage!")
+                    st.success(f"Phân tích AI bằng mô hình '{active_model}' hoàn tất 100% coverage!")
                     st.json(result_summary)
                     st.info("Hãy chuyển sang tab '📊 Xem Báo cáo Dashboard' để kiểm tra kết quả chi tiết!")
                 else:

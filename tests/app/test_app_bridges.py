@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from src.app.agent_bridge import (
+    get_configured_model,
     list_analyzed_reports,
     load_analysis_report,
 )
@@ -27,6 +28,13 @@ def test_get_supported_scanners():
     assert "codeql" in scanners
     assert "zap_baseline" in scanners
     assert "sqlmap" in scanners
+
+
+def test_get_configured_model():
+    model = get_configured_model()
+    assert isinstance(model, str)
+    assert len(model) > 0
+
 
 
 def test_run_scanner_unsupported_tool():
