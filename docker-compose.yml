@@ -1,3 +1,5 @@
+name: soc_sentinel_project
+
 services:
   juice-shop:
     image: sentinel/juice-shop:v20.1.1
@@ -84,6 +86,7 @@ services:
       - LLM_MAX_RETRIES=${LLM_MAX_RETRIES:-2}
       - SEMGREP_APP_TOKEN=${SEMGREP_APP_TOKEN:-}
       - JUICE_SHOP_PORT=${JUICE_SHOP_PORT:-3000}
+      - COMPOSE_PROJECT_NAME=soc_sentinel_project
     networks:
       - security
 
