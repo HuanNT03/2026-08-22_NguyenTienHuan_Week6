@@ -12,6 +12,7 @@ if str(ROOT_DIR) not in sys.path:
 
 import streamlit as st
 
+from frontend.components.bento import inject_bento_css, render_bento_card, render_bento_header
 from frontend.components.cards import render_metric_card
 
 st.set_page_config(
@@ -21,10 +22,24 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-st.title("🛡️ Project Sentinel — DevSecOps Dashboard")
-st.caption("Nền tảng kiểm thử và phân tích an toàn thông tin tích hợp OWASP Juice Shop, SAST/DAST Normalizer & AI Security Agent")
+# Inject custom CSS for Bento Box layout
+inject_bento_css()
 
-st.divider()
+# Header Section
+st.markdown(
+    """
+    <div style="background: linear-gradient(135deg, rgba(30, 30, 46, 0.9) 0%, rgba(24, 24, 37, 0.9) 100%); padding: 24px 28px; border-radius: 20px; border: 1px solid rgba(205, 214, 244, 0.1); margin-bottom: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="font-size: 40px; background: rgba(203, 166, 247, 0.15); padding: 12px; border-radius: 16px; border: 1px solid rgba(203, 166, 247, 0.3);">🛡️</div>
+            <div>
+                <h1 style="margin: 0; font-size: 30px; font-weight: 800; background: linear-gradient(90deg, #cdd6f4, #cba6f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Project Sentinel</h1>
+                <p style="margin: 4px 0 0 0; color: #a6adc8; font-size: 14px;">DevSecOps Operations & Security AI Analysis Dashboard — OWASP Juice Shop Target</p>
+            </div>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 # Check Juice Shop target status
 target_port = os.getenv("JUICE_SHOP_PORT", "3000")
@@ -38,46 +53,112 @@ try:
 except Exception:  # noqa: BLE001
     is_target_online = False
 
+render_bento_header("Hệ thống Overview (Bento Box Grid)", "Theo dõi trạng thái môi trường và pipeline tự động", icon="⚡")
+
+# Bento Grid Top Metrics (4 Columns)
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
     status_str = "🟢 Online" if is_target_online else "🔴 Offline"
-    render_metric_card("Target App (Juice Shop)", status_str, f"Port: {target_port}", key="target_status")
+    badge_variant = "success" if is_target_online else "critical"
+    render_bento_card(
+        title="Target App (Juice Shop)",
+        value=status_str,
+        description=f"Local Host Port: {target_port}",
+        icon="🎯",
+        badge_text="Target Lock",
+        badge_variant=badge_variant,
+    )
 
 with col2:
-    render_metric_card("Knowledge Base", "442+ Docs", "SQLite FTS5 Search Engine", key="kb_count")
+    render_bento_card(
+        title="Knowledge Base",
+        value="442+ Docs",
+        description="SQLite FTS5 Search Engine",
+        icon="📚",
+        badge_text="Canonical KB",
+        badge_variant="info",
+    )
 
 with col3:
-    render_metric_card("Normalizer Pipeline", "Unified Findings", "Semgrep, CodeQL, ZAP", key="normalizer_status")
+    render_bento_card(
+        title="Normalizer Pipeline",
+        value="Unified Findings",
+        description="Semgrep, CodeQL, ZAP DAST",
+        icon="🔄",
+        badge_text="JSONL Schema v2",
+        badge_variant="low",
+    )
 
 with col4:
-    render_metric_card("AI Security Agent", "Week 3 Active", "Redaction + KB Provenance", key="agent_status")
-
-st.markdown("### 📌 Hướng dẫn Sử dụng Giao diện Web")
-
-col_a, col_b, col_c = st.columns(3)
-
-with col_a:
-    st.info("""
-    #### 1. Quét & Chuẩn hóa (Scan & Normalize)
-    - Kích hoạt trực tiếp bài quét **Semgrep**, **CodeQL**, **ZAP**, **sqlmap**.
-    - Hoặc upload / chọn file raw report sẵn có.
-    - Chạy chuẩn hóa kết quả ra **Unified Findings JSONL**.
-    """)
-
-with col_b:
-    st.success("""
-    #### 2. Tra cứu Tri thức (Knowledge Base)
-    - Tìm kiếm từ khóa FTS5 trên tập tài liệu **CWE**, **OWASP Top 10**.
-    - Tra cứu hướng dẫn khắc phục (Remediation guidelines) và ví dụ lỗ hổng.
-    """)
-
-with col_c:
-    st.warning("""
-    #### 3. Báo cáo Phân tích AI (AI Security Analysis)
-    - Kích hoạt **Security Analysis Agent** đọc file Unified Findings.
-    - Xem Dashboard 5 thẻ: Tổng quan Rủi ro, Nhóm Lỗ hổng, Nguyên nhân, Vá lỗi & Trích dẫn KB.
-    """)
+    render_bento_card(
+        title="AI Security Agent",
+        value="Week 3 Active",
+        description="Redaction + KB Provenance",
+        icon="🤖",
+        badge_text="Qwen LLM",
+        badge_variant="success",
+    )
 
 st.divider()
-st.markdown("👈 **Chọn trang chức năng ở thanh menu bên trái (Sidebar) để bắt đầu!**")
+
+render_bento_header("Bento Quick Navigation & Guidance", "Lựa chọn các phân vùng chức năng trên thanh Sidebar bên trái", icon="🧭")
+
+# Bento Cards Grid for Navigation Features (3 Columns)
+ca, cb, cc = st.columns(3)
+
+with ca:
+    st.markdown(
+        """
+        <div class="bento-card">
+            <div class="bento-icon">🚀</div>
+            <div class="bento-title">1. Scan & Normalize</div>
+            <div style="color: #cdd6f4; font-size: 15px; font-weight: 600; margin-bottom: 8px;">Quét & Chuẩn hóa Lỗ hổng</div>
+            <ul style="color: #a6adc8; font-size: 13px; padding-left: 18px; margin-bottom: 0;">
+                <li>Khởi động bài quét SAST (Semgrep, CodeQL)</li>
+                <li>Khởi động DAST (Baseline, Full Scan, DAST Admin)</li>
+                <li>Tải lên & chọn file raw dạng checkbox (Select All)</li>
+                <li>Chuẩn hóa về Unified Findings JSONL</li>
+            </ul>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+with cb:
+    st.markdown(
+        """
+        <div class="bento-card">
+            <div class="bento-icon">📚</div>
+            <div class="bento-title">2. Knowledge Base</div>
+            <div style="color: #cdd6f4; font-size: 15px; font-weight: 600; margin-bottom: 8px;">Tra cứu Tri thức An ninh Mạng</div>
+            <ul style="color: #a6adc8; font-size: 13px; padding-left: 18px; margin-bottom: 0;">
+                <li>Tìm kiếm từ khóa FTS5 trên 442+ canonical docs</li>
+                <li>Truy vấn mã lỗ hổng CWE & OWASP Top 10</li>
+                <li>Xem hướng dẫn khắc phục (Remediation)</li>
+                <li>Trích dẫn nguồn chuẩn hóa cho báo cáo</li>
+            </ul>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+with cc:
+    st.markdown(
+        """
+        <div class="bento-card">
+            <div class="bento-icon">📊</div>
+            <div class="bento-title">3. AI Analysis Dashboard</div>
+            <div style="color: #cdd6f4; font-size: 15px; font-weight: 600; margin-bottom: 8px;">Báo cáo Phân tích AI Security</div>
+            <ul style="color: #a6adc8; font-size: 13px; padding-left: 18px; margin-bottom: 0;">
+                <li>Lựa chọn file Security Analysis Report JSONL</li>
+                <li>Executive Threat Overview Bento Metrics</li>
+                <li>Hiển thị bảng lỗ hổng theo nhóm (Grouped View)</li>
+                <li>Xem chi tiết Rationale & KB Provenance</li>
+            </ul>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+st.caption("👈 Sử dụng menu bên trái (Sidebar) để chuyển đổi giữa các trang chức năng.")
