@@ -1,14 +1,22 @@
 FROM python:3.11-slim
 
-# Install system dependencies including docker-cli for scanner execution
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \
-    docker.io \
     sqlite3 \
     make \
     jq \
     && rm -rf /var/lib/apt/lists/*
+
+# Install static Docker CLI and Docker Compose binaries for socket passthrough
+RUN curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-26.1.4.tgz | tar -xz -C /tmp && \
+    mv /tmp/docker/docker /usr/local/bin/ && \
+    rm -rf /tmp/docker && \
+    mkdir -p /usr/libexec/docker/cli-plugins && \
+    curl -fsSL https://github.com/docker/compose/releases/download/v2.29.2/docker-compose-linux-x86_64 -o /usr/libexec/docker/cli-plugins/docker-compose && \
+    chmod +x /usr/libexec/docker/cli-plugins/docker-compose && \
+    ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose
 
 WORKDIR /workspace
 
@@ -19,8 +27,7 @@ COPY pyproject.toml requirements.txt ./
 COPY . .
 
 # Install dependencies and local package in editable mode
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -e .
+RUN pip install --no-cache-dir --default-timeout=100 -e .
 
 EXPOSE 8501
 
