@@ -3,6 +3,7 @@ name: soc_sentinel_project
 services:
   juice-shop:
     image: sentinel/juice-shop:v20.1.1
+    pull_policy: build
     build:
       context: ./target-app/juice-shop
       dockerfile: Dockerfile
@@ -87,6 +88,7 @@ services:
       - SEMGREP_APP_TOKEN=${SEMGREP_APP_TOKEN:-}
       - JUICE_SHOP_PORT=${JUICE_SHOP_PORT:-3000}
       - COMPOSE_PROJECT_NAME=soc_sentinel_project
+      - HOST_PROJECT_PATH=${HOST_PROJECT_PATH:-${PWD}}
     networks:
       - security
 
