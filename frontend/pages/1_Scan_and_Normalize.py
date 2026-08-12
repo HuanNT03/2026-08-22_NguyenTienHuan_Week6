@@ -48,6 +48,8 @@ with tab1:
     render_bento_header("Quản lý Vòng đời Target App (OWASP Juice Shop)", "Khởi động, dừng và kiểm tra kết nối Target App trước khi thực thi DAST", icon="🎯")
 
     is_alive, http_code, target_url = check_target_health()
+    juice_port = os.getenv("JUICE_SHOP_PORT", "3000")
+    host_browser_url = f"http://localhost:{juice_port}/"
 
     # Equal 3-column Bento Grid for Target App Lifecycle
     col_tg1, col_tg2, col_tg3 = st.columns(3)
@@ -56,8 +58,8 @@ with tab1:
         if is_alive:
             status_text = f"🟢 HTTP {http_code} Online"
             badge_var = "success"
-            desc_text = f"Container đang chạy & phản hồi tại {target_url}"
-            link_target = target_url
+            desc_text = f"Container đang chạy & phản hồi tại {target_url}\n(Truy cập từ Host: {host_browser_url})"
+            link_target = host_browser_url
         else:
             status_text = "🔴 Offline / Stopped"
             badge_var = "critical"
