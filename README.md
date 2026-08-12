@@ -45,11 +45,34 @@ Gateway, Human-in-the-loop approval và guardrails HTTP request nâng cao sẽ d
 - Linux x86_64, macOS với Docker Desktop, hoặc Windows WSL2 với Docker Desktop;
 - Git, Bash, GNU Make, Docker Engine/Desktop, Docker Compose v2;
 - `curl` và `jq`;
-- ít nhất 4 GiB memory cho Docker Engine/Desktop khi chạy CodeQL hoặc ZAP Client Spider.
-
-Gitleaks `v8.30.1` trở lên được khuyến nghị để chạy secret-scanning Git hooks.
+- Gitleaks `v8.30.1` trở lên được khuyến nghị để chạy secret-scanning Git hooks.
 
 Không cần cài Node.js, Semgrep, CodeQL hoặc ZAP trên host. Chạy `make doctor` để kiểm tra môi trường.
+
+### 💻 Ước tính Cấu hình Phần cứng Chạy Ứng dụng & Tool Quét
+
+Khi chạy đồng thời **Target App (OWASP Juice Shop)** + **Sentinel Web UI** + **Security Scanners** (SAST/DAST) + **AI Security Analysis Agent**:
+
+| Thành phần / Tiến trình | RAM yêu cầu | CPU Cores | Mục đích |
+| :--- | :--- | :--- | :--- |
+| **Juice Shop Target Container** | ~300 - 500 MB | 0.5 - 1 core | Web app thử nghiệm (Node.js/Express) |
+| **Sentinel Web UI Container** | ~300 - 500 MB | 1 core | Streamlit UI + Normalizer + Retrieval Service |
+| **Semgrep SAST** | ~1 - 2 GB | 2 cores | Quét mã nguồn JS/TS |
+| **CodeQL SAST** | ~3 - 4 GB | 2 - 4 cores | Phân tích cơ sở dữ liệu CodeQL (`--ram=3000`) |
+| **ZAP Baseline / Full Scan DAST** | ~2 - 4 GB | 2 - 4 cores | Dynamic crawl (ZAP Client Spider dùng Chrome headless) |
+| **SQLMap DAST** | ~200 MB | 1 core | Kiểm thử SQL Injection tự động |
+| **AI Security Analysis Agent** | ~200 - 500 MB | 1 core | Redaction + Retrieval + Gọi API LLM |
+
+#### 🎯 Tổng kết Mức Cấu hình Khuyến nghị:
+- **Cấu hình Tối thiểu (Minimum)**:
+  - **RAM**: **8 GB** (Cấp tối thiểu **6 GB** cho Docker Daemon).
+  - **CPU**: **4 Cores**.
+  - **Ổ cứng**: **15 GB** trống (chứa Docker images: `node`, `semgrep`, `zap`, `sqlmap`, `ubuntu codeql`).
+- **Cấu hình Khuyến nghị (Recommended)**:
+  - **RAM**: **16 GB** (Cấp **12 GB** cho Docker Daemon để ZAP Client Spider & CodeQL không bị nghẽn Out-Of-Memory).
+  - **CPU**: **6 - 8 Cores**.
+  - **Ổ cứng**: **30 GB** SSD khả dụng (Lưu trữ CodeQL Database, SARIF, Raw reports, SQLite index).
+
 
 ## Quickstart (Giao diện Web App)
 
