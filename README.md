@@ -124,10 +124,10 @@ Nếu muốn thực thi thủ công từng công đoạn quét, chuẩn hóa và
 
 ```bash
 make setup-target
-make target-build     # Build image Target App Juice Shop (alias: make build)
-make target-up        # Khởi chạy riêng Target App (alias: make up)
-make target-wait      # Chờ Target App sẵn sàng nhận kết nối (alias: make wait)
-make target-smoke     # Test HTTP Smoke Test cho Target App (alias: make smoke)
+make target-build     # Build image Target App Juice Shop
+make target-up        # Khởi chạy riêng Target App Juice Shop
+make target-wait      # Chờ Target App sẵn sàng nhận kết nối
+make target-smoke     # Test HTTP Smoke Test cho Target App
 make sast             # Quét SAST (Semgrep & CodeQL)
 make dast             # Quét DAST ZAP Baseline
 make validate-reports # Kiểm tra tính hợp lệ của scanner reports
@@ -151,17 +151,17 @@ Baseline thực hiện spider và passive scan, không chạy active scan. Chạ
 
 ```bash
 make setup-target
-make build
-make up
-make wait
-make smoke
+make target-build
+make target-up
+make target-wait
+make target-smoke
 make dast
-make down
+make target-down
 ```
 
 Kết quả gồm `reports/raw/zap.json`, metadata `reports/raw/zap.meta.json` có
 `scan_profile=baseline`, inventory `reports/raw/zap-endpoints.txt` và site tree
-`reports/raw/zap-site-tree.yaml`. Nếu một bước lỗi trước cleanup, vẫn chạy `make down`.
+`reports/raw/zap-site-tree.yaml`. Nếu một bước lỗi trước cleanup, vẫn chạy `make target-down` hoặc `make down`.
 
 ### Chạy ZAP Full Scan local (active)
 
@@ -170,12 +170,12 @@ này trên Juice Shop đã pin của repository:
 
 ```bash
 make setup-target
-make build
-make up
-make wait
-make smoke
+make target-build
+make target-up
+make target-wait
+make target-smoke
 make dast-zap-fullscan
-make down
+make target-down
 ```
 
 Ngoài bốn artifact ZAP giống Baseline và metadata có `scan_profile=full`, log chẩn đoán được
@@ -183,7 +183,7 @@ ghi tại `logs/zap-fullscan-runner.log` và `logs/zap-fullscan-zap.out`.
 
 Baseline và Full Scan dùng chung `reports/raw/zap.json`; profile chạy sau ghi đè kết quả profile
 trước. Hãy sao chép hoặc upload report trước khi chuyển profile nếu cần giữ cả hai. Không chạy hai
-profile đồng thời. Với cả hai lifecycle, nếu một bước lỗi trước cleanup thì vẫn chạy `make down`.
+profile đồng thời. Với cả hai lifecycle, nếu một bước lỗi trước cleanup thì vẫn chạy `make target-down` hoặc `make down`.
 
 ### Chạy sqlmap local (bounded active scan)
 
@@ -193,12 +193,12 @@ network `sentinel-security`.
 
 ```bash
 make setup-target
-make build
-make up
-make wait
-make smoke
+make target-build
+make target-up
+make target-wait
+make target-smoke
 make dast-sqlmap
-make down
+make target-down
 ```
 
 Lệnh tự build image local `sentinel/sqlmap:1.10.7` từ package sqlmap đã pin hash. Nó chỉ dùng
@@ -698,4 +698,4 @@ Sentinel. Để tải lại target mà vẫn giữ kết quả scan: `make clean
   Automation output. Nếu export chứa origin ngoài Juice Shop, coi là scope regression và không
   upload report như một scan hợp lệ.
 - ZAP code `2` là warning được chấp nhận; code `1`, `3` hoặc code khác là execution failure.
-- ZAP không thấy network: bảo đảm `make up` thành công và network `sentinel-security` tồn tại.
+- ZAP không thấy network: bảo đảm `make target-up` thành công và network `sentinel-security` tồn tại.
