@@ -80,9 +80,9 @@ with tab1:
             """,
             unsafe_allow_html=True,
         )
-        btn_start_target = st.button("🚀 Start Target (`make up & wait`)", type="primary", use_container_width=True)
-        btn_stop_target = st.button("🛑 Stop Target (`make down`)", use_container_width=True)
-        btn_status_target = st.button("📊 Docker Status (`make status`)", use_container_width=True)
+        btn_start_target = st.button("🚀 Start Target (`make target-up & wait`)", type="primary", use_container_width=True)
+        btn_stop_target = st.button("🛑 Stop Target (`make target-down`)", use_container_width=True)
+        btn_status_target = st.button("📊 Docker Status (`make target-status`)", use_container_width=True)
 
     with col_tg3:
         render_bento_card(
@@ -99,27 +99,45 @@ with tab1:
     log_title = ""
 
     if btn_start_target:
+        term_placeholder = st.empty()
+        term_placeholder.code(
+            "$ make target-up && make target-wait\n[sentinel] Executing target lifecycle startup...\n[sentinel] Waiting up to 300s for HTTP readiness...",
+            language="bash",
+        )
         with st.spinner("Đang khởi động Target App và kiểm tra HTTP readiness..."):
             success, target_action_log = run_target_command("up")
-            log_title = "🚀 Log Khởi động Target App (`make up & wait`)"
+            term_placeholder.empty()  # Clear temporary 3-line terminal box after completion
+            log_title = "🚀 Log Khởi động Target App (`make target-up & wait`)"
             if success:
                 st.success("Target App đã khởi động thành công và sẵn sàng nhận kết nối DAST!")
             else:
                 st.error("Khởi động Target App thất bại. Vui lòng kiểm tra log bên dưới.")
 
     if btn_stop_target:
+        term_placeholder = st.empty()
+        term_placeholder.code(
+            "$ make target-down\n[sentinel] Stopping Juice Shop container...\n[sentinel] Removing Juice Shop target container...",
+            language="bash",
+        )
         with st.spinner("Đang dừng Target App..."):
             success, target_action_log = run_target_command("down")
-            log_title = "🛑 Log Đóng Target App (`make down`)"
+            term_placeholder.empty()  # Clear temporary 3-line terminal box after completion
+            log_title = "🛑 Log Đóng Target App (`make target-down`)"
             if success:
                 st.success("Target App đã được đóng thành công!")
             else:
                 st.error("Lỗi khi dừng Target App. Vui lòng kiểm tra log bên dưới.")
 
     if btn_status_target:
+        term_placeholder = st.empty()
+        term_placeholder.code(
+            "$ make target-status\n[sentinel] Querying docker compose ps juice-shop...\n[sentinel] Gathering container state...",
+            language="bash",
+        )
         with st.spinner("Đang lấy thông tin Compose Status..."):
             success, target_action_log = run_target_command("status")
-            log_title = "📊 Log Trạng thái Docker Compose (`make status`)"
+            term_placeholder.empty()  # Clear temporary 3-line terminal box after completion
+            log_title = "📊 Log Trạng thái Docker Compose (`make target-status`)"
 
     if target_action_log:
         with st.expander(f"📄 {log_title}", expanded=True):
@@ -200,8 +218,14 @@ with tab1:
         if not is_alive and selected_tool in ("zap_baseline", "zap_fullscan", "zap_admin", "zap_fullscan_admin", "sqlmap", "full_scan_admin"):
             st.error("❌ Không thể chạy bài quét DAST khi Target App đang Offline! Vui lòng bấm '🚀 Start Target' ở trên trước.")
         else:
+            scan_term = st.empty()
+            scan_term.code(
+                f"$ make sast-{selected_tool} (or dast-{selected_tool})\n[sentinel] Executing scanner {selected_tool} in Docker container...\n[sentinel] Running vulnerability checks and saving raw reports...",
+                language="bash",
+            )
             with st.spinner(f"Đang thực thi bài quét {selected_tool}... (Quá trình có thể mất từ 30s tới vài phút)"):
                 success, log_output = run_scanner(selected_tool)
+                scan_term.empty()  # Clear temporary 3-line terminal box after completion
                 if success:
                     st.success(f"Bài quét {selected_tool} đã thực thi thành công!")
                 else:
