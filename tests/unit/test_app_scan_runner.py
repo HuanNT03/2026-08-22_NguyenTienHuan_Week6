@@ -71,7 +71,7 @@ def test_run_scanner_stream_invalid():
 
     stream = list(run_scanner_stream("invalid_tool"))
     assert len(stream) == 1
-    is_done, full_log, line = stream[0]
+    is_done, full_log, _line = stream[0]
     assert is_done is False
     assert "không được hỗ trợ" in full_log
 
@@ -82,7 +82,7 @@ def test_run_target_command_stream_invalid():
 
     stream = list(run_target_command_stream("invalid_action"))
     assert len(stream) == 1
-    is_done, full_log, line = stream[0]
+    is_done, full_log, _line = stream[0]
     assert is_done is False
     assert "không hợp lệ" in full_log
 
