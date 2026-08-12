@@ -7,7 +7,7 @@ VENV ?= .venv
 VENV_PYTHON := $(VENV)/bin/python
 VENV_PIP := $(VENV)/bin/pip
 
-.PHONY: help venv install doctor setup-target verify-target build up wait smoke down logs status \
+.PHONY: help venv install doctor setup-target verify-target down status \
 	target-build target-up target-wait target-smoke target-down target-logs target-status \
 	lint test test-contracts test-python quality sast sast-semgrep sast-codeql dast dast-zap-fullscan dast-zap-admin dast-zap-fullscan-admin dast-sqlmap validate-reports week1 normalize clean-reports clean \
 	ui-build ui ui-down ui-logs
@@ -52,18 +52,8 @@ target-logs: ## Follow Juice Shop target container logs.
 target-status: ## Show Juice Shop target container status.
 	docker compose ps juice-shop
 
-build: target-build ## Build the pinned Juice Shop image.
-
-up: target-up ## Start Juice Shop in the background.
-
-wait: target-wait ## Wait for target HTTP readiness.
-
-smoke: target-smoke ## Test host HTTP access and response content.
-
 down: ## Stop all Sentinel Compose resources.
 	docker compose down --remove-orphans
-
-logs: target-logs ## Follow Juice Shop logs.
 
 status: ## Show Compose service status.
 	docker compose ps
