@@ -36,9 +36,9 @@ services:
       HOME: /tmp
     working_dir: /workspace
     volumes:
-      - ./target-app/juice-shop:/workspace/target-app/juice-shop:ro
-      - ./configs/codeql:/workspace/configs/codeql:ro
-      - ./reports/raw:/workspace/reports/raw:rw
+      - ${HOST_PROJECT_PATH:-.}/target-app/juice-shop:/workspace/target-app/juice-shop:ro
+      - ${HOST_PROJECT_PATH:-.}/configs/codeql:/workspace/configs/codeql:ro
+      - ${HOST_PROJECT_PATH:-.}/reports/raw:/workspace/reports/raw:rw
     command:
       - /bin/bash
       - -euo
@@ -61,7 +61,7 @@ services:
       HOME: /tmp
     working_dir: /workspace
     volumes:
-      - ./reports/raw:/workspace/reports/raw:rw
+      - ${HOST_PROJECT_PATH:-.}/reports/raw:/workspace/reports/raw:rw
     networks:
       - security
     entrypoint:
