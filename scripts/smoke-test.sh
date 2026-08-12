@@ -9,14 +9,21 @@ PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd -P)"
 source "$SCRIPT_DIR/common.sh"
 
 port="$(resolve_juice_shop_port "$PROJECT_ROOT")"
-target_url="http://127.0.0.1:$port/"
+candidate_urls=(
+  "http://127.0.0.1:$port/"
+  "http://juice-shop:3000/"
+  "http://host.docker.internal:$port/"
+)
 response_body="$(mktemp "${TMPDIR:-/tmp}/sentinel-smoke.XXXXXX")"
 trap 'rm -f -- "$response_body"' EXIT
 
-status_code="$(curl -sS -o "$response_body" -w '%{http_code}' --max-time 15 "$target_url")" || \
-  die "Unable to reach target at $target_url"
+for target_url in "${candidate_urls[@]}"; do
+  : >"$response_body"
+  status_code="$(curl -sS -o "$response_body" -w '%{http_code}' --max-time 15 "$target_url" 2>/dev/null || true)"
+  if [[ "$status_code" =~ ^[23][0-9][0-9]$ ]] && [[ -s "$response_body" ]]; then
+    log "Smoke test passed at $target_url: HTTP $status_code with a non-empty response body."
+    exit 0
+  fi
+done
 
-[[ "$status_code" =~ ^[23][0-9][0-9]$ ]] || die "Smoke test received HTTP $status_code from $target_url"
-[[ -s "$response_body" ]] || die "Smoke test received an empty response body from $target_url"
-
-log "Smoke test passed: HTTP $status_code with a non-empty response body."
+die "Smoke test failed for all attempted target URLs: ${candidate_urls[*]}"
