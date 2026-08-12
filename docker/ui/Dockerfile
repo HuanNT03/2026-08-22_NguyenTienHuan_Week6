@@ -20,14 +20,17 @@ RUN curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-26.
 
 WORKDIR /workspace
 
-# Copy dependency files first for Docker cache optimization
+# Copy dependency definition files first for Docker layer cache optimization
 COPY pyproject.toml requirements.txt ./
 
-# Copy source code and installation files
+# Install third-party Python dependencies first (cached by Docker when requirements don't change)
+RUN pip install --no-cache-dir --default-timeout=100 --retries 10 -r requirements.txt
+
+# Copy source code after dependencies are installed
 COPY . .
 
-# Install dependencies and local package in editable mode
-RUN pip install --no-cache-dir --default-timeout=100 -e .
+# Install local package in editable mode without re-downloading dependencies
+RUN pip install --no-cache-dir --no-deps -e .
 
 EXPOSE 8501
 
