@@ -19,7 +19,13 @@ from src.app.normalizer_bridge import (
     load_unified_findings,
     save_uploaded_report,
 )
-from src.app.scan_runner import check_target_health, run_scanner, run_target_command
+from src.app.scan_runner import (
+    check_target_health,
+    run_scanner,
+    run_scanner_stream,
+    run_target_command,
+    run_target_command_stream,
+)
 
 st.set_page_config(page_title="Scan & Normalize - Sentinel", page_icon="🛡️", layout="wide")
 
@@ -100,13 +106,17 @@ with tab1:
 
     if btn_start_target:
         term_placeholder = st.empty()
-        term_placeholder.code(
-            "$ make target-up && make target-wait\n[sentinel] Executing target lifecycle startup...\n[sentinel] Waiting up to 300s for HTTP readiness...",
-            language="bash",
-        )
+        success = False
         with st.spinner("Đang khởi động Target App và kiểm tra HTTP readiness..."):
-            success, target_action_log = run_target_command("up")
-            term_placeholder.empty()  # Clear temporary 3-line terminal box after completion
+            for is_done, full_log, line in run_target_command_stream("up"):
+                target_action_log = full_log
+                lines = [l for l in full_log.splitlines() if l.strip()]
+                display_lines = lines[-15:] if len(lines) > 15 else lines
+                term_placeholder.code("\n".join(display_lines) or "$ make target-up", language="bash")
+                if is_done:
+                    success = not full_log.startswith("Exit code")
+
+            term_placeholder.empty()  # Clear temporary streaming terminal box after completion
             log_title = "🚀 Log Khởi động Target App (`make target-up & wait`)"
             if success:
                 st.success("Target App đã khởi động thành công và sẵn sàng nhận kết nối DAST!")
@@ -115,13 +125,17 @@ with tab1:
 
     if btn_stop_target:
         term_placeholder = st.empty()
-        term_placeholder.code(
-            "$ make target-down\n[sentinel] Stopping Juice Shop container...\n[sentinel] Removing Juice Shop target container...",
-            language="bash",
-        )
+        success = False
         with st.spinner("Đang dừng Target App..."):
-            success, target_action_log = run_target_command("down")
-            term_placeholder.empty()  # Clear temporary 3-line terminal box after completion
+            for is_done, full_log, line in run_target_command_stream("down"):
+                target_action_log = full_log
+                lines = [l for l in full_log.splitlines() if l.strip()]
+                display_lines = lines[-15:] if len(lines) > 15 else lines
+                term_placeholder.code("\n".join(display_lines) or "$ make target-down", language="bash")
+                if is_done:
+                    success = not full_log.startswith("Exit code")
+
+            term_placeholder.empty()  # Clear temporary streaming terminal box after completion
             log_title = "🛑 Log Đóng Target App (`make target-down`)"
             if success:
                 st.success("Target App đã được đóng thành công!")
@@ -130,13 +144,14 @@ with tab1:
 
     if btn_status_target:
         term_placeholder = st.empty()
-        term_placeholder.code(
-            "$ make target-status\n[sentinel] Querying docker compose ps juice-shop...\n[sentinel] Gathering container state...",
-            language="bash",
-        )
         with st.spinner("Đang lấy thông tin Compose Status..."):
-            success, target_action_log = run_target_command("status")
-            term_placeholder.empty()  # Clear temporary 3-line terminal box after completion
+            for is_done, full_log, line in run_target_command_stream("status"):
+                target_action_log = full_log
+                lines = [l for l in full_log.splitlines() if l.strip()]
+                display_lines = lines[-15:] if len(lines) > 15 else lines
+                term_placeholder.code("\n".join(display_lines) or "$ make target-status", language="bash")
+
+            term_placeholder.empty()  # Clear temporary streaming terminal box after completion
             log_title = "📊 Log Trạng thái Docker Compose (`make target-status`)"
 
     if target_action_log:
@@ -219,13 +234,18 @@ with tab1:
             st.error("❌ Không thể chạy bài quét DAST khi Target App đang Offline! Vui lòng bấm '🚀 Start Target' ở trên trước.")
         else:
             scan_term = st.empty()
-            scan_term.code(
-                f"$ make sast-{selected_tool} (or dast-{selected_tool})\n[sentinel] Executing scanner {selected_tool} in Docker container...\n[sentinel] Running vulnerability checks and saving raw reports...",
-                language="bash",
-            )
+            success = False
+            log_output = ""
             with st.spinner(f"Đang thực thi bài quét {selected_tool}... (Quá trình có thể mất từ 30s tới vài phút)"):
-                success, log_output = run_scanner(selected_tool)
-                scan_term.empty()  # Clear temporary 3-line terminal box after completion
+                for is_done, full_log, line in run_scanner_stream(selected_tool):
+                    log_output = full_log
+                    lines = [l for l in full_log.splitlines() if l.strip()]
+                    display_lines = lines[-15:] if len(lines) > 15 else lines
+                    scan_term.code("\n".join(display_lines) or f"$ running {selected_tool}...", language="bash")
+                    if is_done:
+                        success = not full_log.startswith("Exit code")
+
+                scan_term.empty()  # Clear temporary streaming terminal box after completion
                 if success:
                     st.success(f"Bài quét {selected_tool} đã thực thi thành công!")
                 else:
