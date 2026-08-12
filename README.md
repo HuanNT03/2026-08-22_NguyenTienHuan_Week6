@@ -124,16 +124,17 @@ Nếu muốn thực thi thủ công từng công đoạn quét, chuẩn hóa và
 
 ```bash
 make setup-target
-make build
-make up
-make wait
-make smoke
-make sast
-make dast
-make validate-reports
-make normalize
+make target-build     # Build image Target App Juice Shop (alias: make build)
+make target-up        # Khởi chạy riêng Target App (alias: make up)
+make target-wait      # Chờ Target App sẵn sàng nhận kết nối (alias: make wait)
+make target-smoke     # Test HTTP Smoke Test cho Target App (alias: make smoke)
+make sast             # Quét SAST (Semgrep & CodeQL)
+make dast             # Quét DAST ZAP Baseline
+make validate-reports # Kiểm tra tính hợp lệ của scanner reports
+make normalize        # Chuẩn hóa scanner reports sang Unified Findings
 make agent-analyze FINDINGS=reports/normalized/unified-findings-YYYYMMDDTHHMMSSZ.jsonl
-make down
+make target-down      # Dừng riêng Target App Juice Shop (không tắt Web UI)
+make down             # Dừng toàn bộ Compose resources của Sentinel (gồm cả Web UI)
 ```
 
 `make install` chuẩn bị project virtualenv để `lint`, test và normalizer dùng đủ dependency.
