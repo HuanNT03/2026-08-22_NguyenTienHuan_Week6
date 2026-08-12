@@ -17,12 +17,12 @@ TOOL_COMMANDS: Mapping[str, list[str]] = {
 }
 
 
-# Mapping target management actions to executable commands
+# Mapping internal target management action keys to explicit Makefile target execution commands
 TARGET_COMMANDS: Mapping[str, list[str]] = {
-    "up": ["make", "up"],
-    "wait": ["make", "wait"],
-    "down": ["make", "down"],
-    "status": ["make", "status"],
+    "up": ["make", "target-up"],
+    "wait": ["make", "target-wait"],
+    "down": ["make", "target-down"],
+    "status": ["make", "target-status"],
 }
 
 
@@ -88,7 +88,7 @@ def run_target_command(action: str, cwd: str = ".") -> tuple[bool, str]:
     Quản lý vòng đời của Target App (OWASP Juice Shop) bằng các lệnh Makefile/Docker.
 
     Args:
-        action: 'up' (kích hoạt & chờ target), 'down' (dừng target), 'status' (kiểm tra status)
+        action: Chuỗi phím hành động nội bộ ('up' -> make target-up & target-wait, 'down' -> make target-down, 'status' -> make target-status)
         cwd: Thư mục thực thi lệnh (mặc định '.')
 
     Returns:
