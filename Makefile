@@ -8,6 +8,7 @@ VENV_PYTHON := $(VENV)/bin/python
 VENV_PIP := $(VENV)/bin/pip
 
 .PHONY: help venv install doctor setup-target verify-target build up wait smoke down logs status \
+	target-build target-up target-wait target-smoke target-down target-logs target-status \
 	lint test test-contracts test-python quality sast sast-semgrep sast-codeql dast dast-zap-fullscan dast-zap-admin dast-zap-fullscan-admin dast-sqlmap validate-reports week1 normalize clean-reports clean \
 	ui-build ui ui-down ui-logs
 
@@ -30,23 +31,39 @@ setup-target: ## Clone the pinned target if absent, then verify it.
 verify-target: ## Verify the existing target without changing it.
 	@./scripts/verify-target.sh
 
-build: verify-target ## Build the pinned Juice Shop image.
+target-build: verify-target ## Build the pinned Juice Shop target image.
 	docker compose build juice-shop
 
-up: verify-target ## Start Juice Shop in the background.
+target-up: verify-target ## Start Juice Shop target container in the background.
 	docker compose up -d juice-shop
 
-wait: ## Wait for target HTTP readiness.
+target-wait: ## Wait for Juice Shop target HTTP readiness.
 	@./scripts/wait-for-target.sh
 
-smoke: ## Test host HTTP access and response content.
+target-smoke: ## Test host HTTP access to Juice Shop target.
 	@./scripts/smoke-test.sh
 
-down: ## Stop Sentinel Compose resources.
+target-down: ## Stop and remove ONLY the Juice Shop target container (without stopping sentinel-ui).
+	docker compose stop juice-shop && docker compose rm -f juice-shop
+
+target-logs: ## Follow Juice Shop target container logs.
+	docker compose logs --follow juice-shop
+
+target-status: ## Show Juice Shop target container status.
+	docker compose ps juice-shop
+
+build: target-build ## Build the pinned Juice Shop image.
+
+up: target-up ## Start Juice Shop in the background.
+
+wait: target-wait ## Wait for target HTTP readiness.
+
+smoke: target-smoke ## Test host HTTP access and response content.
+
+down: ## Stop all Sentinel Compose resources.
 	docker compose down --remove-orphans
 
-logs: ## Follow Juice Shop logs.
-	docker compose logs --follow juice-shop
+logs: target-logs ## Follow Juice Shop logs.
 
 status: ## Show Compose service status.
 	docker compose ps
