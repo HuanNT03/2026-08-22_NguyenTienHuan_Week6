@@ -1,8 +1,7 @@
-"""Module thực thi scanner SAST/DAST an toàn cho Web Application."""
-
 import os
 import subprocess
-from collections.abc import Mapping
+import time
+from collections.abc import Generator, Mapping
 
 # Mapping tool names to executable commands
 TOOL_COMMANDS: Mapping[str, list[str]] = {
@@ -60,6 +59,62 @@ def _execute_command(command: list[str], cwd: str = ".", timeout_seconds: int = 
         return False, f"Ngoại lệ không xác định: {exc}"
 
 
+def _execute_command_stream(
+    command: list[str], cwd: str = ".", timeout_seconds: int = 1800
+) -> Generator[tuple[bool, str, str], None, None]:
+    """
+    Generator thực thi subprocess và yield trực tiếp từng dòng output (stdout + stderr) thời gian thực.
+
+    Yields:
+        tuple[bool, str, str]: (is_finished, accumulated_full_log, current_line)
+    """
+    env = os.environ.copy()
+    full_output: list[str] = []
+    start_time = time.time()
+
+    try:
+        process = subprocess.Popen(
+            command,
+            cwd=cwd,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+        )
+
+        if process.stdout is not None:
+            while True:
+                line = process.stdout.readline()
+                if not line and process.poll() is not None:
+                    break
+                if line:
+                    full_output.append(line)
+                    yield False, "".join(full_output), line
+
+                if time.time() - start_time > timeout_seconds:
+                    process.kill()
+                    timeout_msg = f"\n[ERROR] Vượt quá thời gian cho phép ({timeout_seconds}s)"
+                    full_output.append(timeout_msg)
+                    yield True, "".join(full_output), timeout_msg
+                    return
+
+        return_code = process.poll() or 0
+        success = (return_code == 0)
+        final_log = "".join(full_output)
+        if not success:
+            final_log = f"Exit code {return_code}:\n{final_log}"
+        yield success, final_log, ""
+
+    except FileNotFoundError as exc:
+        cmd_str = exc.filename or command[0]
+        err_msg = f"Không tìm thấy lệnh '{cmd_str}' trong hệ thống."
+        yield False, err_msg, err_msg
+    except Exception as exc:  # noqa: BLE001
+        err_msg = f"Ngoại lệ không xác định: {exc}"
+        yield False, err_msg, err_msg
+
+
 def run_scanner(tool_name: str, cwd: str = ".", timeout_seconds: int = 1800) -> tuple[bool, str]:
     """
     Thực thi bài quét bảo mật theo tool_name.
@@ -83,6 +138,20 @@ def run_scanner(tool_name: str, cwd: str = ".", timeout_seconds: int = 1800) -> 
     return True, output
 
 
+def run_scanner_stream(
+    tool_name: str, cwd: str = ".", timeout_seconds: int = 1800
+) -> Generator[tuple[bool, str, str], None, None]:
+    """Streaming version của run_scanner."""
+    if tool_name not in TOOL_COMMANDS:
+        supported = ", ".join(TOOL_COMMANDS.keys())
+        err_msg = f"Scanner '{tool_name}' không được hỗ trợ. Các scanner hợp lệ: {supported}"
+        yield False, err_msg, err_msg
+        return
+
+    command = TOOL_COMMANDS[tool_name]
+    yield from _execute_command_stream(command, cwd=cwd, timeout_seconds=timeout_seconds)
+
+
 def run_target_command(action: str, cwd: str = ".") -> tuple[bool, str]:
     """
     Quản lý vòng đời của Target App (OWASP Juice Shop) bằng các lệnh Makefile/Docker.
@@ -99,14 +168,50 @@ def run_target_command(action: str, cwd: str = ".") -> tuple[bool, str]:
         return False, f"Hành động target '{action}' không hợp lệ. Các hành động hỗ trợ: {supported}"
 
     if action == "up":
-        res_up, out_up = _execute_command(TARGET_COMMANDS["up"], cwd=cwd, timeout_seconds=300)
+        res_up, out_up = _execute_command(TARGET_COMMANDS["up"], cwd=cwd, timeout_seconds=1800)
         if not res_up:
             return False, f"Lỗi khi khởi động Target App:\n{out_up}"
-        res_wait, out_wait = _execute_command(TARGET_COMMANDS["wait"], cwd=cwd, timeout_seconds=300)
+        res_wait, out_wait = _execute_command(TARGET_COMMANDS["wait"], cwd=cwd, timeout_seconds=1800)
         output = f"{out_up}\n\n--- WAITING TARGET READINESS ---\n{out_wait}"
         return res_wait, output
     else:
-        return _execute_command(TARGET_COMMANDS[action], cwd=cwd, timeout_seconds=300)
+        return _execute_command(TARGET_COMMANDS[action], cwd=cwd, timeout_seconds=1800)
+
+
+def run_target_command_stream(
+    action: str, cwd: str = "."
+) -> Generator[tuple[bool, str, str], None, None]:
+    """Streaming version của run_target_command."""
+    if action not in TARGET_COMMANDS:
+        supported = ", ".join(TARGET_COMMANDS.keys())
+        err_msg = f"Hành động target '{action}' không hợp lệ. Các hành động hỗ trợ: {supported}"
+        yield False, err_msg, err_msg
+        return
+
+    if action == "up":
+        res_up = True
+        out_up = ""
+        for is_done, full_log, line in _execute_command_stream(TARGET_COMMANDS["up"], cwd=cwd, timeout_seconds=1800):
+            out_up = full_log
+            if not is_done:
+                yield False, full_log, line
+            else:
+                res_up = not full_log.startswith("Exit code")
+
+        if not res_up:
+            yield False, f"Lỗi khi khởi động Target App:\n{out_up}", "Khởi động Target thất bại"
+            return
+
+        yield False, f"{out_up}\n\n--- WAITING TARGET READINESS ---\n", "[sentinel] Waiting target readiness probe..."
+        for is_done, full_log, line in _execute_command_stream(TARGET_COMMANDS["wait"], cwd=cwd, timeout_seconds=1800):
+            combined = f"{out_up}\n\n--- WAITING TARGET READINESS ---\n{full_log}"
+            if not is_done:
+                yield False, combined, line
+            else:
+                success = not full_log.startswith("Exit code")
+                yield success, combined, ""
+    else:
+        yield from _execute_command_stream(TARGET_COMMANDS[action], cwd=cwd, timeout_seconds=1800)
 
 
 def check_target_health() -> tuple[bool, int, str]:

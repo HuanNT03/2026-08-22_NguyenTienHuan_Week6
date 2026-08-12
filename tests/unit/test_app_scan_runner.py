@@ -65,6 +65,28 @@ def test_run_target_command_valid(monkeypatch):
     assert "Exit code 0" in output or "STDOUT" in output
 
 
+def test_run_scanner_stream_invalid():
+    """Kiểm tra run_scanner_stream với tool_name không hợp lệ."""
+    from src.app.scan_runner import run_scanner_stream
+
+    stream = list(run_scanner_stream("invalid_tool"))
+    assert len(stream) == 1
+    is_done, full_log, line = stream[0]
+    assert is_done is False
+    assert "không được hỗ trợ" in full_log
+
+
+def test_run_target_command_stream_invalid():
+    """Kiểm tra run_target_command_stream với action không hợp lệ."""
+    from src.app.scan_runner import run_target_command_stream
+
+    stream = list(run_target_command_stream("invalid_action"))
+    assert len(stream) == 1
+    is_done, full_log, line = stream[0]
+    assert is_done is False
+    assert "không hợp lệ" in full_log
+
+
 def test_check_target_health():
     """Kiểm tra hàm check_target_health trả về tuple hợp lệ."""
     is_alive, code, url = check_target_health()
