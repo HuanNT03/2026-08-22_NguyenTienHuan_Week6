@@ -36,10 +36,10 @@ log "ZAP Client Spider required and enabled (${docker_memory_bytes} bytes availa
 
 container_id="$(docker compose --project-directory "$PROJECT_ROOT" -f "$PROJECT_ROOT/docker-compose.yml" ps -q juice-shop)"
 if [[ -z "$container_id" ]] || [[ "$(docker inspect -f '{{.State.Running}}' "$container_id" 2>/dev/null || true)" != "true" ]]; then
-  die "Juice Shop is not running. Run: make build && make up && make wait && make smoke && make dast-zap-fullscan"
+  die "Juice Shop is not running. Run: make target-build && make target-up && make target-wait && make target-smoke && make dast-zap-fullscan"
 fi
 docker network inspect "$NETWORK_NAME" >/dev/null 2>&1 || \
-  die "Docker network '$NETWORK_NAME' does not exist. Run 'make up' first."
+  die "Docker network '$NETWORK_NAME' does not exist. Run 'make target-up' first."
 
 "$SCRIPT_DIR/wait-for-target.sh"
 "$SCRIPT_DIR/smoke-test.sh"
