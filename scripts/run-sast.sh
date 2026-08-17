@@ -66,6 +66,7 @@ docker run --rm \
   --config p/javascript \
   --config p/nodejs \
   --config p/expressjs \
+  --config p/typescript \
   "${SEMGREP_SCOPE_ARGS[@]}" \
   --dataflow-traces \
   --sarif-output /src/reports/raw/semgrep.sarif \
