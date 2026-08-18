@@ -3,8 +3,8 @@
 import re
 import unicodedata
 
-_CWE_PATTERN = re.compile(r"\bcwe[\s_-]?(\d+)\b", flags=re.IGNORECASE)
-_OWASP_PATTERN = re.compile(r"\ba0?(\d{1,2})[\s:_-]+(\d{4})\b", flags=re.IGNORECASE)
+_CWE_PATTERN = re.compile(r"\b(?:cwe[\s_-]*)?cwe[\s_-]?(\d+)\b|\bcwe[\s_-]?(\d+)\b", flags=re.IGNORECASE)
+_OWASP_PATTERN = re.compile(r"\b(?:owasp[\s_-]*)?a0?(\d{1,2})[\s:_-]+(\d{4})\b", flags=re.IGNORECASE)
 _WHITESPACE = re.compile(r"\s+")
 _SEARCH_TOKEN_PATTERN = re.compile(
     r"""
