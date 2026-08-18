@@ -76,7 +76,9 @@ def parse_semgrep_rule_file(path: Path) -> list[KnowledgeDocument]:
         if "pattern-either" in rule:
             content_parts.append(f"Patterns:\n{yaml.dump(rule['pattern-either'])}")
 
-        slug_id = re.sub(r"[^a-z0-9]+", "-", f"semgrep-rule-{rule_id.lower()}").strip("-")
+        rel_path = path.as_posix().split("rules/")[-1]
+        file_prefix = re.sub(r"[^a-z0-9]+", "-", rel_path.lower()).strip("-")
+        slug_id = re.sub(r"[^a-z0-9]+", "-", f"semgrep-rule-{file_prefix}-{rule_id.lower()}").strip("-")
 
         documents.append(
             KnowledgeDocument(

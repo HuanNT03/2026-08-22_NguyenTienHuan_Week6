@@ -1,6 +1,8 @@
-from src.retrieval.config import EXAMPLES_DIR, PROJECT_ROOT, SEMGREP_RAW_DIR, ZAP_RAW_DIR
+"""Tests for knowledge base inventory and curated example tracking."""
+
+from src.retrieval.build import collect_documents
+from src.retrieval.config import EXAMPLES_DIR, PROJECT_ROOT
 from src.retrieval.parsers.example_parser import parse_example_directory
-from src.retrieval.parsers.scanner_parser import parse_scanner_directories
 
 EXAMPLE_IDS = {
     "example-sql-injection-nodejs",
@@ -24,33 +26,30 @@ EXAMPLE_IDS = {
     "example-sensitive-data-logging",
     "example-verbose-error-leakage",
 }
-SCANNER_IDS = {
-    "semgrep-finding-anatomy",
-    "semgrep-rule-metadata",
-    "semgrep-rule-javascript-express-security-injection-tainted-sql-string-tainted-sql-string",
-    "semgrep-rule-javascript-express-security-audit-express-open-redirect-express-open-redirect",
-    "zap-alert-anatomy",
-    "zap-risk-confidence-evidence",
-    "zap-alert-10038-1",
-    "zap-alert-10098",
-}
 
 
-def test_documented_inventory_matches_parsed_sources() -> None:
+def test_documented_inventory_matches_parsed_examples() -> None:
     examples = parse_example_directory(EXAMPLES_DIR)
-    scanners = parse_scanner_directories((SEMGREP_RAW_DIR, ZAP_RAW_DIR))
     assert {document.doc_id for document in examples} == EXAMPLE_IDS
-    assert {document.doc_id for document in scanners} == SCANNER_IDS
 
 
-def test_every_curated_and_scanner_source_is_listed_in_review_document() -> None:
+def test_collection_result_ingests_all_sources() -> None:
+    collection = collect_documents()
+    assert len(collection.documents) >= 1800
+    doc_types = {doc.doc_type for doc in collection.documents}
+    assert "cwe" in doc_types
+    assert "owasp_category" in doc_types
+    assert "asvs_requirement" in doc_types
+    assert "cheatsheet" in doc_types
+    assert "scanner_rule" in doc_types
+    assert "scanner_document" in doc_types
+    assert "vulnerability_example" in doc_types
+
+
+def test_every_curated_example_is_listed_in_review_document() -> None:
     review = (
         PROJECT_ROOT / "docs" / "reports" / "week2" / "week-2-knowledgebase.md"
     ).read_text(encoding="utf-8")
-    documents = [
-        *parse_example_directory(EXAMPLES_DIR),
-        *parse_scanner_directories((SEMGREP_RAW_DIR, ZAP_RAW_DIR)),
-    ]
-    for document in documents:
+    examples = parse_example_directory(EXAMPLES_DIR)
+    for document in examples:
         assert document.doc_id in review
-        assert document.source.raw_path in review

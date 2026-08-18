@@ -11,7 +11,7 @@ from rich.syntax import Syntax
 from rich.table import Table
 
 from src.retrieval.build import build_documents as run_document_build
-from src.retrieval.build import collect_documents
+from src.retrieval.build import build_vector_index, collect_documents
 from src.retrieval.config import (
     DOCUMENT_TYPES,
     DOCUMENTS_PATH,
@@ -36,7 +36,9 @@ error_console = Console(stderr=True)
 
 
 def _result_dict(result: SearchResult) -> dict[str, object]:
-    return asdict(result)
+    d = asdict(result)
+    d["bm25_score"] = result.score
+    return d
 
 
 @app.command()
@@ -61,18 +63,20 @@ def build_documents_command() -> None:
 
 @app.command("build-index")
 def build_index_command() -> None:
-    """Generate the atomic SQLite external-content FTS5 index."""
+    """Generate the atomic SQLite FTS5 index and Qdrant vector index."""
     path = run_index_build()
-    console.print(f"[green]Built[/green] knowledge index at {path}")
+    build_vector_index()
+    console.print(f"[green]Built[/green] SQLite knowledge index at {path} and Qdrant vector index")
 
 
 @app.command("build")
 def build_command() -> None:
-    """Validate sources, build canonical documents, and build the search index."""
+    """Validate sources, build canonical documents, and build SQLite + Qdrant search indices."""
     validate_sqlite_capabilities()
     result = run_document_build()
     path = run_index_build()
-    console.print(f"[green]Built[/green] {result.document_count} documents and index {path}")
+    build_vector_index(result.documents if hasattr(result, "documents") else None)
+    console.print(f"[green]Built[/green] {result.document_count} documents, SQLite index {path}, and Qdrant vector index")
     console.print(f"SHA-256: {result.documents_sha256}")
     for warning in result.warnings:
         console.print(f"[yellow]Warning:[/yellow] {warning}")
@@ -83,7 +87,7 @@ def search(
     query: Annotated[str, typer.Argument(help="Keyword or security identifier to search for.")],
     top_k: Annotated[int, typer.Option("--top-k", min=1, max=50)] = 5,
     doc_type: Annotated[str | None, typer.Option("--doc-type")] = None,
-    mode: Annotated[str, typer.Option("--mode", help="Search mode: hybrid, keyword, or semantic.")] = "hybrid",
+    mode: Annotated[str, typer.Option("--mode", help="Search mode: hybrid, keyword, or semantic.")] = "keyword",
     json_output: Annotated[bool, typer.Option("--json", help="Emit machine-readable JSON.")] = False,
 ) -> None:
     """Search with Hybrid (RRF + MMR), Keyword (BM25), or Semantic (Vector) retrieval."""

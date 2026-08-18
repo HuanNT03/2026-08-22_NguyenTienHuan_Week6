@@ -30,6 +30,11 @@ class SearchResult:
     score: float
     exact_match_rank: int = 3
 
+    @property
+    def bm25_score(self) -> float:
+        """Alias score for backwards compatibility with BM25 tests."""
+        return self.score
+
 
 class KnowledgeSearchService:
     """Validate user input and execute Two-Stage Hybrid, Semantic, or Keyword retrieval."""
@@ -49,7 +54,7 @@ class KnowledgeSearchService:
         query: str,
         top_k: int = 5,
         doc_type: str | None = None,
-        mode: Literal["hybrid", "keyword", "semantic"] = "hybrid",
+        mode: Literal["hybrid", "keyword", "semantic"] = "keyword",
         lambda_mult: float = 0.7,
     ) -> list[SearchResult]:
         """Search canonical knowledge using Keyword, Semantic, or Two-Stage Hybrid (RRF + MMR) search."""

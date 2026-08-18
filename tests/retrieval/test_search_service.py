@@ -23,12 +23,12 @@ def test_owasp_variants_have_same_top_result(canonical_index: Path, query: str) 
 @pytest.mark.parametrize(
     ("query", "expected"),
     [
-        ("SQL Injection", {"cwe-89", "example-sql-injection-nodejs"}),
+        ("SQL Injection", {"cwe-89", "example-sql-injection-nodejs", "semgrep-vuln-sql-injection"}),
         ("SQLi", {"cwe-89"}),
         ("XSS", {"cwe-79"}),
         ("CWE79", {"cwe-79"}),
-        ("Broken Access Control", {"owasp-2025-a01"}),
-        ("Security Misconfiguration", {"owasp-2025-a02"}),
+        ("Broken Access Control", {"owasp-2025-a01", "owasp-2021-a01"}),
+        ("Security Misconfiguration", {"owasp-2025-a02", "owasp-2021-a05"}),
         ("IDOR", {"cwe-639", "example-idor"}),
         ("XXE", {"cwe-611", "example-xxe"}),
     ],

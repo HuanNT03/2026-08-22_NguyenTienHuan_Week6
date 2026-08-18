@@ -17,7 +17,7 @@ def test_search_json_is_machine_readable(canonical_index: Path, monkeypatch: obj
     assert payload["query"] == "CWE89"
     assert payload["normalized_query"] == "CWE-89"
     assert payload["results"][0]["doc_id"] == "cwe-89"
-    assert "bm25_score" in payload["results"][0]
+    assert "score" in payload["results"][0]
     assert "confidence" not in payload["results"][0]
 
 

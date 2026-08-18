@@ -24,10 +24,14 @@ _SECTION_NAMES = {
     "list of mapped cwes": "Mapped CWEs",
     "factors": "Factors",
 }
+_OPTIONAL_SECTIONS = ("how to prevent", "references", "list of mapped cwes")
 
 
 def _section_key(heading: str) -> str:
-    return heading.strip().rstrip(".").strip().casefold()
+    key = heading.strip().rstrip(".").strip().casefold()
+    if key == "how to prevent it":
+        return "how to prevent"
+    return key
 
 
 def _split_sections(text: str) -> dict[str, str]:
@@ -68,13 +72,9 @@ def parse_owasp_file(path: Path) -> tuple[KnowledgeDocument, list[str]]:
     desc_text = sections.get("description") or sections.get("overview") or sections.get("background") or ""
     description = markdown_to_text(desc_text)
     if not description:
-        # Use first meaningful paragraph after title
-        for line in text.splitlines():
-            if not line.startswith("#") and len(line.strip()) > 30:
-                description = markdown_to_text(line.strip())
-                break
-    if not description:
-        description = f"OWASP Top 10 category: {title}"
+        raise SourceValidationError(f"{path}: missing required Description section")
+
+    warnings = [f"{path}: missing optional section {name}" for name in _OPTIONAL_SECTIONS if name not in sections]
 
     mapped_cwes = sorted(
         {f"CWE-{match}" for match in _CWE.findall(text)},
@@ -103,7 +103,7 @@ def parse_owasp_file(path: Path) -> tuple[KnowledgeDocument, list[str]]:
             source_locator=identifier,
         ),
     )
-    return document, []
+    return document, warnings
 
 
 def parse_owasp_directory(path: Path) -> tuple[list[KnowledgeDocument], list[str]]:
