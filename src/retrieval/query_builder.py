@@ -5,7 +5,10 @@ import re
 from src.retrieval.exceptions import InvalidSearchQueryError
 from src.retrieval.normalization import normalize_query, tokenize_search_query
 
-_DISJUNCTION_SPLIT = re.compile(r"\s+(?:hoặc|or|hay)\s+|,\s*", flags=re.IGNORECASE)
+_TERM_SPLIT = re.compile(
+    r"\s+(?:hoặc|or|hay|và|va|and|với|voi|cùng|cung)\s+|,\s*",
+    flags=re.IGNORECASE,
+)
 _CONNECTIVE_WORDS = {
     "và",
     "va",
@@ -42,8 +45,8 @@ def build_match_expression(tokens: list[str]) -> str:
 def build_smart_match_expression(query: str | list[str]) -> str:
     """Build a flexible FTS5 MATCH expression supporting conjunctions (AND/OR) and multi-terms.
 
-    Recognizes natural conjunctions ('hoặc', 'or', commas) as OR-clauses while filtering
-    connective words ('và', 'and', 'with') within clauses so multi-keyword searches achieve high recall.
+    Recognizes natural conjunctions ('và', 'hoặc', 'or', 'and', commas) as OR-clauses so
+    multi-keyword searches retrieve all relevant candidates and BM25 ranks multi-match items top.
     """
     if isinstance(query, list):
         return build_match_expression(query)
@@ -52,10 +55,9 @@ def build_smart_match_expression(query: str | list[str]) -> str:
         raise InvalidSearchQueryError("Search query does not contain searchable terms.")
 
     normalized = normalize_query(query)
-    clauses = _DISJUNCTION_SPLIT.split(normalized)
+    clauses = _TERM_SPLIT.split(normalized)
 
     clause_expressions: list[str] = []
-    all_tokens: list[str] = []
 
     for clause in clauses:
         tokens = tokenize_search_query(clause)
@@ -66,7 +68,6 @@ def build_smart_match_expression(query: str | list[str]) -> str:
         if not filtered:
             continue
 
-        all_tokens.extend(filtered)
         quoted = [quote_fts_phrase(token) for token in filtered]
         if len(quoted) > 1:
             clause_expressions.append(f"({' '.join(quoted)})")

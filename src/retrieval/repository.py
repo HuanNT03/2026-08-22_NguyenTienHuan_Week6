@@ -123,7 +123,7 @@ class KnowledgeRepository:
                 aliases_json,
                 identifiers_json,
                 tags_json,
-                raw_json
+                source_json
             FROM documents
             WHERE doc_id IN ({placeholders})
         """
@@ -141,7 +141,7 @@ class KnowledgeRepository:
                 "aliases": json.loads(row["aliases_json"]),
                 "identifiers": json.loads(row["identifiers_json"]),
                 "tags": json.loads(row["tags_json"]),
-                "raw_json": row["raw_json"],
+                "source": json.loads(row["source_json"]),
             }
             for row in rows
         }

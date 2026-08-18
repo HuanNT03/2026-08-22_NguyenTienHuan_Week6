@@ -2,6 +2,10 @@
 
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 SCHEMA_VERSION = "1.0.0"
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 KNOWLEDGE_BASE_DIR = PROJECT_ROOT / "knowledge-base"

@@ -1,18 +1,25 @@
 {
-  "document_count": 442,
-  "documents_sha256": "sha256:2b6c02ac9ffa817ae0d0abf96e7f69be71941035f0587f05d61606d17bf10dca",
+  "document_count": 1832,
+  "documents_sha256": "sha256:5a1a5d560406eb7cb660bee71faee0b18b6a275685ec467d831a34c4179e4774",
   "input_records": {
-    "cwe_1435_records": 25,
-    "cwe_699_records": 399,
-    "cwe_coalesced_records": 15,
-    "cwe_documents": 409
+    "asvs_requirement_count": 345,
+    "cheatsheet_count": 62,
+    "cwe_count": 409,
+    "cwe_documents": 409,
+    "owasp_category_count": 20,
+    "scanner_document_count": 764,
+    "scanner_rule_count": 212,
+    "total_documents": 1832,
+    "vulnerability_example_count": 20
   },
   "schema_version": "1.0.0",
   "sources": {
+    "asvs_requirement": 345,
+    "cheatsheet": 62,
     "cwe": 409,
-    "owasp_category": 10,
-    "scanner_document": 4,
-    "scanner_rule": 4,
-    "vulnerability_example": 15
+    "owasp_category": 20,
+    "scanner_document": 764,
+    "scanner_rule": 212,
+    "vulnerability_example": 20
   }
 }

@@ -3,10 +3,12 @@
 beautifulsoup4>=4.12,<5.0
 jsonschema[format]>=4.23,<5.0
 markdown-it-py>=3.0,<5.0
+numpy>=1.26,<3.0
 openai>=1.30,<2.0
 pydantic>=2.7,<3.0
 python-dotenv>=1.0,<2.0
 PyYAML>=6.0,<7.0
+qdrant-client>=1.9,<2.0
 rich>=13.7,<15.0
 typer>=0.12,<1.0
 
