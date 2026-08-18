@@ -12,7 +12,7 @@ CWE_RAW_PATHS = (
 )
 SEMGREP_RAW_DIR = KNOWLEDGE_BASE_DIR / "raw" / "semgrep"
 ZAP_RAW_DIR = KNOWLEDGE_BASE_DIR / "raw" / "zap"
-EXAMPLES_DIR = KNOWLEDGE_BASE_DIR / "curated" / "examples"
+EXAMPLES_DIR = KNOWLEDGE_BASE_DIR / "vulnerable_examples"
 PROCESSED_DIR = KNOWLEDGE_BASE_DIR / "processed"
 DOCUMENTS_PATH = PROCESSED_DIR / "documents.jsonl"
 MANIFEST_PATH = PROCESSED_DIR / "manifest.json"
