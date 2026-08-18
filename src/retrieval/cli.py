@@ -83,14 +83,21 @@ def search(
     query: Annotated[str, typer.Argument(help="Keyword or security identifier to search for.")],
     top_k: Annotated[int, typer.Option("--top-k", min=1, max=50)] = 5,
     doc_type: Annotated[str | None, typer.Option("--doc-type")] = None,
+    mode: Annotated[str, typer.Option("--mode", help="Search mode: hybrid, keyword, or semantic.")] = "hybrid",
     json_output: Annotated[bool, typer.Option("--json", help="Emit machine-readable JSON.")] = False,
 ) -> None:
-    """Search with exact-match tiers followed by weighted BM25 ranking."""
-    results = KnowledgeSearchService().search(query=query, top_k=top_k, doc_type=doc_type)
+    """Search with Hybrid (RRF + MMR), Keyword (BM25), or Semantic (Vector) retrieval."""
+    results = KnowledgeSearchService().search(
+        query=query,
+        top_k=top_k,
+        doc_type=doc_type,
+        mode=mode,  # type: ignore[arg-type]
+    )
     normalized = normalize_query(query)
     if json_output:
         payload = {
             "query": query,
+            "mode": mode,
             "normalized_query": normalized,
             "results": [_result_dict(result) for result in results],
         }
@@ -99,21 +106,21 @@ def search(
     if not results:
         console.print("No matching knowledge documents.")
         return
-    table = Table(title=f"Knowledge search: {query}")
+    table = Table(title=f"Knowledge search ({mode}): {query}")
     table.add_column("Rank", justify="right")
     table.add_column("Document")
     table.add_column("Type")
     table.add_column("Title")
-    table.add_column("Match")
+    table.add_column("Score")
     for index, result in enumerate(results, start=1):
         table.add_row(
             str(index),
             result.doc_id,
             result.doc_type,
             result.title,
-            f"exact={result.exact_match_rank} bm25={result.bm25_score:.4f}",
+            f"{result.score:.4f}",
         )
-        table.add_row("", "", "", result.snippet, "")
+        table.add_row("", "", "", result.snippet or result.summary, "")
     console.print(table)
 
 

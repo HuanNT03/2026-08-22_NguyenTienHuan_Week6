@@ -107,3 +107,42 @@ class KnowledgeRepository:
             }
             for row in rows
         ]
+
+    def get_documents_by_ids(self, doc_ids: list[str]) -> list[dict[str, Any]]:
+        """Fetch full document records for a list of document IDs."""
+        if not doc_ids:
+            return []
+        placeholders = ", ".join("?" for _ in doc_ids)
+        sql = f"""
+            SELECT
+                doc_id,
+                doc_type,
+                title,
+                summary,
+                content,
+                aliases_json,
+                identifiers_json,
+                tags_json,
+                raw_json
+            FROM documents
+            WHERE doc_id IN ({placeholders})
+        """
+        with self._connect() as connection:
+            rows = connection.execute(sql, doc_ids).fetchall()
+
+        by_id = {
+            row["doc_id"]: {
+                "doc_id": row["doc_id"],
+                "doc_type": row["doc_type"],
+                "title": row["title"],
+                "summary": row["summary"],
+                "snippet": row["summary"],
+                "content": row["content"],
+                "aliases": json.loads(row["aliases_json"]),
+                "identifiers": json.loads(row["identifiers_json"]),
+                "tags": json.loads(row["tags_json"]),
+                "raw_json": row["raw_json"],
+            }
+            for row in rows
+        }
+        return [by_id[doc_id] for doc_id in doc_ids if doc_id in by_id]
