@@ -7,10 +7,10 @@ from src.retrieval.exceptions import DuplicateDocumentIdError, SourceValidationE
 from src.retrieval.parsers.example_parser import parse_example_directory, parse_example_file
 
 
-def test_all_fifteen_examples_are_valid_and_unique() -> None:
+def test_all_twenty_examples_are_valid_and_unique() -> None:
     documents = parse_example_directory(EXAMPLES_DIR)
-    assert len(documents) == 15
-    assert len({document.doc_id for document in documents}) == 15
+    assert len(documents) == 20
+    assert len({document.doc_id for document in documents}) == 20
     assert all(document.doc_type == "vulnerability_example" for document in documents)
 
 

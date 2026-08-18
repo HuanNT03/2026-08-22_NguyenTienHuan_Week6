@@ -18,6 +18,11 @@ EXAMPLE_IDS = {
     "example-unrestricted-file-upload",
     "example-xxe",
     "example-cors-misconfiguration",
+    "example-prototype-pollution",
+    "example-weak-jwt-signing",
+    "example-missing-rate-limiting",
+    "example-sensitive-data-logging",
+    "example-verbose-error-leakage",
 }
 SCANNER_IDS = {
     "semgrep-finding-anatomy",

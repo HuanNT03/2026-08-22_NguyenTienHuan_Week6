@@ -39,21 +39,26 @@ Each example is an independent English-language YAML source.
 
 | Raw path | Canonical document ID | Primary mapping |
 | --- | --- | --- |
-| `knowledge-base/curated/examples/sql-injection-nodejs.yml` | `example-sql-injection-nodejs` | CWE-89 / A05:2025 |
-| `knowledge-base/curated/examples/reflected-xss-express.yml` | `example-reflected-xss-express` | CWE-79 / A05:2025 |
-| `knowledge-base/curated/examples/stored-xss.yml` | `example-stored-xss` | CWE-79 / A05:2025 |
-| `knowledge-base/curated/examples/dom-based-xss.yml` | `example-dom-based-xss` | CWE-79 / A05:2025 |
-| `knowledge-base/curated/examples/idor.yml` | `example-idor` | CWE-639 / A01:2025 |
-| `knowledge-base/curated/examples/missing-function-level-authorization.yml` | `example-missing-function-level-authorization` | CWE-862 / A01:2025 |
-| `knowledge-base/curated/examples/authentication-bypass.yml` | `example-authentication-bypass` | CWE-306 / A07:2025 |
-| `knowledge-base/curated/examples/csrf.yml` | `example-csrf` | CWE-352 / A01:2025 |
-| `knowledge-base/curated/examples/path-traversal.yml` | `example-path-traversal` | CWE-22 / A01:2025 |
-| `knowledge-base/curated/examples/os-command-injection.yml` | `example-os-command-injection` | CWE-78 / A05:2025 |
-| `knowledge-base/curated/examples/ssrf.yml` | `example-ssrf` | CWE-918 / A01:2025 |
-| `knowledge-base/curated/examples/open-redirect.yml` | `example-open-redirect` | CWE-601 / A01:2025 |
-| `knowledge-base/curated/examples/unrestricted-file-upload.yml` | `example-unrestricted-file-upload` | CWE-434 / A08:2025 |
-| `knowledge-base/curated/examples/xxe.yml` | `example-xxe` | CWE-611 / A05:2025 |
-| `knowledge-base/curated/examples/cors-misconfiguration.yml` | `example-cors-misconfiguration` | CWE-942 / A02:2025 |
+| `knowledge-base/vulnerable_examples/sql-injection-nodejs.yml` | `example-sql-injection-nodejs` | CWE-89 / A05:2025 |
+| `knowledge-base/vulnerable_examples/reflected-xss-express.yml` | `example-reflected-xss-express` | CWE-79 / A05:2025 |
+| `knowledge-base/vulnerable_examples/stored-xss.yml` | `example-stored-xss` | CWE-79 / A05:2025 |
+| `knowledge-base/vulnerable_examples/dom-based-xss.yml` | `example-dom-based-xss` | CWE-79 / A05:2025 |
+| `knowledge-base/vulnerable_examples/idor.yml` | `example-idor` | CWE-639 / A01:2025 |
+| `knowledge-base/vulnerable_examples/missing-function-level-authorization.yml` | `example-missing-function-level-authorization` | CWE-862 / A01:2025 |
+| `knowledge-base/vulnerable_examples/authentication-bypass.yml` | `example-authentication-bypass` | CWE-306 / A07:2025 |
+| `knowledge-base/vulnerable_examples/csrf.yml` | `example-csrf` | CWE-352 / A01:2025 |
+| `knowledge-base/vulnerable_examples/path-traversal.yml` | `example-path-traversal` | CWE-22 / A01:2025 |
+| `knowledge-base/vulnerable_examples/os-command-injection.yml` | `example-os-command-injection` | CWE-78 / A05:2025 |
+| `knowledge-base/vulnerable_examples/ssrf.yml` | `example-ssrf` | CWE-918 / A01:2025 |
+| `knowledge-base/vulnerable_examples/open-redirect.yml` | `example-open-redirect` | CWE-601 / A01:2025 |
+| `knowledge-base/vulnerable_examples/unrestricted-file-upload.yml` | `example-unrestricted-file-upload` | CWE-434 / A08:2025 |
+| `knowledge-base/vulnerable_examples/xxe.yml` | `example-xxe` | CWE-611 / A05:2025 |
+| `knowledge-base/vulnerable_examples/cors-misconfiguration.yml` | `example-cors-misconfiguration` | CWE-942 / A02:2025 |
+| `knowledge-base/vulnerable_examples/prototype-pollution.yml` | `example-prototype-pollution` | CWE-1321 / A03:2025 |
+| `knowledge-base/vulnerable_examples/weak-jwt-signing.yml` | `example-weak-jwt-signing` | CWE-327, CWE-798 / A04:2025 |
+| `knowledge-base/vulnerable_examples/missing-rate-limiting.yml` | `example-missing-rate-limiting` | CWE-770, CWE-307 / A06:2025 |
+| `knowledge-base/vulnerable_examples/sensitive-data-logging.yml` | `example-sensitive-data-logging` | CWE-532 / A09:2025 |
+| `knowledge-base/vulnerable_examples/verbose-error-leakage.yml` | `example-verbose-error-leakage` | CWE-209 / A10:2025 |
 
 ## Scanner document inventory
 
@@ -84,10 +89,10 @@ examples. Scanner versions are pinned in `configs/tool-versions.env`.
 | --- | ---: |
 | `cwe` | 409 |
 | `owasp_category` | 10 |
-| `vulnerability_example` | 15 |
+| `vulnerability_example` | 20 |
 | `scanner_document` | 4 |
 | `scanner_rule` | 4 |
-| **Total** | **442** |
+| **Total** | **447** |
 
 The manifest also records 399 View 699 rows, 25 View 1435 rows, and 15 coalesced rows. It contains
 no timestamp; its SHA-256 is computed from the exact sorted JSONL bytes.

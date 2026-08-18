@@ -30,7 +30,7 @@ EXPECTED_COUNTS = {
     "owasp_category": 10,
     "scanner_document": 4,
     "scanner_rule": 4,
-    "vulnerability_example": 15,
+    "vulnerability_example": 20,
 }
 
 
