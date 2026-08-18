@@ -1,0 +1,49 @@
+id: example-verbose-error-leakage
+title: Information Disclosure Through Verbose Error Messages
+aliases:
+- Stack Trace Leakage
+- Detailed Error Message
+- Error Handling Information Disclosure
+description: Unhandled exceptions or database errors return raw stack traces and internal
+  system details in HTTP responses.
+root_cause:
+- Development error handling middleware is active in production.
+- Database and filesystem errors are propagated directly to clients without sanitization.
+vulnerable_example: "app.get('/api/items', async (req, res) => {\n  try {\n    const\
+  \ items = await db.query(`SELECT * FROM items WHERE category = ${req.query.cat}`);\n\
+  \    res.json(items);\n  } catch (err) {\n    res.status(500).json({ error: err.message,\
+  \ stack: err.stack });\n  }\n});\n"
+safe_example: "app.get('/api/items', async (req, res, next) => {\n  try {\n    const\
+  \ items = await db.query('SELECT * FROM items WHERE category = ?', [req.query.cat]);\n\
+  \    res.json(items);\n  } catch (err) {\n    logger.error('Failed to fetch items',\
+  \ { error: err.message, stack: err.stack });\n    res.status(500).json({ error:\
+  \ 'An unexpected internal error occurred.' });\n  }\n});\n"
+impact:
+- Internal architecture reconnaissance
+- Technology stack fingerprinting
+- Information disclosure
+remediation:
+- Implement a centralized custom error-handling middleware that returns generic error
+  messages to clients.
+- Log detailed stack traces and technical errors internally on the server with restricted
+  access.
+- Ensure NODE_ENV is set to 'production' to disable framework debug overlays.
+identifiers:
+  cwe:
+  - CWE-209
+  owasp:
+  - A10:2025
+  semgrep:
+  - javascript.express.security.audit.xss
+  zap:
+  - '90024'
+  - '10023'
+tags:
+- error-handling
+- stack-trace
+- information-disclosure
+- exceptional-conditions
+detectability:
+  sast: high
+  dast: high
+  manual: high

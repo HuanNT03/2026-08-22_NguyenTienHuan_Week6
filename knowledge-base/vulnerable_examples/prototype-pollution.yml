@@ -1,0 +1,49 @@
+id: example-prototype-pollution
+title: Prototype Pollution Through Object Merging
+aliases:
+- Prototype Pollution
+- Object Prototype Poisoning
+description: An unconstrained recursive object merge allows attacker-controlled properties
+  like __proto__ to modify the Object prototype.
+root_cause:
+- Object merge utilities iterate recursively without checking for __proto__ or constructor
+  keys.
+- User-supplied JSON payloads can inject properties directly into global prototypes.
+vulnerable_example: "function merge(target, source) {\n  for (const key in source)\
+  \ {\n    if (typeof source[key] === 'object' && source[key] !== null) {\n      if\
+  \ (!target[key]) target[key] = {};\n      merge(target[key], source[key]);\n   \
+  \ } else {\n      target[key] = source[key];\n    }\n  }\n  return target;\n}\n\
+  app.post('/api/settings', (req, res) => {\n  const userSettings = merge({}, req.body);\n\
+  \  res.json(userSettings);\n});\n"
+safe_example: "const safeKeys = new Set(['theme', 'notifications', 'language']);\n\
+  app.post('/api/settings', (req, res) => {\n  const userSettings = Object.create(null);\n\
+  \  for (const [key, value] of Object.entries(req.body || {})) {\n    if (safeKeys.has(key)\
+  \ && typeof value === 'string') {\n      userSettings[key] = value;\n    }\n  }\n\
+  \  res.json(userSettings);\n});\n"
+impact:
+- Denial of service
+- Remote code execution
+- Authentication bypass
+remediation:
+- Freeze Object.prototype using Object.freeze().
+- Filter dangerous keys such as __proto__, constructor, and prototype during object
+  merges.
+- Use Map or Object.create(null) instead of plain object literals for dictionary lookups.
+identifiers:
+  cwe:
+  - CWE-1321
+  owasp:
+  - A03:2025
+  semgrep:
+  - javascript.lang.security.insecure-object-assign
+  zap:
+  - '40044'
+tags:
+- prototype-pollution
+- supply-chain
+- javascript
+- object-merge
+detectability:
+  sast: high
+  dast: medium
+  manual: high

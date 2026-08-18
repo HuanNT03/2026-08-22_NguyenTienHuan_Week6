@@ -1,0 +1,53 @@
+id: example-weak-jwt-signing
+title: Weak JWT Signature Verification and Hard-Coded Secrets
+aliases:
+- Weak JWT Secret
+- JWT Algorithm Confusion
+- Hard-Coded Secret
+description: JSON Web Tokens are signed using easily guessable hard-coded keys or
+  allow unsigned 'none' algorithms.
+root_cause:
+- Cryptographic secrets are committed to source code or fall back to default values.
+- Token verification logic does not enforce a strict algorithm allowlist.
+vulnerable_example: "const jwt = require('jsonwebtoken');\nconst JWT_SECRET = 'secret123';\
+  \ // hard-coded weak key\n\napp.post('/api/login', (req, res) => {\n  const token\
+  \ = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET);\n  res.json({ token\
+  \ });\n});\n\napp.get('/api/profile', (req, res) => {\n  const decoded = jwt.decode(req.headers.authorization?.split('\
+  \ ')[1]);\n  res.json(decoded);\n});\n"
+safe_example: "const jwt = require('jsonwebtoken');\nconst JWT_SECRET = process.env.JWT_SIGNING_KEY;\n\
+  if (!JWT_SECRET || JWT_SECRET.length < 32) throw new Error('Secure JWT secret required');\n\
+  \napp.post('/api/login', (req, res) => {\n  const token = jwt.sign({ userId: user.id,\
+  \ role: user.role }, JWT_SECRET, {\n    algorithm: 'HS256',\n    expiresIn: '1h'\n\
+  \  });\n  res.json({ token });\n});\n\napp.get('/api/profile', (req, res) => {\n\
+  \  const token = req.headers.authorization?.split(' ')[1];\n  const decoded = jwt.verify(token,\
+  \ JWT_SECRET, { algorithms: ['HS256'] });\n  res.json(decoded);\n});\n"
+impact:
+- Authentication bypass
+- Privilege escalation
+- Account takeover
+remediation:
+- Load strong cryptographic keys (at least 256 bits for HMAC) from environment variables
+  or a key vault.
+- Explicitly specify allowed signature algorithms during jwt.verify().
+- Reject tokens with the 'none' algorithm or mismatched signatures.
+identifiers:
+  cwe:
+  - CWE-327
+  - CWE-798
+  owasp:
+  - A04:2025
+  semgrep:
+  - javascript.jsonwebtoken.security.jwt-hardcode
+  - javascript.jsonwebtoken.security.audit.jwt-decode-without-verify
+  - javascript.jsonwebtoken.security.jwt-none-alg
+  zap:
+  - 10038-1
+tags:
+- jwt
+- authentication
+- cryptography
+- hardcoded-credentials
+detectability:
+  sast: high
+  dast: medium
+  manual: high

@@ -1,0 +1,54 @@
+id: example-missing-rate-limiting
+title: Missing Rate Limiting on Sensitive Endpoints
+aliases:
+- Lack of Rate Limiting
+- Brute Force Vulnerability
+- Unrestricted Resource Consumption
+description: Authentication and sensitive action endpoints do not restrict request
+  velocity, enabling credential stuffing and brute-force attacks.
+root_cause:
+- Endpoints lack rate limiting middleware or IP/account-based throttling.
+- Application design relies solely on password complexity rather than defense-in-depth
+  velocity controls.
+vulnerable_example: "app.post('/api/auth/login', async (req, res) => {\n  const {\
+  \ email, password } = req.body;\n  const user = await User.findOne({ where: { email\
+  \ } });\n  if (!user || !(await bcrypt.compare(password, user.passwordHash))) {\n\
+  \    return res.status(401).json({ error: 'Invalid credentials' });\n  }\n  res.json({\
+  \ success: true, token: generateToken(user) });\n});\n"
+safe_example: "const rateLimit = require('express-rate-limit');\nconst loginLimiter\
+  \ = rateLimit({\n  windowMs: 15 * 60 * 1000,\n  max: 5,\n  standardHeaders: true,\n\
+  \  legacyHeaders: false,\n  message: { error: 'Too many login attempts. Please try\
+  \ again later.' }\n});\n\napp.post('/api/auth/login', loginLimiter, async (req,\
+  \ res) => {\n  const { email, password } = req.body;\n  const user = await User.findOne({\
+  \ where: { email } });\n  if (!user || !(await bcrypt.compare(password, user.passwordHash)))\
+  \ {\n    return res.status(401).json({ error: 'Invalid credentials' });\n  }\n \
+  \ res.json({ success: true, token: generateToken(user) });\n});\n"
+impact:
+- Credential stuffing
+- Account takeover
+- Denial of service
+remediation:
+- Implement IP-based and user-based rate limiting on login, password reset, and payment
+  endpoints.
+- Integrate progressive delays (exponential backoff) and account lockouts after consecutive
+  failed attempts.
+- Deploy CAPTCHA or bot detection mechanisms when anomalous traffic is detected.
+identifiers:
+  cwe:
+  - CWE-770
+  - CWE-307
+  owasp:
+  - A06:2025
+  semgrep:
+  - javascript.express.security.audit.express-check-csurf-middleware-usage
+  zap:
+  - 100000-1
+tags:
+- rate-limiting
+- brute-force
+- insecure-design
+- authentication
+detectability:
+  sast: low
+  dast: medium
+  manual: high

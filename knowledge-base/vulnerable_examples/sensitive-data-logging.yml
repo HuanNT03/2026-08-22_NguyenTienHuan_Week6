@@ -1,0 +1,52 @@
+id: example-sensitive-data-logging
+title: Sensitive Data Exposure in Application Logs
+aliases:
+- Sensitive Information in Logs
+- Plaintext Credential Logging
+- Log Leakage
+description: Authentication payloads, session tokens, or payment details are written
+  in plaintext to application logs.
+root_cause:
+- Request bodies and query parameters are logged verbatim without sanitization or
+  redaction.
+- Logging libraries lack masking filters for sensitive field names (password, token,
+  credit_card).
+vulnerable_example: "app.post('/api/auth/register', (req, res) => {\n  // Logging\
+  \ raw request body containing plaintext passwords and personal data\n  console.log('Registration\
+  \ request received:', req.body);\n  const user = createUser(req.body);\n  res.status(201).json({\
+  \ id: user.id });\n});\n"
+safe_example: "function sanitizeForLog(data) {\n  const SENSITIVE_FIELDS = new Set(['password',\
+  \ 'token', 'cvv', 'creditCard', 'secret']);\n  const sanitized = {};\n  for (const\
+  \ [key, value] of Object.entries(data || {})) {\n    sanitized[key] = SENSITIVE_FIELDS.has(key)\
+  \ ? '[REDACTED]' : value;\n  }\n  return sanitized;\n}\n\napp.post('/api/auth/register',\
+  \ (req, res) => {\n  logger.info('Registration request received', { payload: sanitizeForLog(req.body)\
+  \ });\n  const user = createUser(req.body);\n  res.status(201).json({ id: user.id\
+  \ });\n});\n"
+impact:
+- Credential leakage
+- Compliance violation
+- Lateral privilege escalation via log access
+remediation:
+- Apply automated log sanitizers and redaction filters to redact sensitive keys.
+- Never log raw passwords, authorization tokens, personal identifiable information
+  (PII), or payment data.
+- Restrict access to centralized log storage with role-based access control and encryption.
+identifiers:
+  cwe:
+  - CWE-532
+  owasp:
+  - A09:2025
+  semgrep:
+  - javascript.lang.best-practice.leftover_debugging
+  - javascript.jwt-simple.security.jwt-simple-noverify
+  zap:
+  - 10049-3
+tags:
+- logging
+- credentials
+- sensitive-data
+- privacy
+detectability:
+  sast: high
+  dast: low
+  manual: high
