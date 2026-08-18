@@ -147,12 +147,40 @@ kb-rebuild: kb-python-check ## Remove generated knowledge artifacts and rebuild 
 	@$(VENV_PYTHON) -m src.retrieval.cli clean
 	@$(VENV_PYTHON) -m src.retrieval.cli build
 
-kb-search: kb-python-check ## Search knowledge; for example QUERY="SQL Injection".
+kb-search: kb-python-check ## Search knowledge using Hybrid mode; for example QUERY="SQL Injection".
 	@test -n "$(QUERY)" || \
-		(echo 'Usage: make kb-search QUERY="SQL Injection"' && exit 1)
+		(echo 'Usage: make kb-search QUERY="SQL Injection" [MODE=hybrid|keyword|semantic]' && exit 1)
 	@$(VENV_PYTHON) -m src.retrieval.cli search \
 		"$(QUERY)" \
 		--top-k "$(or $(TOP_K),5)" \
+		--mode "$(or $(MODE),hybrid)" \
+		$(if $(DOC_TYPE),--doc-type "$(DOC_TYPE)",)
+
+kb-search-keyword: kb-python-check ## Search knowledge using Sparse BM25 keyword matching (e.g. QUERY="cwe 89 và owasp a05:2025").
+	@test -n "$(QUERY)" || \
+		(echo 'Usage: make kb-search-keyword QUERY="SQL Injection"' && exit 1)
+	@$(VENV_PYTHON) -m src.retrieval.cli search \
+		"$(QUERY)" \
+		--top-k "$(or $(TOP_K),5)" \
+		--mode keyword \
+		$(if $(DOC_TYPE),--doc-type "$(DOC_TYPE)",)
+
+kb-search-semantic: kb-python-check ## Search knowledge using Dense Vector similarity (e.g. QUERY="database injection vulnerabilities").
+	@test -n "$(QUERY)" || \
+		(echo 'Usage: make kb-search-semantic QUERY="SQL Injection"' && exit 1)
+	@$(VENV_PYTHON) -m src.retrieval.cli search \
+		"$(QUERY)" \
+		--top-k "$(or $(TOP_K),5)" \
+		--mode semantic \
+		$(if $(DOC_TYPE),--doc-type "$(DOC_TYPE)",)
+
+kb-search-hybrid: kb-python-check ## Search knowledge using Two-Stage Hybrid (RRF + Pure MMR).
+	@test -n "$(QUERY)" || \
+		(echo 'Usage: make kb-search-hybrid QUERY="SQL Injection"' && exit 1)
+	@$(VENV_PYTHON) -m src.retrieval.cli search \
+		"$(QUERY)" \
+		--top-k "$(or $(TOP_K),5)" \
+		--mode hybrid \
 		$(if $(DOC_TYPE),--doc-type "$(DOC_TYPE)",)
 
 kb-inspect: kb-python-check ## Inspect a canonical document by DOC_ID.
