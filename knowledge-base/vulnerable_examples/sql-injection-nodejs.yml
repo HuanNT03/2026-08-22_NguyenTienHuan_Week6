@@ -1,22 +1,47 @@
 id: example-sql-injection-nodejs
 title: SQL Injection in Node.js
-aliases: [SQL Injection, Node.js SQL Injection]
+aliases:
+- SQL Injection
+- Node.js SQL Injection
 description: User-controlled input is concatenated directly into an SQL query.
 root_cause:
-  - Untrusted input reaches the SQL interpreter.
-  - The application constructs queries using string concatenation.
-vulnerable_example: |
-  const query = `SELECT * FROM users WHERE email = '${req.body.email}'`;
+- Untrusted input reaches the SQL interpreter.
+- The application constructs queries using string concatenation.
+vulnerable_example: 'const query = `SELECT * FROM users WHERE email = ''${req.body.email}''`;
+
   db.query(query);
-safe_example: |
-  const query = "SELECT * FROM users WHERE email = ?";
+
+  '
+safe_example: 'const query = "SELECT * FROM users WHERE email = ?";
+
   db.query(query, [req.body.email]);
-impact: [Unauthorized data access, Authentication bypass, Data modification]
+
+  '
+impact:
+- Unauthorized data access
+- Authentication bypass
+- Data modification
 remediation:
-  - Use parameterized queries.
-  - Apply least-privilege database permissions.
+- Use parameterized queries.
+- Apply least-privilege database permissions.
 identifiers:
-  cwe: [CWE-89]
-  owasp: [A05:2025]
-tags: [sql, injection, database, nodejs]
-detectability: {sast: high, dast: high, manual: medium}
+  cwe:
+  - CWE-89
+  owasp:
+  - A05:2025
+  semgrep:
+  - javascript.sequelize.security.audit.sequelize-injection-express
+  - javascript.sequelize.security.audit.sequelize-raw-query
+  zap:
+  - '40018'
+  - '40019'
+  - '40024'
+tags:
+- sql
+- injection
+- database
+- nodejs
+detectability:
+  sast: high
+  dast: high
+  manual: medium

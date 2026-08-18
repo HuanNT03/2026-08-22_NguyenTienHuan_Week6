@@ -1,16 +1,42 @@
 id: example-missing-function-level-authorization
 title: Missing Function-Level Authorization
-aliases: [Missing Authorization, Broken Function Level Authorization]
-description: A privileged route is reachable without a server-side role or permission check.
-root_cause: [The UI hides an action but the API does not authorize it, Deny-by-default is absent]
-vulnerable_example: |
-  app.delete('/api/admin/users/:id', deleteUser);
-safe_example: |
-  app.delete('/api/admin/users/:id', requireRole('admin'), deleteUser);
-impact: [Privilege escalation, Unauthorized administrative actions]
-remediation: [Authorize every protected function server-side, Centralize reusable permission checks]
+aliases:
+- Missing Function Authorization
+- Broken Function Level Authorization
+- BFLA
+description: An administrative API endpoint relies only on client-side hiding and
+  lacks server-side role checks.
+root_cause:
+- Access controls are enforced in UI only
+- Privileged endpoints do not verify caller roles
+vulnerable_example: 'app.delete(''/api/users/:id'', deleteUser);
+
+  '
+safe_example: 'app.delete(''/api/users/:id'', requireAuthentication, requireRole(''admin''),
+  deleteUser);
+
+  '
+impact:
+- Administrative privilege escalation
+- Unauthorized bulk operations
+remediation:
+- Enforce role checks on every administrative handler
+- Adopt declarative route-level policies
 identifiers:
-  cwe: [CWE-862]
-  owasp: [A01:2025]
-tags: [authorization, privilege-escalation, api, access-control]
-detectability: {sast: medium, dast: medium, manual: high}
+  cwe:
+  - CWE-862
+  owasp:
+  - A01:2025
+  semgrep:
+  - javascript.express.security.audit.express-check-csurf-middleware-usage
+  zap:
+  - '40012'
+tags:
+- authorization
+- privilege-escalation
+- api
+- access-control
+detectability:
+  sast: medium
+  dast: medium
+  manual: high

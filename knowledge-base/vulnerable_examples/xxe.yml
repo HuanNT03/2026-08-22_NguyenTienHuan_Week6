@@ -1,16 +1,45 @@
 id: example-xxe
 title: XML External Entity Injection
-aliases: [XXE, XML External Entity]
-description: An XML parser resolves attacker-defined external entities with access to local or network resources.
-root_cause: [DTD or external entity processing is enabled, Untrusted XML is parsed with an unsafe configuration]
-vulnerable_example: |
-  const doc = libxmljs.parseXml(req.body);
-safe_example: |
-  const doc = parseXml(req.body, { dtd: false, externalEntities: false, network: false });
-impact: [Local file disclosure, Server-side request forgery, Denial of service]
-remediation: [Disable DTD and external entity resolution, Prefer simpler data formats, Patch XML libraries]
+aliases:
+- XXE
+- XML External Entity
+description: An XML parser resolves attacker-defined external entities with access
+  to local or network resources.
+root_cause:
+- DTD or external entity processing is enabled
+- Untrusted XML is parsed with an unsafe configuration
+vulnerable_example: 'const doc = libxmljs.parseXml(req.body, { noent: true, dtdload:
+  true });
+
+  '
+safe_example: 'const doc = libxmljs.parseXml(req.body, { noent: false, dtdload: false,
+  nonet: true });
+
+  '
+impact:
+- Local file disclosure
+- Server-side request forgery
+- Denial of service
+remediation:
+- Disable DTD and external entity resolution
+- Prefer simpler data formats
+- Patch XML libraries
 identifiers:
-  cwe: [CWE-611]
-  owasp: [A05:2025]
-tags: [xxe, xml, entity, file-disclosure]
-detectability: {sast: medium, dast: high, manual: high}
+  cwe:
+  - CWE-611
+  owasp:
+  - A05:2025
+  semgrep:
+  - javascript.xml2json.security.audit.xml2json-xxe
+  - javascript.node-expat.security.audit.expat-xxe
+  zap:
+  - '90023'
+tags:
+- xxe
+- xml
+- entity
+- file-disclosure
+detectability:
+  sast: medium
+  dast: high
+  manual: high

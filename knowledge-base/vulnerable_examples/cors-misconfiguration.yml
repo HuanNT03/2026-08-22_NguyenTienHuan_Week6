@@ -1,17 +1,42 @@
 id: example-cors-misconfiguration
 title: Permissive CORS Misconfiguration
-aliases: [CORS Misconfiguration, Cross-Origin Misconfiguration]
-description: The server reflects arbitrary origins while allowing credentialed cross-origin requests.
-root_cause: [Untrusted Origin values are accepted, Credentialed responses are exposed cross-origin]
-vulnerable_example: |
-  app.use(cors({ origin: true, credentials: true }));
-safe_example: |
-  app.use(cors({ origin: ['https://app.example.com'], credentials: true }));
-impact: [Cross-origin reading of sensitive responses, Abuse of authenticated APIs]
-remediation: [Allowlist exact trusted origins, Disable credentials when unnecessary, Reject null origins]
+aliases:
+- CORS Misconfiguration
+- Cross-Origin Misconfiguration
+description: The server reflects arbitrary origins while allowing credentialed cross-origin
+  requests.
+root_cause:
+- Untrusted Origin values are accepted
+- Credentialed responses are exposed cross-origin
+vulnerable_example: 'app.use(cors({ origin: true, credentials: true }));
+
+  '
+safe_example: 'app.use(cors({ origin: [''https://app.example.com''], credentials:
+  true }));
+
+  '
+impact:
+- Cross-origin reading of sensitive responses
+- Abuse of authenticated APIs
+remediation:
+- Allowlist exact trusted origins
+- Disable credentials when unnecessary
+- Reject null origins
 identifiers:
-  cwe: [CWE-942]
-  owasp: [A02:2025]
-  zap: ['10098']
-tags: [cors, cross-origin, misconfiguration, browser]
-detectability: {sast: medium, dast: high, manual: high}
+  cwe:
+  - CWE-942
+  owasp:
+  - A02:2025
+  semgrep:
+  - javascript.express.security.cors-misconfiguration
+  zap:
+  - '10098'
+tags:
+- cors
+- cross-origin
+- misconfiguration
+- browser
+detectability:
+  sast: medium
+  dast: high
+  manual: high

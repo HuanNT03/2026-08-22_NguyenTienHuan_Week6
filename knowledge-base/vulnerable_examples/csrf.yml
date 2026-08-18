@@ -1,18 +1,40 @@
 id: example-csrf
 title: Cross-Site Request Forgery
-aliases: [CSRF, XSRF]
+aliases:
+- CSRF
+- XSRF
 description: A state-changing cookie-authenticated request lacks an anti-CSRF control.
-root_cause: [Browsers attach ambient credentials, The server cannot distinguish a forged cross-site request]
-vulnerable_example: |
-  app.post('/account/email', updateEmail); // session cookie is sufficient
-safe_example: |
-  app.post('/account/email', verifyCsrfToken, updateEmail);
-impact: [Unauthorized account changes, Transactions performed as the victim]
+root_cause:
+- Browsers attach ambient credentials
+- The server cannot distinguish a forged cross-site request
+vulnerable_example: 'app.post(''/account/email'', updateEmail); // session cookie
+  is sufficient
+
+  '
+safe_example: 'app.post(''/account/email'', verifyCsrfToken, updateEmail);
+
+  '
+impact:
+- Unauthorized account changes
+- Transactions performed as the victim
 remediation:
-  - Use framework anti-CSRF tokens for cookie-authenticated state changes.
-  - Set SameSite cookies and verify Origin as defense in depth.
+- Use framework anti-CSRF tokens for cookie-authenticated state changes.
+- Set SameSite cookies and verify Origin as defense in depth.
 identifiers:
-  cwe: [CWE-352]
-  owasp: [A01:2025]
-tags: [csrf, browser, session, request-forgery]
-detectability: {sast: medium, dast: medium, manual: high}
+  cwe:
+  - CWE-352
+  owasp:
+  - A01:2025
+  semgrep:
+  - javascript.express.security.audit.express-check-csurf-middleware-usage
+  zap:
+  - '40014'
+tags:
+- csrf
+- browser
+- session
+- request-forgery
+detectability:
+  sast: medium
+  dast: medium
+  manual: high

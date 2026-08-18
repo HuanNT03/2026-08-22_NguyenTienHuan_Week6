@@ -1,17 +1,44 @@
 id: example-open-redirect
 title: Open Redirect Through Return URL
-aliases: [Open Redirect, Unvalidated Redirect]
-description: A redirect target is taken from request input without restricting it to trusted local destinations.
-root_cause: [The redirect destination crosses a trust boundary, URL parsing and origin checks are absent]
-vulnerable_example: |
-  res.redirect(req.query.returnTo);
-safe_example: |
-  const target = allowlistedLocalPath(req.query.returnTo) ? req.query.returnTo : '/';
+aliases:
+- Open Redirect
+- Unvalidated Redirect
+description: A redirect target is taken from request input without restricting it
+  to trusted local destinations.
+root_cause:
+- The redirect destination crosses a trust boundary
+- URL parsing and origin checks are absent
+vulnerable_example: 'res.redirect(req.query.returnTo);
+
+  '
+safe_example: 'const target = allowlistedLocalPath(req.query.returnTo) ? req.query.returnTo
+  : ''/'';
+
   res.redirect(target);
-impact: [Credential phishing, Trust abuse, OAuth token leakage]
-remediation: [Use server-side destination identifiers, Permit only normalized local paths]
+
+  '
+impact:
+- Credential phishing
+- Trust abuse
+- OAuth token leakage
+remediation:
+- Use server-side destination identifiers
+- Permit only normalized local paths
 identifiers:
-  cwe: [CWE-601]
-  owasp: [A01:2025]
-tags: [open-redirect, url, phishing]
-detectability: {sast: high, dast: high, manual: high}
+  cwe:
+  - CWE-601
+  owasp:
+  - A01:2025
+  semgrep:
+  - javascript.browser.security.open-redirect
+  - javascript.browser.security.open-redirect-from-function
+  zap:
+  - '10028'
+tags:
+- open-redirect
+- url
+- phishing
+detectability:
+  sast: high
+  dast: high
+  manual: high

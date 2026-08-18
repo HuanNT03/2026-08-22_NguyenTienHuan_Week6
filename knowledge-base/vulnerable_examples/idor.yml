@@ -1,17 +1,41 @@
 id: example-idor
 title: Insecure Direct Object Reference
-aliases: [IDOR, Broken Object Level Authorization, BOLA]
-description: An endpoint trusts a user-controlled object identifier without enforcing ownership.
-root_cause: [Authorization is checked only at login, Record ownership is not verified]
-vulnerable_example: |
-  app.get('/api/orders/:id', async (req, res) => res.json(await Order.findByPk(req.params.id)));
-safe_example: |
-  app.get('/api/orders/:id', async (req, res) =>
-    res.json(await Order.findOne({ where: { id: req.params.id, userId: req.user.id } })));
-impact: [Access to another user's records, Unauthorized record modification]
-remediation: [Enforce object authorization on every operation, Prefer scoped repository queries]
+aliases:
+- IDOR
+- Broken Object Level Authorization
+- BOLA
+description: An endpoint trusts a user-controlled object identifier without enforcing
+  ownership.
+root_cause:
+- Authorization is checked only at login
+- Record ownership is not verified
+vulnerable_example: 'app.get(''/api/orders/:id'', async (req, res) => res.json(await
+  Order.findByPk(req.params.id)));
+
+  '
+safe_example: "app.get('/api/orders/:id', async (req, res) =>\n  res.json(await Order.findOne({\
+  \ where: { id: req.params.id, userId: req.user.id } })));\n"
+impact:
+- Access to another user's records
+- Unauthorized record modification
+remediation:
+- Enforce object authorization on every operation
+- Prefer scoped repository queries
 identifiers:
-  cwe: [CWE-639]
-  owasp: [A01:2025]
-tags: [idor, bola, authorization, access-control]
-detectability: {sast: low, dast: medium, manual: high}
+  cwe:
+  - CWE-639
+  owasp:
+  - A01:2025
+  semgrep:
+  - javascript.sequelize.security.audit.sequelize-raw-query
+  zap:
+  - '40038'
+tags:
+- idor
+- bola
+- authorization
+- access-control
+detectability:
+  sast: low
+  dast: medium
+  manual: high
