@@ -1,9 +1,16 @@
+import os
 from pathlib import Path
 
 import pytest
 
 from src.retrieval.config import DOCUMENTS_PATH, MANIFEST_PATH
 from src.retrieval.indexers.sqlite_fts import build_index
+
+
+@pytest.fixture(scope="session", autouse=True)
+def configure_test_environment() -> None:
+    """Ensure test runs use deterministic offline embeddings without hitting paid APIs."""
+    os.environ["SENTINEL_OFFLINE_EMBEDDINGS"] = "1"
 
 
 @pytest.fixture(scope="session")

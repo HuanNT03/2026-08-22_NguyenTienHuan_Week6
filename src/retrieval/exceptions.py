@@ -39,3 +39,11 @@ class KnowledgeIndexBuildError(KnowledgeBaseError):
 
 class KnowledgeDocumentNotFoundError(KnowledgeBaseError):
     """Raised when an inspected canonical document does not exist."""
+
+
+class EmbeddingConfigurationError(KnowledgeBaseError):
+    """Raised when required embedding model configurations (API key, model, URL) are missing."""
+
+
+class EmbeddingAPIError(KnowledgeBaseError):
+    """Raised when cloud embedding API requests fail."""

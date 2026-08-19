@@ -1,8 +1,12 @@
 """Unit tests for EmbeddingClient and QdrantVectorStore."""
 
 from pathlib import Path
+from unittest.mock import MagicMock
+
+import pytest
 
 from src.retrieval.embeddings.client import EmbeddingClient
+from src.retrieval.exceptions import EmbeddingAPIError, EmbeddingConfigurationError
 from src.retrieval.models import KnowledgeDocument, KnowledgeIdentifiers, KnowledgeSource
 from src.retrieval.vector.qdrant_store import QdrantVectorStore
 
@@ -16,6 +20,31 @@ def test_embedding_client_generates_deterministic_normalized_vectors() -> None:
     assert len(vec1) == 128
     assert vec1 == vec2
     assert vec1 != vec3
+
+
+def test_embedding_client_raises_configuration_error_when_api_key_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("SENTINEL_OFFLINE_EMBEDDINGS", raising=False)
+    monkeypatch.delenv("EMBEDDING_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+
+    client = EmbeddingClient(provider="openai")
+    with pytest.raises(EmbeddingConfigurationError, match="Missing embedding API key"):
+        client.embed_query("test query")
+
+
+def test_embedding_client_raises_api_error_when_remote_api_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("SENTINEL_OFFLINE_EMBEDDINGS", raising=False)
+    monkeypatch.setenv("EMBEDDING_API_KEY", "dummy-key")
+
+    client = EmbeddingClient(provider="openai", model="test-model")
+
+    mock_openai = MagicMock()
+    mock_openai.OpenAI.return_value.embeddings.create.side_effect = RuntimeError("Connection timeout")
+    monkeypatch.setattr("openai.OpenAI", mock_openai.OpenAI)
+
+    with pytest.raises(EmbeddingAPIError, match="Embedding model API request failed for model 'test-model'"):
+        client.embed_query("test query")
 
 
 def test_qdrant_vector_store_upsert_and_search(tmp_path: Path) -> None:

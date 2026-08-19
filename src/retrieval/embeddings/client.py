@@ -6,6 +6,8 @@ from typing import Literal
 
 import numpy as np
 
+from src.retrieval.exceptions import EmbeddingAPIError, EmbeddingConfigurationError
+
 
 class EmbeddingClient:
     """Client for generating dense text embeddings with cloud providers or offline testing."""
@@ -35,16 +37,33 @@ class EmbeddingClient:
             or ("text-embedding-3-small" if provider == "openai" else "text-embedding-004")
         )
 
-        if not self.api_key or os.getenv("SENTINEL_OFFLINE_EMBEDDINGS") == "1":
+        # Check if offline mode is explicitly requested for test environments
+        if os.getenv("SENTINEL_OFFLINE_EMBEDDINGS") == "1" or self.provider == "mock":
             self.provider = "mock"
+
+    def _ensure_configured(self) -> None:
+        """Validate that all required embedding configurations are present when running online."""
+        if self.provider == "mock":
+            return
+        if not self.api_key or not self.api_key.strip():
+            raise EmbeddingConfigurationError(
+                "Missing embedding API key. Please configure EMBEDDING_API_KEY (or OPENAI_API_KEY) in .env "
+                "to use dense semantic / hybrid retrieval."
+            )
+        if not self.model or not self.model.strip():
+            raise EmbeddingConfigurationError(
+                "Missing embedding model name. Please configure EMBEDDING_MODEL in .env."
+            )
 
     def embed_texts(self, texts: list[str]) -> list[list[float]]:
         """Generate normalized vector embeddings for a list of text passages using the configured model."""
         if not texts:
             return []
 
-        if self.provider == "mock" or not self.api_key:
+        if self.provider == "mock":
             return [self._deterministic_pseudo_embedding(t) for t in texts]
+
+        self._ensure_configured()
 
         try:
             import openai
@@ -57,10 +76,12 @@ class EmbeddingClient:
                 response = client.embeddings.create(input=batch, model=self.model)
                 embeddings.extend([item.embedding for item in response.data])
             return embeddings
-        except (ImportError, RuntimeError, ValueError, OSError) as error:
-            if os.getenv("SENTINEL_OFFLINE_EMBEDDINGS") == "1":
-                return [self._deterministic_pseudo_embedding(t) for t in texts]
-            raise RuntimeError(f"Embedding model API request failed for model '{self.model}': {error}") from error
+        except Exception as error:
+            raise EmbeddingAPIError(
+                f"Embedding model API request failed for model '{self.model}' "
+                f"(base_url: {self.base_url or 'default OpenAI endpoint'}): {error}. "
+                "Please verify your EMBEDDING_API_KEY, EMBEDDING_BASE_URL, and network connection in .env."
+            ) from error
 
     def embed_query(self, query: str) -> list[float]:
         """Generate embedding vector for a single query."""
