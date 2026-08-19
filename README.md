@@ -296,69 +296,120 @@ Lệnh `make normalize` chuẩn hóa các raw report từ scanner thành định
 - **Validation & Partial Failure**: `make validate-reports` kiểm tra các file rỗng/thiếu/malformed trước khi scan. Khi normalize, nếu thiếu input scanner sẽ có status `skipped` (`missing_input`), scanner hỏng có status `failed`. Chỉ cần ít nhất 1 cặp scanner hợp lệ, output normalized vẫn được tạo.
 - **Thực thi**: Kích hoạt môi trường `.venv`, chạy `make validate-reports` rồi `make normalize`.
 
-## Tìm kiếm tài liệu bảo mật bằng từ khóa
+## Hệ thống Tri thức Bảo mật & Tìm kiếm Đa phương thức (Hybrid Search)
 
-Cài dependency và build Knowledge Base trước lần tìm kiếm đầu tiên:
+Sentinel xây dựng kho tri thức bảo mật chuẩn hóa (**1,832 canonical documents**) bao gồm: CWE, OWASP Top 10 (2021 & 2025), ZAP Alerts, Semgrep Rules, ASVS Requirements, OWASP Cheatsheets và Curated Vulnerability Examples.
+
+Hệ thống hỗ trợ 3 chế độ tìm kiếm:
+1. **Keyword Search (Sparse BM25)** qua SQLite FTS5 (tối ưu tra cứu chính xác mã CWE, OWASP ID, Rule ID, tên hàm).
+2. **Semantic Vector Search (Dense Embeddings)** qua Qdrant Embedded Vector Store (tối ưu hiểu ngữ nghĩa và ngữ cảnh bảo mật).
+3. **Hybrid Search (RRF + MMR Fusion)** kết hợp cả hai phương thức và tái xếp hạng độ đa dạng (mặc định cho Security Agent).
+
+### 1. Cấu hình môi trường Embedding (`.env`)
+
+Khai báo thông tin Embedding Provider trong `.env`:
+
+```env
+# Dùng OpenAI:
+EMBEDDING_API_KEY=sk-...
+EMBEDDING_MODEL=text-embedding-3-small
+
+# Hoặc dùng Alibaba Cloud DashScope / Endpoint OpenAI-Compatible:
+# EMBEDDING_API_KEY=sk-...
+# EMBEDDING_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+# EMBEDDING_MODEL=text-embedding-v3
+# EMBEDDING_DIMENSION=1024
+
+# Chế độ Offline / Mock Embeddings (dành cho CI hoặc test local không cần API key):
+# SENTINEL_OFFLINE_EMBEDDINGS=1
+```
+
+### 2. Quy trình Xây dựng Knowledge Base
+
+Cài dependency và build Knowledge Base trước lần sử dụng đầu tiên:
 
 ```bash
 make install
-make kb-validate
-make kb-build
+make kb-validate          # Kiểm tra tính hợp lệ của tất cả nguồn raw data và SQLite FTS5
+make kb-build             # Build documents.jsonl, SQLite FTS5 index và Qdrant vector index
 ```
 
-Tìm tài liệu bằng từ khóa hoặc security identifier qua Make:
+Các lệnh quản lý riêng biệt:
+- **Build Canonical Documents**: `make kb-build-documents` (sinh `knowledge-base/processed/documents.jsonl` và `manifest.json`).
+- **Build Search Indices**: `make kb-build-index` (xây dựng `knowledge.db` và Qdrant vector database).
+- **Xóa & Tái tạo toàn bộ**: `make kb-rebuild`.
+- **Thống kê kho tri thức**: `make kb-stats`.
+- **Xem chi tiết 1 tài liệu**: `make kb-inspect DOC_ID=cwe-89`.
 
+### 3. Hướng dẫn Sử dụng Tìm kiếm
+
+#### A. Tìm kiếm Hybrid (RRF + MMR - Khuyên dùng & Mặc định)
+Kết hợp độ chính xác của từ khóa và độ sâu của ngữ nghĩa:
 ```bash
 make kb-search QUERY="SQL Injection"
-make kb-search QUERY="SQLi"
-make kb-search QUERY="XSS" TOP_K=5
-make kb-search QUERY="CWE89"
-make kb-search QUERY="Broken Access Control"
+make kb-search QUERY="Broken Access Control" TOP_K=5
+make kb-search QUERY="Missing authentication token" MODE=hybrid
 ```
 
-`TOP_K` mặc định là `5` và nhận giá trị từ `1` đến `50`. Có thể giới hạn kết quả theo
-`doc_type`:
+#### B. Tìm kiếm Từ khóa (Keyword / BM25 Search)
+Dùng khi tìm chính xác mã định danh hoặc tên rule:
+```bash
+make kb-search-keyword QUERY="CWE-89"
+make kb-search QUERY="owasp a01:2025" MODE=keyword
+make kb-search QUERY="javascript.express.security" MODE=keyword
+```
 
+#### C. Tìm kiếm Ngữ nghĩa (Dense Semantic Vector Search)
+Dùng khi tìm kiếm theo mô tả hành vi lỗ hổng hoặc ngữ cảnh:
+```bash
+make kb-search QUERY="leaking database error messages to users" MODE=semantic
+make kb-search QUERY="unauthorized user access to another account orders" MODE=semantic TOP_K=5
+```
+
+#### D. Lọc theo Loại Tài liệu (`DOC_TYPE`)
+Có thể kết hợp flag `DOC_TYPE` với bất kỳ chế độ tìm kiếm nào:
 ```bash
 make kb-search QUERY="IDOR" DOC_TYPE=cwe
-make kb-search QUERY="SQL Injection" DOC_TYPE=vulnerability_example
+make kb-search QUERY="JWT signing" DOC_TYPE=vulnerability_example
+make kb-search QUERY="Session Management" DOC_TYPE=asvs_requirement
 ```
 
 Các giá trị `DOC_TYPE` hợp lệ gồm:
+- `owasp_category` (OWASP Top 10 2021/2025);
+- `cwe` (Common Weakness Enumeration);
+- `scanner_document` (Tài liệu ZAP, Semgrep);
+- `scanner_rule` (Chi tiết rule Semgrep, alert ZAP);
+- `vulnerability_example` (Ví dụ code mẫu vulnerable vs safe);
+- `cheatsheet` (OWASP Cheatsheet Series);
+- `asvs_requirement` (Yêu cầu tiêu chuẩn OWASP ASVS).
 
-- `owasp_category`;
-- `cwe`;
-- `scanner_document`;
-- `scanner_rule`;
-- `vulnerability_example`.
-
-Để tích hợp với script hoặc Agent, gọi CLI trực tiếp với output JSON:
-
+#### E. Gọi qua CLI (Xuất JSON cho Agent/Scripts)
 ```bash
-.venv/bin/python -m src.retrieval.cli search "CWE89" --json
-.venv/bin/python -m src.retrieval.cli search "XSS" --top-k 10 --doc-type cwe --json
+.venv/bin/python -m src.retrieval.cli search "SQL Injection" --mode hybrid --top-k 5 --json
+.venv/bin/python -m src.retrieval.cli search "CWE-89" --mode keyword --json
+.venv/bin/python -m src.retrieval.cli search "database error disclosure" --mode semantic --json
 ```
 
-Query được chuẩn hóa tự động, vì vậy `CWE89`, `cwe 89`, `cwe_89` và `CWE-89` có cùng ý nghĩa;
-`A01-2025`, `a01 2025`, `a1:2025` và `A01:2025` cũng tương đương. Các token được quote trước
-khi truyền vào SQLite FTS5, nên toán tử hoặc ký tự đặc biệt trong input không điều khiển cú pháp
-`MATCH`.
+#### F. Sử dụng trực tiếp trong Python Code
+```python
+from src.retrieval.service import KnowledgeSearchService
 
-Xem đầy đủ một tài liệu canonical hoặc thống kê dataset/index:
+service = KnowledgeSearchService()
 
-```bash
-make kb-inspect DOC_ID=cwe-89
-make kb-stats
+# 1. Tìm kiếm Hybrid (mặc định)
+results = service.search(query="SQL Injection", mode="hybrid", top_k=5)
+
+# 2. Tìm kiếm Keyword (FTS5 BM25)
+results = service.search(query="CWE-89", mode="keyword", top_k=5)
+
+# 3. Tìm kiếm Semantic (Qdrant Vector)
+results = service.search(
+    query="attacker bypasses authentication", mode="semantic", top_k=5
+)
+
+for res in results:
+    print(f"[{res.doc_type}] {res.doc_id}: {res.title} (Score: {res.score:.4f})")
 ```
-
-Nếu `knowledge-base/index/knowledge.db` chưa tồn tại hoặc canonical data đã thay đổi, chạy lại:
-
-```bash
-make kb-rebuild
-```
-
-Python code không cần gọi CLI bằng subprocess; dùng trực tiếp `KnowledgeSearchService` theo hướng
-dẫn trong [`knowledge-base/README.md`](knowledge-base/README.md).
 
 ## Security Analysis Agent (Week 3)
 

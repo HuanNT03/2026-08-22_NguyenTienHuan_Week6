@@ -48,13 +48,19 @@ schema hoặc data contract chỉ để làm một test cục bộ pass; mọi t
   report validation và CI artifact flow.
 - Week 2 đã hoàn thành normalizer cho Semgrep, ZAP và CodeQL, Unified Findings schema,
   canonical knowledge documents và SQLite FTS5 keyword search.
-- Knowledge base hiện có 442 canonical documents. Retrieval hiện là deterministic
-  English keyword search; chưa có embedding, vector database, semantic/hybrid search
-  hoặc RAG pipeline.
-- **Milestone hiện tại là Week 3: xây dựng Security Analysis Agent.** Không triển khai
-  trước Gateway/HITL của Week 4–5 nếu task không yêu cầu.
+- Week 3 đã hoàn thành Security Analysis Agent (`src/agent/`), analysis report schema,
+  grounding, LLM prompt versioning và deterministic evaluation.
+- Week 4 đã hoàn thành Streamlit Web UI (`frontend/`), Scan Runner, Knowledge Base
+  Explorer và Agent analysis integration.
+- Knowledge base hiện có **1,832 canonical documents** (CWE, OWASP Top 10 2021/2025,
+  ZAP alerts, Semgrep rules, ASVS, Cheatsheets, Vulnerability Examples). Hệ thống tìm
+  kiếm hỗ trợ đa phương thức (Hybrid search): SQLite FTS5 (Keyword/BM25), Qdrant (Dense
+  Semantic Vector), và RRF + MMR fusion reranking.
+- **Milestone hiện tại là Week 5–6: Cải thiện và hoàn thiện dự án.** Tập trung tối ưu hóa
+  chất lượng phân tích lỗ hổng, tinh chỉnh RAG retrieval, kiểm soát an toàn/guardrails,
+  kiểm thử toàn diện và chuẩn bị tài liệu tổng kết capstone.
 
-Khi milestone thay đổi, cập nhật riêng mục này và mục Week 3 bên dưới; không viết lại
+Khi milestone thay đổi, cập nhật riêng mục này và tài liệu liên quan; không viết lại
 các invariant lâu dài của repository.
 
 ## 4. Cấu trúc repository
