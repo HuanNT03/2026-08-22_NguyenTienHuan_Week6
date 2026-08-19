@@ -1,5 +1,6 @@
 """Qdrant Embedded Vector Store adapter for Project Sentinel."""
 
+import os
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -33,7 +34,7 @@ class QdrantVectorStore:
     ) -> None:
         self.storage_path = storage_path or QDRANT_STORAGE_DIR
         self.collection_name = collection_name
-        self.dimension = dimension
+        self.dimension = int(os.getenv("EMBEDDING_DIMENSION", str(dimension)))
         self.storage_path.mkdir(parents=True, exist_ok=True)
         self.client = QdrantClient(path=str(self.storage_path))
 

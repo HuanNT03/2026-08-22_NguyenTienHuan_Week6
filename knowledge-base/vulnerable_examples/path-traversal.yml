@@ -32,7 +32,7 @@ identifiers:
   semgrep:
   - javascript.express.security.audit.express-path-traversal
   zap:
-  - '90022'
+  - '6'
 tags:
 - path-traversal
 - filesystem

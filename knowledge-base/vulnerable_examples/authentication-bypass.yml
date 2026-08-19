@@ -26,10 +26,8 @@ identifiers:
   - CWE-306
   owasp:
   - A07:2025
-  semgrep:
-  - javascript.express.security.audit.express-check-csurf-middleware-usage
-  zap:
-  - '40012'
+  semgrep: []
+  zap: []
 tags:
 - authentication
 - bypass

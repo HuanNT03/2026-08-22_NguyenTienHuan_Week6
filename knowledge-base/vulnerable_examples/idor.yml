@@ -26,10 +26,8 @@ identifiers:
   - CWE-639
   owasp:
   - A01:2025
-  semgrep:
-  - javascript.sequelize.security.audit.sequelize-raw-query
-  zap:
-  - '40038'
+  semgrep: []
+  zap: []
 tags:
 - idor
 - bola

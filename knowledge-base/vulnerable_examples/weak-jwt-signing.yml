@@ -41,7 +41,7 @@ identifiers:
   - javascript.jsonwebtoken.security.audit.jwt-decode-without-verify
   - javascript.jsonwebtoken.security.jwt-none-alg
   zap:
-  - 10038-1
+  - '40036'
 tags:
 - jwt
 - authentication

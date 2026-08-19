@@ -34,9 +34,8 @@ identifiers:
   owasp:
   - A10:2025
   semgrep:
-  - javascript.express.security.audit.xss
+  - javascript.lang.best-practice.leftover_debugging
   zap:
-  - '90024'
   - '10023'
 tags:
 - error-handling

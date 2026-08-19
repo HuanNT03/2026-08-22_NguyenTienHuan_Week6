@@ -39,10 +39,8 @@ identifiers:
   - CWE-307
   owasp:
   - A06:2025
-  semgrep:
-  - javascript.express.security.audit.express-check-csurf-middleware-usage
-  zap:
-  - 100000-1
+  semgrep: []
+  zap: []
 tags:
 - rate-limiting
 - brute-force

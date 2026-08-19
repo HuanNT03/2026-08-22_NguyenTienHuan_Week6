@@ -70,9 +70,10 @@ class EmbeddingClient:
 
             client = openai.OpenAI(api_key=self.api_key, base_url=self.base_url)
             embeddings: list[list[float]] = []
-            batch_size = 100
-            for i in range(0, len(texts), batch_size):
-                batch = texts[i : i + batch_size]
+            batch_size = 10
+            sanitized_texts = [t.strip()[:8000] if t.strip() else "empty" for t in texts]
+            for i in range(0, len(sanitized_texts), batch_size):
+                batch = sanitized_texts[i : i + batch_size]
                 response = client.embeddings.create(input=batch, model=self.model)
                 embeddings.extend([item.embedding for item in response.data])
             return embeddings

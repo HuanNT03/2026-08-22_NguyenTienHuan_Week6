@@ -33,7 +33,7 @@ identifiers:
   semgrep:
   - javascript.express.security.audit.express-file-upload
   zap:
-  - '90026'
+  - '40041'
 tags:
 - file-upload
 - validation

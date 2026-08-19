@@ -28,7 +28,7 @@ identifiers:
   semgrep:
   - javascript.express.security.audit.express-check-csurf-middleware-usage
   zap:
-  - '40014'
+  - '10202'
 tags:
 - csrf
 - browser

@@ -33,11 +33,10 @@ identifiers:
   cwe:
   - CWE-1321
   owasp:
-  - A03:2025
+  - A08:2025
   semgrep:
-  - javascript.lang.security.insecure-object-assign
-  zap:
-  - '40044'
+  - javascript.lang.security.audit.prototype-pollution.prototype-pollution-loop
+  zap: []
 tags:
 - prototype-pollution
 - supply-chain

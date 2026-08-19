@@ -30,9 +30,9 @@ identifiers:
   owasp:
   - A01:2025
   semgrep:
-  - javascript.apollo.security.apollo-axios-ssrf
+  - javascript.node.security.node-ssrf
   zap:
-  - '90021'
+  - '40046'
 tags:
 - ssrf
 - network

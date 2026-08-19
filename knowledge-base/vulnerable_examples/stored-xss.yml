@@ -33,7 +33,7 @@ identifiers:
   - javascript.browser.security.raw-html-concat
   - javascript.browser.security.insecure-innerhtml
   zap:
-  - '40016'
+  - '40014'
 tags:
 - xss
 - stored

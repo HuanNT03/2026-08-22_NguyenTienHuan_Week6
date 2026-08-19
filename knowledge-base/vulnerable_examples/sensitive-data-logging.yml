@@ -38,9 +38,7 @@ identifiers:
   - A09:2025
   semgrep:
   - javascript.lang.best-practice.leftover_debugging
-  - javascript.jwt-simple.security.jwt-simple-noverify
-  zap:
-  - 10049-3
+  zap: []
 tags:
 - logging
 - credentials

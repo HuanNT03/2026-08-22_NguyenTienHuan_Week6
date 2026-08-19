@@ -1,6 +1,7 @@
 """Dynamic orchestration for validation, canonical document builds, and hybrid indices."""
 
 import json
+import os
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
@@ -253,10 +254,10 @@ def build_vector_index(
         documents = read_documents(DOCUMENTS_PATH)
 
     client = EmbeddingClient()
-    store = QdrantVectorStore(storage_path=qdrant_storage_path, collection_name=collection_name)
-    store.init_collection(recreate=True)
-
     # Embed text for all documents
     passages = [f"{doc.title}\n\n{doc.summary}\n\n{doc.content}" for doc in documents]
     embeddings = client.embed_texts(passages)
+    dim = len(embeddings[0]) if embeddings else int(os.getenv("EMBEDDING_DIMENSION", "1536"))
+    store = QdrantVectorStore(storage_path=qdrant_storage_path, collection_name=collection_name, dimension=dim)
+    store.init_collection(recreate=True)
     store.upsert_documents(documents, embeddings)

@@ -27,10 +27,8 @@ identifiers:
   - CWE-862
   owasp:
   - A01:2025
-  semgrep:
-  - javascript.express.security.audit.express-check-csurf-middleware-usage
-  zap:
-  - '40012'
+  semgrep: []
+  zap: []
 tags:
 - authorization
 - privilege-escalation

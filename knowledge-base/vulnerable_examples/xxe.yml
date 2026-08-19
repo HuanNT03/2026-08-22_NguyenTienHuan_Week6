@@ -28,7 +28,7 @@ identifiers:
   cwe:
   - CWE-611
   owasp:
-  - A05:2025
+  - A02:2025
   semgrep:
   - javascript.xml2json.security.audit.xml2json-xxe
   - javascript.node-expat.security.audit.expat-xxe
