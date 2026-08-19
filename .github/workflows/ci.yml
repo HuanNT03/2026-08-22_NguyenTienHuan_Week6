@@ -9,6 +9,9 @@ on:
 permissions:
   contents: read
 
+env:
+  SENTINEL_OFFLINE_EMBEDDINGS: "1"
+
 jobs:
   quality:
     runs-on: ubuntu-24.04

@@ -18,13 +18,13 @@ jobs:
       - name: Set up pinned target
         run: make setup-target
       - name: Build Juice Shop
-        run: make build
+        run: make target-build
       - name: Start Juice Shop
-        run: make up
+        run: make target-up
       - name: Wait for HTTP readiness
-        run: make wait
+        run: make target-wait
       - name: Run host smoke test
-        run: make smoke
+        run: make target-smoke
       - name: Run ZAP Baseline
         run: make dast
         env:
