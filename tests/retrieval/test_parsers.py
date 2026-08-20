@@ -80,9 +80,10 @@ def test_markdown_doc_parser_ingests_codeql_and_semgrep_docs() -> None:
 
 def test_owasp_parser_ingests_multi_versions() -> None:
     docs, _ = parse_owasp_directory(OWASP_TOP_TEN_DIR)
-    assert len(docs) >= 20
+    assert len(docs) >= 30
     assert any("2025" in doc.doc_id for doc in docs)
     assert any("2021" in doc.doc_id for doc in docs)
+    assert any("2017" in doc.doc_id for doc in docs)
 
 
 def test_vulnerable_examples_parser() -> None:

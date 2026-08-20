@@ -1,7 +1,5 @@
 """Unit and integration tests for UnifiedMarkdownParser."""
 
-from pathlib import Path
-
 from src.retrieval.config import KNOWLEDGE_BASE_DIR
 from src.retrieval.parsers.unified_markdown_parser import UnifiedMarkdownParser, parse_all_markdown_sources
 
@@ -9,7 +7,7 @@ from src.retrieval.parsers.unified_markdown_parser import UnifiedMarkdownParser,
 def test_unified_markdown_parser_discovers_all_md_files() -> None:
     raw_root = KNOWLEDGE_BASE_DIR / "raw"
     parser = UnifiedMarkdownParser(raw_root)
-    documents, warnings = parser.parse_all()
+    documents, _warnings = parser.parse_all()
 
     # Count total non-empty md files in raw
     all_md_files = [f for f in raw_root.rglob("*.md") if f.stat().st_size > 0]

@@ -28,7 +28,7 @@ def test_parse_a01_2025() -> None:
 
 def test_parse_a01_2017() -> None:
     path = OWASP_TOP_TEN_DIR / "2017" / "0xa1-injection.md"
-    document, warnings = parse_owasp_file(path)
+    document, _warnings = parse_owasp_file(path)
     assert document.doc_id == "owasp-2017-a01"
     assert document.title == "A01:2017 Injection"
     assert document.identifiers.owasp == ["A01:2017"]

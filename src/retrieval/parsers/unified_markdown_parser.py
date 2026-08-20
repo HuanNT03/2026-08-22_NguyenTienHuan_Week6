@@ -1,6 +1,5 @@
 """Unified single-pass Markdown ingestion engine for Project Sentinel knowledge base."""
 
-import re
 from pathlib import Path
 
 from src.retrieval.exceptions import SourceValidationError
@@ -16,10 +15,22 @@ class UnifiedMarkdownParser:
     """Dispatches markdown files to domain-specific extractors or the general document fallback."""
 
     def __init__(self, raw_root: Path) -> None:
+        """Initialize the unified parser with the root directory of raw knowledge sources.
+
+        Args:
+            raw_root: Absolute or relative Path to the root raw directory (e.g. knowledge-base/raw).
+        """
         self.raw_root = raw_root
 
     def _derive_fallback_metadata(self, path: Path) -> tuple[str, str, list[str]]:
-        """Derive source name, doc_id_prefix, and extra tags for general documentation."""
+        """Derive source name, doc_id prefix, and extra tags for unspecialized markdown files.
+
+        Args:
+            path: Absolute Path to the target markdown file. Must be located within self.raw_root.
+
+        Returns:
+            A tuple of (source_name, doc_id_prefix, extra_tags) tailored to the parent folder.
+        """
         rel_parts = [p.lower() for p in path.relative_to(self.raw_root).parts]
         rel_str = "/".join(rel_parts)
 
@@ -56,7 +67,21 @@ class UnifiedMarkdownParser:
         return source_name, doc_id_prefix, tags
 
     def parse_file(self, path: Path) -> tuple[KnowledgeDocument | None, list[str]]:
-        """Parse one markdown file using the most appropriate domain handler."""
+        """Parse a single markdown file using the most appropriate domain handler.
+
+        Inspects the file path and content to route to the OWASP category, ZAP alert,
+        Cheatsheet, Scanner doc, or General document fallback extractor.
+
+        Args:
+            path: Path to the markdown file to be parsed. Must exist on disk.
+
+        Returns:
+            A tuple (document, warnings) where document is a validated KnowledgeDocument
+            or None if the file is empty, and warnings is a list of non-fatal extraction warnings.
+
+        Raises:
+            SourceValidationError: If the file is malformed and cannot be parsed by any extractor.
+        """
         if path.stat().st_size == 0:
             return None, []
 
@@ -138,7 +163,15 @@ class UnifiedMarkdownParser:
         return doc, warnings
 
     def parse_all(self) -> tuple[list[KnowledgeDocument], list[str]]:
-        """Discover and parse 100% of all Markdown files in the configured raw root."""
+        """Discover and parse 100% of all Markdown files in the configured raw root.
+
+        Recursively traverses raw_root, dispatches every .md file, and collects all
+        resulting KnowledgeDocument objects and warnings.
+
+        Returns:
+            A tuple of (documents, all_warnings) containing the parsed documents and any
+            warnings collected during the batch ingestion.
+        """
         documents: list[KnowledgeDocument] = []
         all_warnings: list[str] = []
 
@@ -159,6 +192,13 @@ class UnifiedMarkdownParser:
 
 
 def parse_all_markdown_sources(raw_root: Path) -> tuple[list[KnowledgeDocument], list[str]]:
-    """Convenience functional interface for parsing all markdown sources in a single pass."""
+    """Convenience functional interface for parsing all markdown sources in a single pass.
+
+    Args:
+        raw_root: Root Path containing raw markdown sources.
+
+    Returns:
+        A tuple of (documents, all_warnings) representing 100% of parsed Markdown content.
+    """
     parser = UnifiedMarkdownParser(raw_root)
     return parser.parse_all()
