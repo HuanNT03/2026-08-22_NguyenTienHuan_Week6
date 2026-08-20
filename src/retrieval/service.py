@@ -9,6 +9,7 @@ from src.retrieval.embeddings.client import EmbeddingClient
 from src.retrieval.exceptions import InvalidSearchQueryError, KnowledgeBaseError
 from src.retrieval.hybrid.mmr import maximal_marginal_relevance
 from src.retrieval.hybrid.rrf import reciprocal_rank_fusion
+from src.retrieval.models import KnowledgeDocument
 from src.retrieval.normalization import normalize_query
 from src.retrieval.query_builder import build_smart_match_expression
 from src.retrieval.repository import KnowledgeRepository
@@ -29,6 +30,8 @@ class SearchResult:
     tags: list[str]
     score: float
     exact_match_rank: int = 3
+    matched_section: str = ""
+    content: str = ""
 
     @property
     def bm25_score(self) -> float:
@@ -45,9 +48,57 @@ class KnowledgeSearchService:
         qdrant_path: Path = QDRANT_STORAGE_DIR,
         collection_name: str = QDRANT_COLLECTION_NAME,
     ) -> None:
+        """Initialize search service with SQLite repository and Qdrant vector store.
+
+        Args:
+            index_path: Path to the SQLite FTS5 index database file.
+            qdrant_path: Path to the directory storing Qdrant vector collection.
+            collection_name: Identifier of the collection in Qdrant.
+        """
+        self.index_path = index_path
+        self.qdrant_path = qdrant_path
+        self.collection_name = collection_name
         self.repository = KnowledgeRepository(index_path)
-        self.vector_store = QdrantVectorStore(storage_path=qdrant_path, collection_name=collection_name)
+        self._vector_store: QdrantVectorStore | None = None
         self.embedding_client = EmbeddingClient()
+
+    @property
+    def vector_store(self) -> QdrantVectorStore:
+        """Lazy-loaded QdrantVectorStore instance."""
+        if self._vector_store is None:
+            self._vector_store = QdrantVectorStore(
+                storage_path=self.qdrant_path,
+                collection_name=self.collection_name,
+            )
+        return self._vector_store
+
+    def get_document(self, doc_id: str) -> KnowledgeDocument | None:
+        """Retrieve a full canonical KnowledgeDocument by its unique doc_id.
+
+        Args:
+            doc_id: Canonical document identifier (e.g. 'cwe-89', 'owasp-2025-a01').
+
+        Returns:
+            KnowledgeDocument object if found, or None if no document matches the ID.
+        """
+        records = self.repository.get_documents_by_ids([doc_id])
+        if not records:
+            return None
+        data = records[0]
+        from src.retrieval.models import KnowledgeIdentifiers, KnowledgeSource
+
+        return KnowledgeDocument(
+            schema_version="1.0.0",
+            doc_id=data["doc_id"],
+            doc_type=data["doc_type"],
+            title=data["title"],
+            aliases=data["aliases"],
+            summary=data["summary"],
+            content=data["content"],
+            identifiers=KnowledgeIdentifiers(**data["identifiers"]),
+            tags=data["tags"],
+            source=KnowledgeSource(**data["source"]),
+        )
 
     def search(
         self,
@@ -57,7 +108,21 @@ class KnowledgeSearchService:
         mode: Literal["hybrid", "keyword", "semantic"] = "keyword",
         lambda_mult: float = 0.7,
     ) -> list[SearchResult]:
-        """Search canonical knowledge using Keyword, Semantic, or Two-Stage Hybrid (RRF + MMR) search."""
+        """Search canonical knowledge using Keyword, Semantic, or Two-Stage Hybrid (RRF + MMR) search.
+
+        Args:
+            query: Non-empty search query string from user or security agent.
+            top_k: Maximum number of ranked results to return (1 to 50).
+            doc_type: Optional document type filter (e.g. 'owasp_category', 'cwe').
+            mode: Search retrieval mode ('hybrid', 'keyword', or 'semantic').
+            lambda_mult: Diversity balancing parameter for MMR reranking (0.0 to 1.0).
+
+        Returns:
+            List of SearchResult objects containing ranked parent documents and matched snippets.
+
+        Raises:
+            InvalidSearchQueryError: If query, top_k, doc_type, or mode is invalid.
+        """
         if not isinstance(query, str) or not query.strip():
             raise InvalidSearchQueryError("Search query must be a non-empty string.")
         if isinstance(top_k, bool) or not isinstance(top_k, int) or not 1 <= top_k <= 50:
@@ -81,7 +146,16 @@ class KnowledgeSearchService:
         top_k: int = 5,
         doc_type: str | None = None,
     ) -> list[SearchResult]:
-        """Search using SQLite FTS5 with smart multi-keyword parser and BM25 ranking."""
+        """Search using SQLite FTS5 with smart multi-keyword parser and BM25 ranking.
+
+        Args:
+            query: Search query text.
+            top_k: Maximum number of ranked results.
+            doc_type: Optional document type filter.
+
+        Returns:
+            List of SearchResult objects ranked by exact matches and BM25 score.
+        """
         normalized = normalize_query(query)
         expression = build_smart_match_expression(normalized)
         rows = self.repository.search(
@@ -90,6 +164,9 @@ class KnowledgeSearchService:
             top_k=top_k,
             doc_type=doc_type,
         )
+        doc_ids = [row["doc_id"] for row in rows]
+        hydrated = {d["doc_id"]: d for d in self.repository.get_documents_by_ids(doc_ids)}
+
         return [
             SearchResult(
                 doc_id=row["doc_id"],
@@ -102,6 +179,8 @@ class KnowledgeSearchService:
                 tags=row["tags"],
                 score=float(row["bm25_score"]),
                 exact_match_rank=int(row["exact_match_rank"]),
+                matched_section="",
+                content=hydrated.get(row["doc_id"], {}).get("content", ""),
             )
             for row in rows
         ]
@@ -112,9 +191,18 @@ class KnowledgeSearchService:
         top_k: int = 5,
         doc_type: str | None = None,
     ) -> list[SearchResult]:
-        """Search using dense vectors and Cosine distance in Qdrant Vector Store."""
+        """Search using section-aware child chunks in Qdrant and hydrate parent documents.
+
+        Args:
+            query: Natural language search query or finding description.
+            top_k: Maximum number of unique parent documents to return.
+            doc_type: Optional document type filter.
+
+        Returns:
+            List of SearchResult objects with child section matched snippets and full parent content.
+        """
         query_vector = self.embedding_client.embed_query(query)
-        dense_results = self.vector_store.search(
+        dense_results = self.vector_store.search_parents(
             query_vector=query_vector,
             top_k=top_k,
             doc_type=doc_type,
@@ -126,17 +214,20 @@ class KnowledgeSearchService:
         for r in dense_results:
             doc_data = hydrated_docs.get(r.doc_id)
             if doc_data:
+                snippet = r.matched_snippet if r.matched_snippet else doc_data["snippet"]
                 results.append(
                     SearchResult(
                         doc_id=doc_data["doc_id"],
                         doc_type=doc_data["doc_type"],
                         title=doc_data["title"],
-                        snippet=doc_data["snippet"],
+                        snippet=snippet,
                         summary=doc_data["summary"],
                         aliases=doc_data["aliases"],
                         identifiers=doc_data["identifiers"],
                         tags=doc_data["tags"],
                         score=r.score,
+                        matched_section=r.matched_section,
+                        content=doc_data["content"],
                     )
                 )
         return results
@@ -148,26 +239,39 @@ class KnowledgeSearchService:
         doc_type: str | None = None,
         lambda_mult: float = 0.7,
     ) -> list[SearchResult]:
-        """Two-Stage Hybrid Search: Stage 1 RRF Fusion + Stage 2 Pure MMR Diversity Reranking."""
+        """Two-Stage Hybrid Search: Stage 1 RRF Fusion + Stage 2 Pure MMR Diversity Reranking.
+
+        Args:
+            query: Search query text.
+            top_k: Maximum number of diverse parent documents to return.
+            doc_type: Optional document type filter.
+            lambda_mult: Diversity factor for MMR reranking (0.7 balances relevance and diversity).
+
+        Returns:
+            List of diverse, high-relevance SearchResult objects with full parent hydration.
+        """
         candidate_k = max(20, top_k * 4)
 
         # 1. Sparse Candidate Retrieval (FTS5 BM25)
-        sparse_results = []
         try:
             sparse_results = self.search_keyword(query=query, top_k=candidate_k, doc_type=doc_type)
         except (KnowledgeBaseError, RuntimeError, ValueError, OSError):
             sparse_results = []
         sparse_doc_ids = [r.doc_id for r in sparse_results]
 
-        # 2. Dense Candidate Retrieval (Qdrant Cosine)
+        # 2. Dense Candidate Retrieval (Qdrant Cosine with Parent Aggregation)
         query_vector = self.embedding_client.embed_query(query)
-        dense_results = []
         try:
-            dense_results = self.vector_store.search(query_vector=query_vector, top_k=candidate_k, doc_type=doc_type)
+            dense_results = self.vector_store.search_parents(
+                query_vector=query_vector,
+                top_k=candidate_k,
+                doc_type=doc_type,
+            )
         except (KnowledgeBaseError, RuntimeError, ValueError, OSError):
             dense_results = []
         dense_doc_ids = [r.doc_id for r in dense_results]
         candidate_vectors = {r.doc_id: r.vector for r in dense_results}
+        dense_snippets = {r.doc_id: (r.matched_snippet, r.matched_section) for r in dense_results if r.matched_snippet}
 
         # 3. Stage 1: Reciprocal Rank Fusion (RRF)
         rrf_ranked = reciprocal_rank_fusion(sparse_doc_ids, dense_doc_ids, k=60)
@@ -193,17 +297,20 @@ class KnowledgeSearchService:
         for doc_id in selected_ids:
             doc_data = hydrated_docs.get(doc_id)
             if doc_data:
+                matched_snippet, matched_section = dense_snippets.get(doc_id, (doc_data["snippet"], ""))
                 results.append(
                     SearchResult(
                         doc_id=doc_data["doc_id"],
                         doc_type=doc_data["doc_type"],
                         title=doc_data["title"],
-                        snippet=doc_data["snippet"],
+                        snippet=matched_snippet or doc_data["snippet"],
                         summary=doc_data["summary"],
                         aliases=doc_data["aliases"],
                         identifiers=doc_data["identifiers"],
                         tags=doc_data["tags"],
                         score=rrf_scores.get(doc_id, 0.0),
+                        matched_section=matched_section,
+                        content=doc_data["content"],
                     )
                 )
 

@@ -63,3 +63,31 @@ def test_invalid_doc_type_is_rejected(canonical_index: Path) -> None:
 def test_missing_index_has_clear_error(tmp_path: Path) -> None:
     with pytest.raises(KnowledgeIndexNotFoundError, match="Run the knowledge-base build"):
         KnowledgeSearchService(tmp_path / "missing.db").search("XSS")
+
+
+def test_search_service_get_document(canonical_index: Path) -> None:
+    service = KnowledgeSearchService(canonical_index)
+    doc = service.get_document("cwe-89")
+    assert doc is not None
+    assert doc.doc_id == "cwe-89"
+    assert doc.title == "CWE-89: SQL Injection"
+    assert len(doc.content) > 0
+
+    assert service.get_document("non-existent-doc-id") is None
+
+
+def test_search_semantic_and_hybrid_hydrates_parent(canonical_index: Path) -> None:
+    service = KnowledgeSearchService(canonical_index)
+
+    # Hybrid Search
+    hybrid_results = service.search("SQL Injection", mode="hybrid", top_k=3)
+    assert len(hybrid_results) > 0
+    assert hybrid_results[0].content != ""
+    assert hybrid_results[0].title != ""
+
+    # Semantic Search
+    semantic_results = service.search("how to prevent injection attacks", mode="semantic", top_k=3)
+    assert len(semantic_results) > 0
+    assert semantic_results[0].content != ""
+    assert len(semantic_results[0].snippet) > 0
+
