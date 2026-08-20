@@ -65,8 +65,8 @@ def build_documents_command() -> None:
 def build_index_command() -> None:
     """Generate the atomic SQLite FTS5 index and Qdrant vector index."""
     path = run_index_build()
-    build_vector_index()
-    console.print(f"[green]Built[/green] SQLite knowledge index at {path} and Qdrant vector index")
+    chunk_count = build_vector_index()
+    console.print(f"[green]Built[/green] SQLite knowledge index at {path} and Qdrant vector index ({chunk_count} section chunks)")
 
 
 @app.command("build")
@@ -75,8 +75,11 @@ def build_command() -> None:
     validate_sqlite_capabilities()
     result = run_document_build()
     path = run_index_build()
-    build_vector_index(result.documents if hasattr(result, "documents") else None)
-    console.print(f"[green]Built[/green] {result.document_count} documents, SQLite index {path}, and Qdrant vector index")
+    chunk_count = build_vector_index(result.documents if hasattr(result, "documents") else None)
+    console.print(
+        f"[green]Built[/green] {result.document_count} documents, SQLite index {path}, "
+        f"and Qdrant vector index ({chunk_count} section chunks)"
+    )
     console.print(f"SHA-256: {result.documents_sha256}")
     for warning in result.warnings:
         console.print(f"[yellow]Warning:[/yellow] {warning}")

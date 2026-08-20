@@ -19,9 +19,11 @@ from src.retrieval.config import (
     SCHEMA_VERSION,
     SEMGREP_RAW_DIR,
 )
+from src.retrieval.chunking.markdown_chunker import DocumentChunk, MarkdownSectionChunker
 from src.retrieval.embeddings.client import EmbeddingClient
 from src.retrieval.exceptions import DuplicateDocumentIdError, SourceValidationError
 from src.retrieval.models import KnowledgeDocument
+from src.retrieval.vector.qdrant_store import QdrantVectorStore
 from src.retrieval.parsers.asvs_parser import parse_asvs_csv
 from src.retrieval.parsers.cwe_parser import CweParseResult, parse_cwe_views
 from src.retrieval.parsers.example_parser import parse_example_directory
@@ -171,8 +173,17 @@ def build_vector_index(
     documents: list[KnowledgeDocument] | None = None,
     qdrant_storage_path: Path = QDRANT_STORAGE_DIR,
     collection_name: str = QDRANT_COLLECTION_NAME,
-) -> None:
-    """Generate dense embeddings and upsert all documents into Qdrant Vector Store."""
+) -> int:
+    """Generate section-aware child chunks and upsert their dense embeddings into Qdrant.
+
+    Args:
+        documents: Optional pre-loaded list of parent KnowledgeDocument objects.
+        qdrant_storage_path: Directory path for Qdrant vector database persistence.
+        collection_name: Collection identifier within Qdrant.
+
+    Returns:
+        Total number of child chunks indexed into the vector store.
+    """
     if documents is None:
         from src.retrieval.storage.jsonl_store import read_documents
 
@@ -180,11 +191,17 @@ def build_vector_index(
             build_documents()
         documents = read_documents(DOCUMENTS_PATH)
 
+    chunker = MarkdownSectionChunker()
+    all_chunks: list[DocumentChunk] = []
+    for doc in documents:
+        all_chunks.extend(chunker.chunk_document(doc))
+
     client = EmbeddingClient()
-    # Embed text for all documents
-    passages = [f"{doc.title}\n\n{doc.summary}\n\n{doc.content}" for doc in documents]
+    passages = [chunk.content for chunk in all_chunks]
     embeddings = client.embed_texts(passages)
     dim = len(embeddings[0]) if embeddings else int(os.getenv("EMBEDDING_DIMENSION", "1536"))
+
     store = QdrantVectorStore(storage_path=qdrant_storage_path, collection_name=collection_name, dimension=dim)
     store.init_collection(recreate=True)
-    store.upsert_documents(documents, embeddings)
+    store.upsert_chunks(all_chunks, embeddings)
+    return len(all_chunks)
