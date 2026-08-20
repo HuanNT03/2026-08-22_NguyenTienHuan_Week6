@@ -1,57 +1,109 @@
-"""Cloud Embedding Client for generating dense vector embeddings."""
+"""Cloud & Local ONNX Embedding Client for generating dense vector embeddings."""
 
 import hashlib
 import os
-from typing import Literal
+from typing import Any, Literal
 
 import numpy as np
 
 from src.retrieval.exceptions import EmbeddingAPIError, EmbeddingConfigurationError
 
+# Default dimensions per provider/model
+_PROVIDER_DEFAULTS = {
+    "openai": ("text-embedding-3-small", 1536),
+    "dashscope": ("text-embedding-v4", 1024),
+    "fastembed": ("sentence-transformers/all-MiniLM-L6-v2", 384),
+    "mock": ("mock-gaussian", 1536),
+}
+
 
 class EmbeddingClient:
-    """Client for generating dense text embeddings with cloud providers or offline testing."""
+    """Client for generating dense text embeddings with cloud providers, FastEmbed ONNX, or offline mock."""
 
     def __init__(
         self,
-        provider: Literal["openai", "gemini", "mock"] = "openai",
+        provider: Literal["openai", "dashscope", "fastembed", "mock"] | None = None,
         model: str | None = None,
-        dimension: int = 1536,
+        dimension: int | None = None,
     ) -> None:
         """Initialize the EmbeddingClient with provider, model, and vector dimension.
 
         Args:
-            provider: Backend provider name ('openai', 'gemini', or 'mock').
+            provider: Backend provider name ('openai', 'dashscope', 'fastembed', or 'mock').
             model: Name of the embedding model. If None, falls back to EMBEDDING_MODEL env or provider default.
             dimension: Default vector dimension. Overridden by EMBEDDING_DIMENSION env var if present.
         """
-        self.provider = provider
-        self.dimension = int(os.getenv("EMBEDDING_DIMENSION", str(dimension)))
+        # 1. Resolve Provider
+        if provider:
+            resolved_provider = provider
+        elif os.getenv("SENTINEL_OFFLINE_EMBEDDINGS") == "1":
+            resolved_provider = "mock"
+        else:
+            env_provider = os.getenv("EMBEDDING_PROVIDER", "").strip().lower()
+            if env_provider in ("openai", "dashscope", "fastembed", "mock"):
+                resolved_provider = env_provider
+            else:
+                api_key = (
+                    os.getenv("EMBEDDING_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("GEMINI_API_KEY") or ""
+                )
+                base_url = os.getenv("EMBEDDING_BASE_URL") or ""
+                if api_key:
+                    resolved_provider = "dashscope" if ("aliyuncs" in base_url or "dashscope" in base_url) else "openai"
+                else:
+                    resolved_provider = "fastembed"
+
+        self.provider: Literal["openai", "dashscope", "fastembed", "mock"] = resolved_provider
+
+        # 2. Resolve Model and Dimension defaults
+        default_model, default_dim = _PROVIDER_DEFAULTS.get(
+            self.provider, ("sentence-transformers/all-MiniLM-L6-v2", 384)
+        )
+
+        if model is not None:
+            self.model = model
+        elif provider is not None:
+            self.model = default_model
+        else:
+            self.model = os.getenv("EMBEDDING_MODEL") or default_model
+
+        if dimension is not None:
+            self.dimension = dimension
+        elif self.provider == "fastembed":
+            self.dimension = default_dim
+        else:
+            env_dim = os.getenv("EMBEDDING_DIMENSION")
+            if env_dim and env_dim.strip().isdigit():
+                self.dimension = int(env_dim.strip())
+            else:
+                self.dimension = default_dim
+
         self.api_key = (
             os.getenv("EMBEDDING_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("GEMINI_API_KEY") or ""
         )
         self.base_url = os.getenv("EMBEDDING_BASE_URL") or os.getenv("OPENAI_BASE_URL") or None
-        self.model = (
-            model
-            or os.getenv("EMBEDDING_MODEL")
-            or ("text-embedding-3-small" if provider == "openai" else "text-embedding-004")
-        )
-
-        # Check if offline mode is explicitly requested for test environments
-        if os.getenv("SENTINEL_OFFLINE_EMBEDDINGS") == "1" or self.provider == "mock":
-            self.provider = "mock"
+        self._fastembed_instance: Any = None
 
     def _ensure_configured(self) -> None:
         """Validate that all required embedding configurations are present when running online."""
-        if self.provider == "mock":
+        if self.provider in ("mock", "fastembed"):
             return
         if not self.api_key or not self.api_key.strip():
             raise EmbeddingConfigurationError(
                 "Missing embedding API key. Please configure EMBEDDING_API_KEY (or OPENAI_API_KEY) in .env "
-                "to use dense semantic / hybrid retrieval."
+                "or set EMBEDDING_PROVIDER=fastembed to use local offline embedding."
             )
         if not self.model or not self.model.strip():
             raise EmbeddingConfigurationError("Missing embedding model name. Please configure EMBEDDING_MODEL in .env.")
+
+    def _embed_fastembed(self, texts: list[str]) -> list[list[float]]:
+        """Generate normalized embeddings using local FastEmbed ONNX runtime."""
+        if self._fastembed_instance is None:
+            from fastembed import TextEmbedding
+
+            self._fastembed_instance = TextEmbedding(model_name=self.model)
+
+        embeddings_generator = self._fastembed_instance.embed(texts)
+        return [vec.tolist() for vec in embeddings_generator]
 
     def embed_texts(self, texts: list[str]) -> list[list[float]]:
         """Generate normalized vector embeddings for a list of text passages using the configured model."""
@@ -60,6 +112,9 @@ class EmbeddingClient:
 
         if self.provider == "mock":
             return [self._deterministic_pseudo_embedding(t) for t in texts]
+
+        if self.provider == "fastembed":
+            return self._embed_fastembed(texts)
 
         self._ensure_configured()
 

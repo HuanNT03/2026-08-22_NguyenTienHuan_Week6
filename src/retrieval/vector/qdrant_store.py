@@ -34,18 +34,22 @@ class QdrantVectorStore:
         self,
         storage_path: Path | None = None,
         collection_name: str = QDRANT_COLLECTION_NAME,
-        dimension: int = 1536,
+        dimension: int | None = None,
     ) -> None:
         """Initialize the Qdrant embedded vector store.
 
         Args:
             storage_path: Optional directory path where Qdrant storage files will reside.
             collection_name: Name of the vector collection to create and query.
-            dimension: Default vector dimension. Overridden by EMBEDDING_DIMENSION env var if present.
+            dimension: Vector dimension. If None, resolves from EMBEDDING_DIMENSION env or defaults to 1536.
         """
         self.storage_path = storage_path or QDRANT_STORAGE_DIR
         self.collection_name = collection_name
-        self.dimension = int(os.getenv("EMBEDDING_DIMENSION", str(dimension)))
+        if dimension is not None:
+            self.dimension = dimension
+        else:
+            env_dim = os.getenv("EMBEDDING_DIMENSION")
+            self.dimension = int(env_dim) if (env_dim and env_dim.strip().isdigit()) else 1536
         self.storage_path.mkdir(parents=True, exist_ok=True)
         self.client = QdrantClient(path=str(self.storage_path))
 
