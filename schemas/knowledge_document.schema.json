@@ -14,7 +14,7 @@
     "doc_type": {
       "enum": [
         "owasp_category", "cwe", "scanner_document", "scanner_rule",
-        "vulnerability_example", "cheatsheet", "asvs_requirement"
+        "vulnerability_example", "cheatsheet", "asvs_requirement", "document"
       ]
     },
     "title": {"$ref": "#/$defs/non_empty_string"},

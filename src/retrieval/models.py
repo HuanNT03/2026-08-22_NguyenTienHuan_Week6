@@ -15,6 +15,7 @@ DocumentType = Literal[
     "vulnerability_example",
     "cheatsheet",
     "asvs_requirement",
+    "document",
 ]
 DetectabilityValue = Literal["high", "medium", "low", "unknown"]
 

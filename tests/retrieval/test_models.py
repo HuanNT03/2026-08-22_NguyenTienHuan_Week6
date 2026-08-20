@@ -81,3 +81,15 @@ def test_none_optional_values_are_omitted() -> None:
 
 def test_bm25_weights_follow_fts_column_order() -> None:
     assert BM25_WEIGHTS == tuple(FTS_WEIGHTS[column] for column in FTS_COLUMNS)
+
+
+def test_document_type_accepts_document_enum() -> None:
+    data = document_data()
+    data["doc_type"] = "document"
+    data["doc_id"] = "general-about-owasp"
+    document = KnowledgeDocument.model_validate(data)
+    assert document.doc_type == "document"
+    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    errors = list(Draft202012Validator(schema).iter_errors(document.to_canonical_dict()))
+    assert errors == []
+

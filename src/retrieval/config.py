@@ -39,6 +39,7 @@ DOCUMENT_TYPES = (
     "vulnerability_example",
     "cheatsheet",
     "asvs_requirement",
+    "document",
 )
 DETECTABILITY_VALUES = ("high", "medium", "low", "unknown")
 IDENTIFIER_NAMES = ("cwe", "owasp", "semgrep", "zap")

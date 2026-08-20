@@ -31,3 +31,6 @@ __pycache__/
 # Generated security analysis agent reports.
 /reports/analyzed/*
 !/reports/analyzed/.gitkeep
+
+# Implemention Plans
+/plans
