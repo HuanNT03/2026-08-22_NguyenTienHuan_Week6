@@ -94,31 +94,26 @@ Bảng `documents` và Virtual Table `knowledge_fts` (External-content FTS5):
 ### B. Cơ sở dữ liệu Vector: Qdrant Embedded (`knowledge-base/index/qdrant_storage`)
 
 Collection: `sentinel_knowledge`  
-Cấu hình Vector: `size=1536`, `distance=Cosine`
+Cấu hình Vector: `size=1536` (hoặc cấu hình động qua `EMBEDDING_DIMENSION`), `distance=Cosine`
+
+#### Kiến trúc Section-Aware Parent-Child Chunking (Hierarchical Multi-Vector):
+- **Tách Section Markdown:** Sử dụng `MarkdownSectionChunker` bóc tách các tài liệu Markdown thành các Child Chunks theo Header H2/H3 (`## Description`, `## Prevention`, `## Attack Scenarios`...) với độ dài mục tiêu ~800 – 1,200 ký tự.
+- **Context Enrichment:** Mỗi Child Chunk được gắn tiêu đề phân cấp Markdown `# {Title}\n\n## {Section}\n\n{Content}` trước khi tạo vector embedding.
+- **Max-Score Parent Aggregation & Hydration:** Khi tìm kiếm Semantic/Hybrid, vector search so khớp trên toàn bộ các Child Chunks, gom nhóm theo `parent_doc_id` với điểm Cosine cao nhất, hiển thị `matched_snippet` của chính section trúng đích và hydrate 100% full content của tài liệu cha cho Security Analysis Agent.
 
 Cấu trúc **Point Payload** được lưu trữ trong Qdrant:
 ```json
 {
-  "id": "uuid5(doc_id)",
+  "id": "uuid5(chunk_id)",
   "vector": [0.0124, -0.0431, ..., 0.0892],
   "payload": {
-    "doc_id": "cwe-89",
-    "doc_type": "cwe",
-    "title": "CWE-89: SQL Injection",
-    "summary": "The product constructs all or part of an SQL command using externally-influenced input...",
-    "identifiers": {
-      "cwe": ["CWE-89"],
-      "owasp": ["A03:2021", "A05:2025"],
-      "semgrep": [],
-      "zap": []
-    },
-    "tags": ["sql", "injection", "database", "rce"],
-    "source": {
-      "name": "CWE Research Concepts",
-      "version": "4.14",
-      "raw_path": "knowledge-base/raw/cwe/699.csv",
-      "source_locator": "89"
-    }
+    "chunk_id": "owasp-2025-a01#prevention",
+    "parent_doc_id": "owasp-2025-a01",
+    "doc_id": "owasp-2025-a01",
+    "doc_type": "owasp_category",
+    "title": "A01:2025 Broken Access Control",
+    "section_title": "Prevention",
+    "chunk_text": "# A01:2025 Broken Access Control\n\n## Prevention\n\nEnforce record-level ownership..."
   }
 }
 ```

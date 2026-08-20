@@ -6,6 +6,7 @@ from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
+from src.retrieval.chunking.markdown_chunker import DocumentChunk, MarkdownSectionChunker
 from src.retrieval.config import (
     ASVS_RAW_DIR,
     CWE_RAW_PATHS,
@@ -19,11 +20,9 @@ from src.retrieval.config import (
     SCHEMA_VERSION,
     SEMGREP_RAW_DIR,
 )
-from src.retrieval.chunking.markdown_chunker import DocumentChunk, MarkdownSectionChunker
 from src.retrieval.embeddings.client import EmbeddingClient
 from src.retrieval.exceptions import DuplicateDocumentIdError, SourceValidationError
 from src.retrieval.models import KnowledgeDocument
-from src.retrieval.vector.qdrant_store import QdrantVectorStore
 from src.retrieval.parsers.asvs_parser import parse_asvs_csv
 from src.retrieval.parsers.cwe_parser import CweParseResult, parse_cwe_views
 from src.retrieval.parsers.example_parser import parse_example_directory

@@ -1,6 +1,6 @@
 """Unit tests for Section-Aware Markdown Chunker."""
 
-from src.retrieval.chunking.markdown_chunker import DocumentChunk, MarkdownSectionChunker
+from src.retrieval.chunking.markdown_chunker import MarkdownSectionChunker
 from src.retrieval.models import KnowledgeDocument, KnowledgeIdentifiers, KnowledgeSource
 
 
@@ -98,9 +98,7 @@ def test_chunk_splits_oversized_section_by_h3_and_paragraphs() -> None:
 
 def test_chunk_document_handles_preamble_intro() -> None:
     content = (
-        "This is an introductory preamble before any H2 section appears.\n\n"
-        "## Specific Section\n"
-        "Section details here."
+        "This is an introductory preamble before any H2 section appears.\n\n## Specific Section\nSection details here."
     )
     doc = create_sample_doc(
         doc_id="zap-doc-intro",
