@@ -9,6 +9,7 @@ description = "Security scanner normalization and knowledge retrieval for Projec
 requires-python = ">=3.11"
 dependencies = [
     "beautifulsoup4>=4.12,<5.0",
+    "fastembed>=0.4.0,<1.0",
     "jsonschema[format]>=4.23,<5.0",
     "markdown-it-py>=3.0,<5.0",
     "numpy>=1.26,<3.0",
