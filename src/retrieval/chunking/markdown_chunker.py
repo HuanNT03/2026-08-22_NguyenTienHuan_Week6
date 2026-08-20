@@ -40,20 +40,34 @@ class MarkdownSectionChunker:
         return slug or "sec"
 
     def _split_into_paragraphs(self, text: str, max_chars: int, overlap: int) -> list[str]:
-        """Split a long text block into overlapping paragraph-aligned chunks."""
+        """Split a long text block into overlapping bounded chunks."""
         paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
         if not paragraphs:
             return [text.strip()] if text.strip() else []
+
+        # Ensure individual paragraphs do not exceed max_chars
+        bounded_paras: list[str] = []
+        for para in paragraphs:
+            if len(para) <= max_chars:
+                bounded_paras.append(para)
+            else:
+                lines = [line.strip() for line in para.split("\n") if line.strip()]
+                for line in lines:
+                    if len(line) <= max_chars:
+                        bounded_paras.append(line)
+                    else:
+                        step = max(max_chars - overlap, 100)
+                        for i in range(0, len(line), step):
+                            bounded_paras.append(line[i : i + max_chars])
 
         chunks: list[str] = []
         current_paras: list[str] = []
         current_len = 0
 
-        for para in paragraphs:
+        for para in bounded_paras:
             para_len = len(para)
             if current_len + para_len + 2 > max_chars and current_paras:
                 chunks.append("\n\n".join(current_paras))
-                # Keep last paragraph for overlap if within overlap budget
                 if len(current_paras[-1]) <= overlap:
                     current_paras = [current_paras[-1], para]
                     current_len = len(current_paras[0]) + para_len + 2
@@ -81,7 +95,6 @@ class MarkdownSectionChunker:
         chunks: list[DocumentChunk] = []
 
         if not h3_matches:
-            # Split directly by paragraphs
             sub_texts = self._split_into_paragraphs(h2_text, self.max_chunk_chars, self.overlap_chars)
             for sub_idx, sub_text in enumerate(sub_texts):
                 chunk_id = f"{doc.doc_id}#{self._slugify(h2_title)}-{sub_idx}"
@@ -102,16 +115,30 @@ class MarkdownSectionChunker:
         if h3_matches[0].start() > 0:
             pre_h3_text = h2_text[: h3_matches[0].start()].strip()
             if pre_h3_text:
-                chunks.append(
-                    DocumentChunk(
-                        chunk_id=f"{doc.doc_id}#{self._slugify(h2_title)}-intro",
-                        parent_doc_id=doc.doc_id,
-                        parent_title=doc.title,
-                        section_title=h2_title,
-                        content=f"# {doc.title}\n\n## {h2_title}\n\n{pre_h3_text}",
-                        doc_type=doc.doc_type,
+                if len(pre_h3_text) > self.max_chunk_chars:
+                    pre_chunks = self._split_into_paragraphs(pre_h3_text, self.max_chunk_chars, self.overlap_chars)
+                    for p_idx, p_text in enumerate(pre_chunks):
+                        chunks.append(
+                            DocumentChunk(
+                                chunk_id=f"{doc.doc_id}#{self._slugify(h2_title)}-intro-{p_idx}",
+                                parent_doc_id=doc.doc_id,
+                                parent_title=doc.title,
+                                section_title=h2_title,
+                                content=f"# {doc.title}\n\n## {h2_title}\n\n{p_text}",
+                                doc_type=doc.doc_type,
+                            )
+                        )
+                else:
+                    chunks.append(
+                        DocumentChunk(
+                            chunk_id=f"{doc.doc_id}#{self._slugify(h2_title)}-intro",
+                            parent_doc_id=doc.doc_id,
+                            parent_title=doc.title,
+                            section_title=h2_title,
+                            content=f"# {doc.title}\n\n## {h2_title}\n\n{pre_h3_text}",
+                            doc_type=doc.doc_type,
+                        )
                     )
-                )
 
         for i, match in enumerate(h3_matches):
             h3_title = match.group(1).strip()
@@ -159,17 +186,31 @@ class MarkdownSectionChunker:
         Returns:
             A list of DocumentChunk instances with hierarchical Markdown titles.
         """
-        # 1. Atomic sources (CWE, ASVS, Rules, Examples) are kept as single atomic chunks
+        # 1. Atomic sources (CWE, ASVS, Rules, Examples) are kept as single atomic chunks unless oversized
         if doc.doc_type in ("cwe", "asvs_requirement", "vulnerability_example", "scanner_rule"):
+            full_text = f"{doc.summary}\n\n{doc.content}".strip()
+            if len(full_text) <= self.max_chunk_chars:
+                return [
+                    DocumentChunk(
+                        chunk_id=f"{doc.doc_id}#main",
+                        parent_doc_id=doc.doc_id,
+                        parent_title=doc.title,
+                        section_title="Overview",
+                        content=f"# {doc.title}\n\n{doc.summary}\n\n{doc.content}",
+                        doc_type=doc.doc_type,
+                    )
+                ]
+            para_texts = self._split_into_paragraphs(full_text, self.max_chunk_chars, self.overlap_chars)
             return [
                 DocumentChunk(
-                    chunk_id=f"{doc.doc_id}#main",
+                    chunk_id=f"{doc.doc_id}#chunk-{idx}",
                     parent_doc_id=doc.doc_id,
                     parent_title=doc.title,
                     section_title="Overview",
-                    content=f"# {doc.title}\n\n{doc.summary}\n\n{doc.content}",
+                    content=f"# {doc.title}\n\n## Overview\n\n{p_text}",
                     doc_type=doc.doc_type,
                 )
+                for idx, p_text in enumerate(para_texts)
             ]
 
         # 2. Markdown sources: Split by H2 sections
@@ -177,7 +218,6 @@ class MarkdownSectionChunker:
         h2_matches = list(_H2_HEADING.finditer(text))
 
         if not h2_matches:
-            # No H2 headings found; check if splitting by paragraphs is needed
             if len(text) <= self.max_chunk_chars:
                 return [
                     DocumentChunk(
@@ -208,16 +248,30 @@ class MarkdownSectionChunker:
         if h2_matches[0].start() > 0:
             preamble = text[: h2_matches[0].start()].strip()
             if preamble:
-                chunks.append(
-                    DocumentChunk(
-                        chunk_id=f"{doc.doc_id}#intro",
-                        parent_doc_id=doc.doc_id,
-                        parent_title=doc.title,
-                        section_title="Overview",
-                        content=f"# {doc.title}\n\n## Overview\n\n{doc.summary}\n\n{preamble}",
-                        doc_type=doc.doc_type,
+                if len(preamble) > self.max_chunk_chars:
+                    pre_chunks = self._split_into_paragraphs(preamble, self.max_chunk_chars, self.overlap_chars)
+                    for p_idx, p_text in enumerate(pre_chunks):
+                        chunks.append(
+                            DocumentChunk(
+                                chunk_id=f"{doc.doc_id}#intro-{p_idx}",
+                                parent_doc_id=doc.doc_id,
+                                parent_title=doc.title,
+                                section_title="Overview",
+                                content=f"# {doc.title}\n\n## Overview\n\n{p_text}",
+                                doc_type=doc.doc_type,
+                            )
+                        )
+                else:
+                    chunks.append(
+                        DocumentChunk(
+                            chunk_id=f"{doc.doc_id}#intro",
+                            parent_doc_id=doc.doc_id,
+                            parent_title=doc.title,
+                            section_title="Overview",
+                            content=f"# {doc.title}\n\n## Overview\n\n{doc.summary}\n\n{preamble}",
+                            doc_type=doc.doc_type,
+                        )
                     )
-                )
 
         for index, match in enumerate(h2_matches):
             h2_title = match.group(1).strip()
