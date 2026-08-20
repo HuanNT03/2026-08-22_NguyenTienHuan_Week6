@@ -84,3 +84,15 @@ def test_qdrant_vector_store_upsert_and_search(tmp_path: Path) -> None:
     assert {r.doc_id for r in results} == {"test-doc-1", "test-doc-2"}
     assert all(len(r.vector) == 64 for r in results)
     assert all(r.payload["doc_type"] in ("cwe", "vulnerability_example") for r in results)
+
+
+def test_embedding_dimension_read_from_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("EMBEDDING_DIMENSION", "1024")
+    client = EmbeddingClient(provider="mock")
+    assert client.dimension == 1024
+    vec = client.embed_query("test query")
+    assert len(vec) == 1024
+
+    store = QdrantVectorStore(storage_path=tmp_path / "qdrant_custom")
+    assert store.dimension == 1024
+

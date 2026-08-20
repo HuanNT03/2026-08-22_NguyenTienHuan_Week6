@@ -18,8 +18,15 @@ class EmbeddingClient:
         model: str | None = None,
         dimension: int = 1536,
     ) -> None:
+        """Initialize the EmbeddingClient with provider, model, and vector dimension.
+
+        Args:
+            provider: Backend provider name ('openai', 'gemini', or 'mock').
+            model: Name of the embedding model. If None, falls back to EMBEDDING_MODEL env or provider default.
+            dimension: Default vector dimension. Overridden by EMBEDDING_DIMENSION env var if present.
+        """
         self.provider = provider
-        self.dimension = dimension
+        self.dimension = int(os.getenv("EMBEDDING_DIMENSION", str(dimension)))
         self.api_key = (
             os.getenv("EMBEDDING_API_KEY")
             or os.getenv("OPENAI_API_KEY")
