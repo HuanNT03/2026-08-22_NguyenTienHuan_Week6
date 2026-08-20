@@ -26,11 +26,26 @@ def test_parse_a01_2025() -> None:
     assert warnings == []
 
 
+def test_parse_a01_2017() -> None:
+    path = OWASP_TOP_TEN_DIR / "2017" / "0xa1-injection.md"
+    document, warnings = parse_owasp_file(path)
+    assert document.doc_id == "owasp-2017-a01"
+    assert document.title == "A01:2017 Injection"
+    assert document.identifiers.owasp == ["A01:2017"]
+    assert "A1:2017" in document.aliases
+    assert "OWASP A1:2017" in document.aliases
+    assert len(document.content) > 100
+
+
 def test_parse_all_ten_owasp_categories() -> None:
     documents, warnings = parse_owasp_directory(OWASP_TOP_TEN_DIR)
-    assert len(documents) >= 10
+    assert len(documents) >= 30
     assert any(document.doc_id == "owasp-2025-a01" for document in documents)
+    assert any(document.doc_id == "owasp-2021-a01" for document in documents)
+    assert any(document.doc_id == "owasp-2017-a01" for document in documents)
+    assert any(document.doc_id == "owasp-2017-a10" for document in documents)
     assert warnings == []
+
 
 
 def test_missing_optional_section_warns_without_crashing(tmp_path: Path) -> None:

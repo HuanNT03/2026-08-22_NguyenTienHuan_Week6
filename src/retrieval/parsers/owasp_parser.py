@@ -7,7 +7,7 @@ from src.retrieval.exceptions import SourceValidationError
 from src.retrieval.models import KnowledgeDocument, KnowledgeIdentifiers, KnowledgeSource
 from src.retrieval.parsers.base import markdown_to_text, repository_path, unique_casefold
 
-_TITLE = re.compile(r"^A(\d{2}):(\d{4})\s*[\u2013\u2014-]?\s*(.+)$", flags=re.IGNORECASE)
+_TITLE = re.compile(r"^A(\d{1,2}):(\d{4})\s*[\u2013\u2014-]?\s*(.+)$", flags=re.IGNORECASE)
 _HEADING = re.compile(r"^##\s+(.+?)\s*$", flags=re.MULTILINE)
 _IMAGE = re.compile(r"!\[[^]]*]\([^)]*\)(?:\{[^}]*\})?")
 _HTML = re.compile(r"<[^>]+>")
@@ -17,9 +17,11 @@ _SECTION_NAMES = {
     "background": "Background",
     "overview": "Overview",
     "description": "Description",
+    "is the application vulnerable": "Description",
     "how to prevent": "Prevention",
     "how to prevent it": "Prevention",
     "example attack scenarios": "Attack scenarios",
+    "attack scenarios": "Attack scenarios",
     "references": "References",
     "list of mapped cwes": "Mapped CWEs",
     "factors": "Factors",
@@ -28,9 +30,13 @@ _OPTIONAL_SECTIONS = ("how to prevent", "references", "list of mapped cwes")
 
 
 def _section_key(heading: str) -> str:
-    key = heading.strip().rstrip(".").strip().casefold()
-    if key == "how to prevent it":
+    key = heading.strip().rstrip("?").rstrip(".").strip().casefold()
+    if key in ("how to prevent it", "how to prevent"):
         return "how to prevent"
+    if key in ("is the application vulnerable", "is the application vulnerable?"):
+        return "is the application vulnerable"
+    if key in ("example attack scenarios", "attack scenarios"):
+        return "example attack scenarios"
     return key
 
 
@@ -64,17 +70,33 @@ def parse_owasp_file(path: Path) -> tuple[KnowledgeDocument, list[str]]:
     title_match = _TITLE.fullmatch(raw_title)
     if title_match is None:
         raise SourceValidationError(f"{path}: invalid OWASP title {raw_title!r}")
-    category_number, version, category_title = title_match.groups()
+    raw_category_number, version, category_title = title_match.groups()
+    category_int = int(raw_category_number)
+    category_number = f"{category_int:02d}"
     identifier = f"A{category_number}:{version}"
     title = f"{identifier} {category_title.strip()}"
     sections = _split_sections(text)
 
-    desc_text = sections.get("description") or sections.get("overview") or sections.get("background") or ""
+    desc_text = (
+        sections.get("description")
+        or sections.get("is the application vulnerable")
+        or sections.get("overview")
+        or sections.get("background")
+        or ""
+    )
     description = markdown_to_text(desc_text)
+    if not description:
+        # Fallback to first non-heading paragraph if present
+        for line in text.splitlines():
+            line_str = line.strip()
+            if line_str and not line_str.startswith("#") and not line_str.startswith("|") and len(line_str) > 25:
+                description = markdown_to_text(line_str)
+                break
     if not description:
         raise SourceValidationError(f"{path}: missing required Description section")
 
-    warnings = [f"{path}: missing optional section {name}" for name in _OPTIONAL_SECTIONS if name not in sections]
+    optional_sections = ("how to prevent", "references") if version == "2017" else _OPTIONAL_SECTIONS
+    warnings = [f"{path}: missing optional section {name}" for name in optional_sections if name not in sections]
 
     mapped_cwes = sorted(
         {f"CWE-{match}" for match in _CWE.findall(text)},
@@ -85,7 +107,12 @@ def parse_owasp_file(path: Path) -> tuple[KnowledgeDocument, list[str]]:
         if key in sections:
             content_parts.append(f"{label}\n{markdown_to_text(sections[key])}")
 
-    aliases = unique_casefold([category_title.strip(), f"OWASP {identifier}", identifier])
+    aliases_list = [category_title.strip(), f"OWASP {identifier}", identifier]
+    if raw_category_number != category_number:
+        alt_id = f"A{raw_category_number}:{version}"
+        aliases_list.extend([alt_id, f"OWASP {alt_id}"])
+
+    aliases = unique_casefold(aliases_list)
     tags = unique_casefold(["owasp", "top-10", f"owasp-{version}", *re.findall(r"[a-z0-9]+", category_title.casefold())])
     document = KnowledgeDocument(
         doc_id=f"owasp-{version}-a{category_number}",
@@ -113,7 +140,15 @@ def parse_owasp_directory(path: Path) -> tuple[list[KnowledgeDocument], list[str
     if not path.is_dir():
         return documents, warnings
 
-    files = sorted(path.rglob("A*_20*.md"))
+    files = sorted(
+        path_item
+        for path_item in path.rglob("*.md")
+        if (
+            path_item.name.startswith("A")
+            or path_item.name.startswith("0xa")
+            or path_item.name.startswith("0x")
+        )
+    )
     for source_path in files:
         try:
             document, source_warnings = parse_owasp_file(source_path)
