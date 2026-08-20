@@ -153,7 +153,21 @@ make kb-lint        # Kiểm tra chuẩn coding convention & Ruff linter
 
 ---
 
-## 5. Kết luận & Đánh giá
+### 5. Cơ chế Embedding Linh hoạt: Cloud API & Local ONNX (FastEmbed)
+
+Hệ thống hỗ trợ cơ chế **Dual-Mode Embedding Engine** qua cấu hình `EMBEDDING_PROVIDER` trong `.env`:
+1. **Local Offline Semantic Search (`fastembed` - Mặc định khi không có API Key):**
+   - Sử dụng mô hình `sentence-transformers/all-MiniLM-L6-v2` (384 chiều, ~80MB ONNX Runtime C++).
+   - Chạy 100% offline nội bộ trên CPU máy trạm, không cần API Key, không phụ thuộc mạng, sinh vector ngữ nghĩa thật với tốc độ cao.
+2. **Cloud API Mode (`dashscope` / `openai`):**
+   - Hỗ trợ Alibaba Cloud DashScope (`text-embedding-v4` - 1024 chiều) và OpenAI (`text-embedding-3-small` - 1536 chiều).
+3. **CI/CD Mock Mode (`mock`):**
+   - Kích hoạt qua `SENTINEL_OFFLINE_EMBEDDINGS=1` để sinh vector giả lập tất định SHA-256 phục vụ chạy test siêu tốc trên pipeline tự động.
+
+---
+
+## 6. Kết luận & Đánh giá
 
 1. **Khả năng mở rộng Dynamic Ingestion**: Hệ thống tự động nhận diện tài liệu mới thêm vào `knowledge-base/raw/` (như cheat sheets, scanner rules, hay ASVS) mà không làm vỡ data contract hay yêu cầu sửa code logic.
 2. **Khả năng Recall & Precision**: Sự phối hợp giữa Smart Multi-Keyword Parser (xử lý chính xác định danh CWE/OWASP) và Dense Semantic Vector Search (xử lý mô tả tự nhiên) mang lại tỷ lệ truy hồi tri thức tối ưu cho Security Analysis Agent trong Week 3 và các tuần tiếp theo.
+3. **Khả năng Vận hành Độc lập Offline**: Với việc tích hợp thành công `FastEmbed`, Project Sentinel có thể được triển khai trọn vẹn trong các môi trường air-gapped / cô lập mạng nghiêm ngặt của SOC mà vẫn duy trì đầy đủ tính năng tìm kiếm ngữ nghĩa thông minh.
