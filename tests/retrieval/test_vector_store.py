@@ -96,3 +96,60 @@ def test_embedding_dimension_read_from_environment(monkeypatch: pytest.MonkeyPat
     store = QdrantVectorStore(storage_path=tmp_path / "qdrant_custom")
     assert store.dimension == 1024
 
+
+def test_qdrant_vector_store_upsert_chunks_and_aggregate_parents(tmp_path: Path) -> None:
+    from src.retrieval.chunking.markdown_chunker import DocumentChunk
+
+    store = QdrantVectorStore(storage_path=tmp_path / "qdrant_chunks", collection_name="test_chunks", dimension=64)
+    client = EmbeddingClient(provider="mock", dimension=64)
+
+    # 3 child chunks for parent-1 and 1 chunk for parent-2
+    chunks = [
+        DocumentChunk(
+            chunk_id="owasp-2025-a01#description",
+            parent_doc_id="owasp-2025-a01",
+            parent_title="A01:2025 Broken Access Control",
+            section_title="Description",
+            content="# A01:2025 Broken Access Control\n\n## Description\n\nAccess control overview.",
+            doc_type="owasp_category",
+        ),
+        DocumentChunk(
+            chunk_id="owasp-2025-a01#prevention",
+            parent_doc_id="owasp-2025-a01",
+            parent_title="A01:2025 Broken Access Control",
+            section_title="Prevention",
+            content="# A01:2025 Broken Access Control\n\n## Prevention\n\nRBAC and ownership checks.",
+            doc_type="owasp_category",
+        ),
+        DocumentChunk(
+            chunk_id="owasp-2025-a01#scenarios",
+            parent_doc_id="owasp-2025-a01",
+            parent_title="A01:2025 Broken Access Control",
+            section_title="Attack Scenarios",
+            content="# A01:2025 Broken Access Control\n\n## Attack Scenarios\n\nAdmin parameter tampering.",
+            doc_type="owasp_category",
+        ),
+        DocumentChunk(
+            chunk_id="cwe-89#main",
+            parent_doc_id="cwe-89",
+            parent_title="CWE-89: SQL Injection",
+            section_title="Overview",
+            content="# CWE-89: SQL Injection\n\nSQL query injection.",
+            doc_type="cwe",
+        ),
+    ]
+
+    embeddings = client.embed_texts([c.content for c in chunks])
+    store.upsert_chunks(chunks, embeddings)
+
+    # Search should aggregate 3 chunks of owasp-2025-a01 into 1 parent result
+    query_vec = client.embed_query("broken access control prevention")
+    results = store.search_parents(query_vec, top_k=5)
+
+    assert len(results) == 2
+    assert {r.doc_id for r in results} == {"owasp-2025-a01", "cwe-89"}
+    owasp_res = next(r for r in results if r.doc_id == "owasp-2025-a01")
+    assert owasp_res.matched_section in ("Description", "Prevention", "Attack Scenarios")
+    assert "A01:2025 Broken Access Control" in owasp_res.matched_snippet
+
+
