@@ -61,8 +61,12 @@ class EmbeddingClient:
 
         if model is not None:
             self.model = model
-        elif provider is not None:
-            self.model = default_model
+        elif self.provider == "fastembed":
+            env_model = os.getenv("EMBEDDING_MODEL")
+            if env_model and ("sentence-transformers" in env_model or "bge" in env_model or "nomic" in env_model):
+                self.model = env_model
+            else:
+                self.model = default_model
         else:
             self.model = os.getenv("EMBEDDING_MODEL") or default_model
 
