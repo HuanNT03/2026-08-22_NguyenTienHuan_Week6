@@ -67,7 +67,14 @@ def run_analysis(
 
     all_entries: list[ReportEntry] = []
     for idx, group in enumerate(groups, start=1):
-        logger.info("[%d/%d] Analyzing group %s (%d findings, correlation: %s)", idx, len(groups), group.group_id, len(group.findings), group.correlation_type)
+        logger.info(
+            "[%d/%d] Analyzing group %s (%d findings, correlation: %s)",
+            idx,
+            len(groups),
+            group.group_id,
+            len(group.findings),
+            group.correlation_type,
+        )
         entries = analyze_group(group, kb_service=kb_service, client=client, config=cfg)
         all_entries.extend(entries)
 
@@ -75,7 +82,9 @@ def run_analysis(
     coverage = verify_coverage(findings, all_entries)
     if not coverage["is_complete"]:
         logger.error("Coverage check FAILED! Missing fingerprints: %s", coverage["missing_fingerprints"])
-        raise RuntimeError(f"Analysis failed 100% coverage check. Missing fingerprints: {coverage['missing_fingerprints']}")
+        raise RuntimeError(
+            f"Analysis failed 100% coverage check. Missing fingerprints: {coverage['missing_fingerprints']}"
+        )
 
     # Write report JSONL file
     report_filename = f"security-analysis-report-{timestamp}.jsonl"

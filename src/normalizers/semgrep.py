@@ -177,58 +177,62 @@ def normalize_semgrep_report(
                 "native_confidence": native_confidence,
             },
         )
-        finding.update({
-            "fingerprint": _semgrep_fingerprint(
-                context=context,
-                rule_id=rule_id,
-                path=path,
-                native_fingerprint=optional_string(extra.get("fingerprint")),
-                start_line=start_line,
-                start_column=start_column,
-            ),
-            "group_key": _group_key(context, cwe_ids, path, start_line, rule_id),
-            "title": title,
-            "description": optional_string(extra.get("message")),
-            "categories": string_array(metadata.get("category")),
-            "severity": normalize_severity("semgrep", native_severity),
-            "confidence": normalize_confidence("semgrep", native_confidence),
-            "cwe_ids": cwe_ids,
-            "owasp_categories": normalize_owasp_categories(metadata.get("owasp")),
-            "wasc_ids": [],
-            "location": {
-                "kind": "code",
-                "path": path,
-                "start_line": start_line,
-                "start_column": start_column,
-                "end_line": end_line,
-                "end_column": end_column,
-            },
-            "evidence": {
-                "kind": "code",
-                "code_evidence": {
-                    "code_snippet": {
-                        "content": scanner_content,
-                        "context_before": source_evidence.context_before,
-                        "context_after": source_evidence.context_after,
-                    },
-                    "matched_contents": _matched_contents(extra.get("metavars")),
-                    "related_context": [],
-                    "redacted": False,
-                    "truncated": False,
+        finding.update(
+            {
+                "fingerprint": _semgrep_fingerprint(
+                    context=context,
+                    rule_id=rule_id,
+                    path=path,
+                    native_fingerprint=optional_string(extra.get("fingerprint")),
+                    start_line=start_line,
+                    start_column=start_column,
+                ),
+                "group_key": _group_key(context, cwe_ids, path, start_line, rule_id),
+                "title": title,
+                "description": optional_string(extra.get("message")),
+                "categories": string_array(metadata.get("category")),
+                "severity": normalize_severity("semgrep", native_severity),
+                "confidence": normalize_confidence("semgrep", native_confidence),
+                "cwe_ids": cwe_ids,
+                "owasp_categories": normalize_owasp_categories(metadata.get("owasp")),
+                "wasc_ids": [],
+                "location": {
+                    "kind": "code",
+                    "path": path,
+                    "start_line": start_line,
+                    "start_column": start_column,
+                    "end_line": end_line,
+                    "end_column": end_column,
                 },
-                "http_evidence": None,
-                "quality": "direct" if scanner_content is not None else "none",
-                "provenance": f"{Path(context.report_path).name}:results[{result_index}].extra.lines",
-            },
-            "data_flow": _normalize_data_flow(extra.get("dataflow_trace")),
-            "solution": optional_string(extra.get("fix")),
-            "references": reference_urls(metadata.get("references")),
-            "raw_sources": [{
-                "format": "semgrep-json",
-                "report_path": context.report_path,
-                "json_pointer": f"/results/{result_index}",
-            }],
-        })
+                "evidence": {
+                    "kind": "code",
+                    "code_evidence": {
+                        "code_snippet": {
+                            "content": scanner_content,
+                            "context_before": source_evidence.context_before,
+                            "context_after": source_evidence.context_after,
+                        },
+                        "matched_contents": _matched_contents(extra.get("metavars")),
+                        "related_context": [],
+                        "redacted": False,
+                        "truncated": False,
+                    },
+                    "http_evidence": None,
+                    "quality": "direct" if scanner_content is not None else "none",
+                    "provenance": f"{Path(context.report_path).name}:results[{result_index}].extra.lines",
+                },
+                "data_flow": _normalize_data_flow(extra.get("dataflow_trace")),
+                "solution": optional_string(extra.get("fix")),
+                "references": reference_urls(metadata.get("references")),
+                "raw_sources": [
+                    {
+                        "format": "semgrep-json",
+                        "report_path": context.report_path,
+                        "json_pointer": f"/results/{result_index}",
+                    }
+                ],
+            }
+        )
         findings.append(finding)
     scanner_errors = report.get("errors")
     warnings = {

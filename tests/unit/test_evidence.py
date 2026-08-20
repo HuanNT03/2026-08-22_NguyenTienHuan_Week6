@@ -25,12 +25,8 @@ def test_reads_multiline_content_and_five_line_context(tmp_path: Path, newline: 
     result = read_code_evidence(tmp_path, "routes/example.ts", 7, 8)
 
     assert result.content == "  line 7\n  line 8"
-    assert result.context_before == [
-        {"line": number, "content": f"  line {number}"} for number in range(2, 7)
-    ]
-    assert result.context_after == [
-        {"line": number, "content": f"  line {number}"} for number in range(9, 14)
-    ]
+    assert result.context_before == [{"line": number, "content": f"  line {number}"} for number in range(2, 7)]
+    assert result.context_after == [{"line": number, "content": f"  line {number}"} for number in range(9, 14)]
     assert result.source_succeeded is True
     assert result.warning is None
 

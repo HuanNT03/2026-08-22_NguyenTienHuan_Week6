@@ -10,9 +10,14 @@ def normalize_severity(tool_name: str, native_value: Any) -> str:
     value = str(native_value).strip().lower().replace("-", "_")
     if tool == "semgrep":
         mapping = {
-            "informational": "info", "info": "info", "low": "low",
-            "warning": "medium", "medium": "medium", "error": "high",
-            "high": "high", "critical": "critical",
+            "informational": "info",
+            "info": "info",
+            "low": "low",
+            "warning": "medium",
+            "medium": "medium",
+            "error": "high",
+            "high": "high",
+            "critical": "critical",
         }
         return mapping.get(value, "unknown")
     if tool == "zap":

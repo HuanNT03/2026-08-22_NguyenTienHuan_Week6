@@ -54,7 +54,10 @@ def _execute_command(command: list[str], cwd: str = ".", timeout_seconds: int = 
         return False, f"Vượt quá thời gian cho phép ({timeout_seconds}s):\nSTDOUT: {stdout}\nSTDERR: {stderr}"
     except FileNotFoundError as exc:
         cmd_str = exc.filename or command[0]
-        return False, f"Không tìm thấy lệnh '{cmd_str}' trong hệ thống. Vui lòng kiểm tra xem công cụ (make, jq, docker) đã được cài đặt chưa."
+        return (
+            False,
+            f"Không tìm thấy lệnh '{cmd_str}' trong hệ thống. Vui lòng kiểm tra xem công cụ (make, jq, docker) đã được cài đặt chưa.",
+        )
     except Exception as exc:  # noqa: BLE001
         return False, f"Ngoại lệ không xác định: {exc}"
 
@@ -100,7 +103,7 @@ def _execute_command_stream(
                     return
 
         return_code = process.poll() or 0
-        success = (return_code == 0)
+        success = return_code == 0
         final_log = "".join(full_output)
         if not success:
             final_log = f"Exit code {return_code}:\n{final_log}"
@@ -178,9 +181,7 @@ def run_target_command(action: str, cwd: str = ".") -> tuple[bool, str]:
         return _execute_command(TARGET_COMMANDS[action], cwd=cwd, timeout_seconds=1800)
 
 
-def run_target_command_stream(
-    action: str, cwd: str = "."
-) -> Generator[tuple[bool, str, str], None, None]:
+def run_target_command_stream(action: str, cwd: str = ".") -> Generator[tuple[bool, str, str], None, None]:
     """Streaming version của run_target_command."""
     if action not in TARGET_COMMANDS:
         supported = ", ".join(TARGET_COMMANDS.keys())
@@ -247,4 +248,3 @@ def check_target_health() -> tuple[bool, int, str]:
             continue
 
     return False, 0, f"http://127.0.0.1:{port}/"
-

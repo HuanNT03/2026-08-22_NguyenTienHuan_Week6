@@ -41,7 +41,7 @@ def _relative_source_path(raw_path: Any) -> tuple[PurePosixPath | None, str | No
         matched_prefix = next((prefix for prefix in KNOWN_SOURCE_PREFIXES if value.startswith(prefix)), None)
         if matched_prefix is None:
             return None, "absolute source path is outside known scanner prefixes"
-        value = value[len(matched_prefix):]
+        value = value[len(matched_prefix) :]
     while value.startswith("./"):
         value = value[2:]
     relative = PurePosixPath(value)
@@ -111,14 +111,12 @@ def read_code_evidence(
     before_start = max(1, start_line - radius)
     after_end = min(total_lines, end_line + radius)
     context_before = [
-        {"line": line_number, "content": lines[line_number - 1]}
-        for line_number in range(before_start, start_line)
+        {"line": line_number, "content": lines[line_number - 1]} for line_number in range(before_start, start_line)
     ]
     context_after = [
-        {"line": line_number, "content": lines[line_number - 1]}
-        for line_number in range(end_line + 1, after_end + 1)
+        {"line": line_number, "content": lines[line_number - 1]} for line_number in range(end_line + 1, after_end + 1)
     ]
-    content = nullable_text("\n".join(lines[start_line - 1:end_line]))
+    content = nullable_text("\n".join(lines[start_line - 1 : end_line]))
     return CodeEvidenceRead(
         content=content,
         context_before=context_before,

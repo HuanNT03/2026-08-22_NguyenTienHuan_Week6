@@ -151,5 +151,3 @@ def test_qdrant_vector_store_upsert_chunks_and_aggregate_parents(tmp_path: Path)
     owasp_res = next(r for r in results if r.doc_id == "owasp-2025-a01")
     assert owasp_res.matched_section in ("Description", "Prevention", "Attack Scenarios")
     assert "A01:2025 Broken Access Control" in owasp_res.matched_snippet
-
-

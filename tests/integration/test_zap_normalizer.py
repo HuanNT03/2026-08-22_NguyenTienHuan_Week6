@@ -49,10 +49,7 @@ def test_zap_report_normalizes_only_target_instances():
         assert "<p>" not in (finding["description"] or "")
         assert resolve_json_pointer(report, finding["raw_sources"][0]["json_pointer"])
 
-    invalid_taxonomy = [
-        finding for finding in result.findings
-        if finding["rule"]["id"] == "10109"
-    ]
+    invalid_taxonomy = [finding for finding in result.findings if finding["rule"]["id"] == "10109"]
     assert invalid_taxonomy
     assert all(finding["cwe_ids"] == [] and finding["wasc_ids"] == [] for finding in invalid_taxonomy)
     quality_counts = {

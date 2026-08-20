@@ -108,4 +108,3 @@ def test_all_plans_export_scoped_urls_and_sites_tree() -> None:
         exports = _jobs(_load_plan(name), "export")
         assert [job["parameters"] for job in exports] == expected_exports
         assert all(job["alwaysRun"] is True for job in exports)
-

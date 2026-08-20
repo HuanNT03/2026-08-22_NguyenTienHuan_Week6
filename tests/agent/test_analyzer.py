@@ -15,7 +15,7 @@ def _sample_group() -> AnalysisGroup:
         findings=[
             {
                 "finding_id": "fnd_0123456789abcdef0123456789abcdef",
-                "fingerprint": f"fp_sha256:v1:{'a'*64}",
+                "fingerprint": f"fp_sha256:v1:{'a' * 64}",
                 "tool": {"name": "semgrep", "scan_type": "SAST"},
                 "title": "SQL Injection",
                 "severity": "critical",
@@ -26,7 +26,7 @@ def _sample_group() -> AnalysisGroup:
             }
         ],
         correlation_type="sast_only",
-        correlated_fingerprints=[f"fp_sha256:v1:{'a'*64}"],
+        correlated_fingerprints=[f"fp_sha256:v1:{'a' * 64}"],
     )
 
 
@@ -46,7 +46,7 @@ def test_analyze_group_success_with_mock_client() -> None:
                                 "analysis_id": "analysis_0123456789abcdef0123456789abcdef",
                                 "analysis_group_id": "grp_sqli_001",
                                 "analysis_status": "success",
-                                "fingerprint": f"fp_sha256:v1:{'a'*64}",
+                                "fingerprint": f"fp_sha256:v1:{'a' * 64}",
                                 "finding_id": "fnd_0123456789abcdef0123456789abcdef",
                                 "tool": "semgrep",
                                 "scan_type": "SAST",
@@ -65,7 +65,7 @@ def test_analyze_group_success_with_mock_client() -> None:
                                     "rationale": "Semgrep phát hiện taint flow rõ ràng.",
                                 },
                                 "correlation_type": "sast_only",
-                                "correlated_with": [f"fp_sha256:v1:{'a'*64}"],
+                                "correlated_with": [f"fp_sha256:v1:{'a' * 64}"],
                                 "evidence_summary": "Taint flow từ req.body.email vào SQL query.",
                                 "explanation": "Lỗ hổng xảy ra do không dùng Parameterized Query.",
                                 "recommended_action": "Sử dụng Parameterized Query.",
@@ -94,7 +94,7 @@ def test_analyze_group_success_with_mock_client() -> None:
 
     entries = analyze_group(group, kb_service=mock_kb, client=mock_client, config=config)
     assert len(entries) == 1
-    assert entries[0].fingerprint == f"fp_sha256:v1:{'a'*64}"
+    assert entries[0].fingerprint == f"fp_sha256:v1:{'a' * 64}"
     assert entries[0].analysis_status == "success"
 
 
@@ -112,6 +112,6 @@ def test_analyze_group_fallback_on_repeated_failure() -> None:
 
     # Must return error entry to guarantee 100% coverage
     assert len(entries) == 1
-    assert entries[0].fingerprint == f"fp_sha256:v1:{'a'*64}"
+    assert entries[0].fingerprint == f"fp_sha256:v1:{'a' * 64}"
     assert entries[0].analysis_status == "error"
     assert "LLM Provider API Error" in entries[0].explanation

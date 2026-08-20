@@ -42,8 +42,7 @@ def test_missing_required_field_fails(tmp_path: Path, missing: str) -> None:
 def test_invalid_detectability_fails(tmp_path: Path) -> None:
     path = tmp_path / "invalid.yml"
     path.write_text(
-        "id: example-test\ntitle: Test\ndescription: Description\n"
-        "detectability:\n  sast: certain\n",
+        "id: example-test\ntitle: Test\ndescription: Description\ndetectability:\n  sast: certain\n",
         encoding="utf-8",
     )
     with pytest.raises(SourceValidationError, match="invalid detectability"):

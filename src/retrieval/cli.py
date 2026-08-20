@@ -66,7 +66,9 @@ def build_index_command() -> None:
     """Generate the atomic SQLite FTS5 index and Qdrant vector index."""
     path = run_index_build()
     chunk_count = build_vector_index()
-    console.print(f"[green]Built[/green] SQLite knowledge index at {path} and Qdrant vector index ({chunk_count} section chunks)")
+    console.print(
+        f"[green]Built[/green] SQLite knowledge index at {path} and Qdrant vector index ({chunk_count} section chunks)"
+    )
 
 
 @app.command("build")
@@ -133,9 +135,7 @@ def search(
 
 def _canonical_document(doc_id: str) -> dict[str, object]:
     if not DOCUMENTS_PATH.is_file():
-        raise SourceValidationError(
-            f"Canonical documents not found: {DOCUMENTS_PATH}. Run build-documents first."
-        )
+        raise SourceValidationError(f"Canonical documents not found: {DOCUMENTS_PATH}. Run build-documents first.")
     for document in read_documents(DOCUMENTS_PATH):
         if document.doc_id == doc_id:
             return document.to_canonical_dict()

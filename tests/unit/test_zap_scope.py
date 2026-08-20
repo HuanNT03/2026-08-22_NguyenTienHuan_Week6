@@ -28,29 +28,35 @@ def _report(uris: list[str]) -> dict:
     """Create the smallest valid ZAP report containing one instance per supplied URI."""
     return {
         "@version": "2.17.0",
-        "site": [{
-            "alerts": [{
-                "pluginid": "10000",
-                "alertRef": "10000",
-                "riskcode": "1",
-                "confidence": "2",
-                "name": "Scope fixture",
-                "instances": [{"uri": uri, "method": "GET"} for uri in uris],
-            }],
-        }],
+        "site": [
+            {
+                "alerts": [
+                    {
+                        "pluginid": "10000",
+                        "alertRef": "10000",
+                        "riskcode": "1",
+                        "confidence": "2",
+                        "name": "Scope fixture",
+                        "instances": [{"uri": uri, "method": "GET"} for uri in uris],
+                    }
+                ],
+            }
+        ],
     }
 
 
 def test_scope_filter_rejects_origin_lookalikes_and_sanitizes_warning_uris() -> None:
-    report = _report([
-        "http://juice-shop:3000/",
-        "http://juice-shop:3000/products?search=apple",
-        "http://juice-shop.evil.example:3000/path?token=secret#fragment",
-        "http://juice-shop:3000@evil.example/path?api_key=secret",
-        "https://juice-shop:3000/path",
-        "http://juice-shop/path",
-        "https://user:password@evil.example:8443/path?token=secret&empty=&token=again#fragment",
-    ])
+    report = _report(
+        [
+            "http://juice-shop:3000/",
+            "http://juice-shop:3000/products?search=apple",
+            "http://juice-shop.evil.example:3000/path?token=secret#fragment",
+            "http://juice-shop:3000@evil.example/path?api_key=secret",
+            "https://juice-shop:3000/path",
+            "http://juice-shop/path",
+            "https://user:password@evil.example:8443/path?token=secret&empty=&token=again#fragment",
+        ]
+    )
 
     result = normalize_zap_report(report, _context(), normalized_at="2026-08-06T01:00:00Z")
 

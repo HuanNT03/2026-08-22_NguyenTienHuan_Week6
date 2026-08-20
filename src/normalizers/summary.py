@@ -49,8 +49,5 @@ def build_summary(
         "normalized_at": normalized_at,
         "output_path": output_path,
         "tools": tools,
-        "total_findings_written": sum(
-            int(tool.get("findings_written", 0))
-            for tool in tools.values()
-        ),
+        "total_findings_written": sum(int(tool.get("findings_written", 0)) for tool in tools.values()),
     }

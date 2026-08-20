@@ -47,12 +47,10 @@ def test_parse_all_ten_owasp_categories() -> None:
     assert warnings == []
 
 
-
 def test_missing_optional_section_warns_without_crashing(tmp_path: Path) -> None:
     path = tmp_path / "A01_2025-Test.md"
     path.write_text(
-        "# A01:2025 Test Category ![icon](icon.png){: width=10}\n\n"
-        "## Description.\n\nA required description.\n",
+        "# A01:2025 Test Category ![icon](icon.png){: width=10}\n\n## Description.\n\nA required description.\n",
         encoding="utf-8",
     )
     document, _warnings = parse_owasp_file(path)

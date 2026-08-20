@@ -40,7 +40,7 @@ def test_match_param_to_dataflow() -> None:
 def test_correlate_findings_sql_injection() -> None:
     sast_finding = {
         "finding_id": "fnd_sast_1",
-        "fingerprint": f"fp_sha256:v1:{'1'*64}",
+        "fingerprint": f"fp_sha256:v1:{'1' * 64}",
         "tool": {"name": "semgrep", "scan_type": "SAST"},
         "title": "SQL Injection",
         "cwe_ids": ["CWE-89"],
@@ -49,7 +49,7 @@ def test_correlate_findings_sql_injection() -> None:
     }
     dast_finding = {
         "finding_id": "fnd_dast_1",
-        "fingerprint": f"fp_sha256:v1:{'2'*64}",
+        "fingerprint": f"fp_sha256:v1:{'2' * 64}",
         "tool": {"name": "zap", "scan_type": "DAST"},
         "title": "SQL Injection",
         "cwe_ids": ["CWE-89"],
@@ -66,7 +66,7 @@ def test_correlate_findings_sql_injection() -> None:
 def test_correlate_findings_broad_cwe_prevented() -> None:
     sast_finding = {
         "finding_id": "fnd_sast_2",
-        "fingerprint": f"fp_sha256:v1:{'3'*64}",
+        "fingerprint": f"fp_sha256:v1:{'3' * 64}",
         "tool": {"name": "codeql", "scan_type": "SAST"},
         "title": "Uncontrolled resource consumption",
         "cwe_ids": ["CWE-400"],
@@ -74,7 +74,7 @@ def test_correlate_findings_broad_cwe_prevented() -> None:
     }
     sast_finding_other_file = {
         "finding_id": "fnd_sast_3",
-        "fingerprint": f"fp_sha256:v1:{'4'*64}",
+        "fingerprint": f"fp_sha256:v1:{'4' * 64}",
         "tool": {"name": "codeql", "scan_type": "SAST"},
         "title": "Privilege escalation",
         "cwe_ids": ["CWE-400"],

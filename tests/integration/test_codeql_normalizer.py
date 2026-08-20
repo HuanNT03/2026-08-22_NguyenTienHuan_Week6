@@ -12,24 +12,22 @@ REPORT_PATH = "tests/fixtures/scanners/codeql.sarif"
 
 
 def _raw_results(report: dict[str, Any]) -> list[dict[str, Any]]:
-    return [
-        result
-        for run in report["runs"]
-        for result in run.get("results", [])
-    ]
+    return [result for run in report["runs"] for result in run.get("results", [])]
 
 
 def test_codeql_report_normalizes_one_finding_per_result():
     report = json.loads((ROOT / REPORT_PATH).read_text(encoding="utf-8"))
     raw_results = _raw_results(report)
     assert raw_results
-    assert sum(
-        raw_result["locations"][0]["physicalLocation"]["region"].get("endLine") is None
-        for raw_result in raw_results
-    ) == 85
+    assert (
+        sum(
+            raw_result["locations"][0]["physicalLocation"]["region"].get("endLine") is None
+            for raw_result in raw_results
+        )
+        == 85
+    )
     assert all(
-        raw_result["locations"][0]["physicalLocation"]["contextRegion"]["snippet"]["text"]
-        for raw_result in raw_results
+        raw_result["locations"][0]["physicalLocation"]["contextRegion"]["snippet"]["text"] for raw_result in raw_results
     )
 
     context = NormalizationContext(
@@ -103,9 +101,7 @@ def test_codeql_report_normalizes_one_finding_per_result():
             assert data_flow["sink"]["step_index"] >= 1
 
     related_context = [
-        related
-        for finding in result.findings
-        for related in finding["evidence"]["code_evidence"]["related_context"]
+        related for finding in result.findings for related in finding["evidence"]["code_evidence"]["related_context"]
     ]
     assert any(item["id"] is None for item in related_context)
     assert any(item["message"] is None for item in related_context)

@@ -57,8 +57,8 @@ def test_run_analysis_handles_provider_error(tmp_path: Path) -> None:
     finding_data = {
         "schema_version": "2.0.0",
         "finding_id": "fnd_0123456789abcdef0123456789abcdef",
-        "fingerprint": f"fp_sha256:v1:{'c'*64}",
-        "group_key": f"grp_sha256:v1:{'d'*64}",
+        "fingerprint": f"fp_sha256:v1:{'c' * 64}",
+        "group_key": f"grp_sha256:v1:{'d' * 64}",
         "tool": {"name": "semgrep", "scan_type": "SAST"},
         "title": "SQL Injection",
         "cwe_ids": ["CWE-89"],

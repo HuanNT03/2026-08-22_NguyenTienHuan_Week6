@@ -90,4 +90,3 @@ def test_search_semantic_and_hybrid_hydrates_parent(canonical_index: Path) -> No
     assert len(semantic_results) > 0
     assert semantic_results[0].content != ""
     assert len(semantic_results[0].snippet) > 0
-

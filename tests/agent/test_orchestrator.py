@@ -37,8 +37,8 @@ def test_run_analysis_with_mock_client(tmp_path: Path) -> None:
     dummy_finding = {
         "schema_version": "2.0.0",
         "finding_id": "fnd_0123456789abcdef0123456789abcdef",
-        "fingerprint": f"fp_sha256:v1:{'a'*64}",
-        "group_key": f"grp_sha256:v1:{'b'*64}",
+        "fingerprint": f"fp_sha256:v1:{'a' * 64}",
+        "group_key": f"grp_sha256:v1:{'b' * 64}",
         "tool": {"name": "semgrep", "scan_type": "SAST"},
         "title": "SQL Injection",
         "cwe_ids": ["CWE-89"],
@@ -63,7 +63,7 @@ def test_run_analysis_with_mock_client(tmp_path: Path) -> None:
                                 "analysis_id": "analysis_0123456789abcdef0123456789abcdef",
                                 "analysis_group_id": "grp_sqli_001",
                                 "analysis_status": "success",
-                                "fingerprint": f"fp_sha256:v1:{'a'*64}",
+                                "fingerprint": f"fp_sha256:v1:{'a' * 64}",
                                 "finding_id": "fnd_0123456789abcdef0123456789abcdef",
                                 "tool": "semgrep",
                                 "scan_type": "SAST",
@@ -124,4 +124,4 @@ def test_run_analysis_with_mock_client(tmp_path: Path) -> None:
     lines = output_report.read_text(encoding="utf-8").strip().splitlines()
     assert len(lines) == 1
     entry_dict = json.loads(lines[0])
-    assert entry_dict["fingerprint"] == f"fp_sha256:v1:{'a'*64}"
+    assert entry_dict["fingerprint"] == f"fp_sha256:v1:{'a' * 64}"

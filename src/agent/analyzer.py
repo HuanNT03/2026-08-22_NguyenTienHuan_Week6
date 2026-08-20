@@ -64,7 +64,9 @@ def create_fallback_error_entry(
         owasp_category=owasp if owasp and owasp.startswith("OWASP-A") else None,
         location_summary=loc_summary,
         severity=SeverityAssessment(
-            agent_assessment=finding.get("severity", "unknown") if finding.get("severity") in ("info", "low", "medium", "high", "critical") else "unknown",
+            agent_assessment=finding.get("severity", "unknown")
+            if finding.get("severity") in ("info", "low", "medium", "high", "critical")
+            else "unknown",
             original_scanner=finding.get("severity"),
             rationale=f"Lỗi khi gọi mô hình phân tích LLM: {error_msg}",
         ),
@@ -205,7 +207,9 @@ def sanitize_llm_entry_dict(
     # 8. Fix primary_cwe_id
     primary = item.get("primary_cwe_id")
     if not (isinstance(primary, str) and primary.startswith("CWE-")):
-        item["primary_cwe_id"] = group.primary_cwe if (group.primary_cwe and group.primary_cwe.startswith("CWE-")) else None
+        item["primary_cwe_id"] = (
+            group.primary_cwe if (group.primary_cwe and group.primary_cwe.startswith("CWE-")) else None
+        )
 
     # 9. Fix location_summary
     if not item.get("location_summary"):
@@ -263,7 +267,9 @@ def analyze_group(
             base_url=cfg.base_url,
         )
 
-    system_prompt = cfg.system_prompt_path.read_text(encoding="utf-8") if cfg.system_prompt_path.is_file() else "System Prompt"
+    system_prompt = (
+        cfg.system_prompt_path.read_text(encoding="utf-8") if cfg.system_prompt_path.is_file() else "System Prompt"
+    )
 
     # Step 1: KB retrieval
     kb_snippets, kb_results = fetch_kb_context_for_group(group, kb_service=kb_service)
@@ -327,7 +333,7 @@ def analyze_group(
 
             if attempt < cfg.max_retries:
                 # Add retry feedback message for next attempt
-                messages.append({"role": "assistant", "content": raw_content if 'raw_content' in locals() else ""})
+                messages.append({"role": "assistant", "content": raw_content if "raw_content" in locals() else ""})
                 messages.append(
                     {
                         "role": "user",
@@ -340,7 +346,4 @@ def analyze_group(
 
     # Max retries exceeded -> return fallback error entries for all group findings
     logger.error("Group %s failed after %d retries. Generating fallback entries.", group.group_id, cfg.max_retries)
-    return [
-        create_fallback_error_entry(f, group, last_error_msg, cfg, cfg.max_retries)
-        for f in group.findings
-    ]
+    return [create_fallback_error_entry(f, group, last_error_msg, cfg, cfg.max_retries) for f in group.findings]

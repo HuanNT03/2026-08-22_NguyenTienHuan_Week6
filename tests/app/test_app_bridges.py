@@ -36,7 +36,6 @@ def test_get_configured_model():
     assert len(model) > 0
 
 
-
 def test_run_scanner_unsupported_tool():
     success, output = run_scanner("invalid_tool_name")
     assert success is False
@@ -86,7 +85,7 @@ def test_search_knowledge_base_real_index():
     index_path = Path("knowledge-base/index/knowledge.db")
     if not index_path.exists():
         pytest.skip("SQLite knowledge.db chưa được build, bỏ qua integration test này.")
-    
+
     results = search_knowledge_base("SQL Injection", top_k=3, index_path=index_path)
     assert isinstance(results, list)
     if results:

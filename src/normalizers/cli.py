@@ -159,9 +159,7 @@ def _run(
     normalized_at, filename_timestamp = _run_timestamp(clock)
     output_path = output_dir / f"unified-findings-{filename_timestamp}.jsonl"
     resolved_summary_path = (
-        summary_path
-        if summary_path is not None
-        else output_dir / f"normalization-summary-{filename_timestamp}.json"
+        summary_path if summary_path is not None else output_dir / f"normalization-summary-{filename_timestamp}.json"
     )
     _remove_old(output_path, resolved_summary_path)
     all_findings: list[dict[str, Any]] = []
@@ -172,13 +170,16 @@ def _run(
         for tool in TOOLS:
             tool_summaries[tool] = failed_tool_summary(exc) if tool in selected else skipped_tool_summary()
         print(f"schema: normalization setup failed: {exc}", file=sys.stderr)
-        _write_summary(resolved_summary_path, build_summary(
-            schema_version=SCHEMA_VERSION,
-            normalizer_version=NORMALIZER_VERSION,
-            normalized_at=normalized_at,
-            output_path=None,
-            tools=tool_summaries,
-        ))
+        _write_summary(
+            resolved_summary_path,
+            build_summary(
+                schema_version=SCHEMA_VERSION,
+                normalizer_version=NORMALIZER_VERSION,
+                normalized_at=normalized_at,
+                output_path=None,
+                tools=tool_summaries,
+            ),
+        )
         return 1
     failed = False
     successful = False
@@ -187,11 +188,7 @@ def _run(
             tool_summaries[tool] = skipped_tool_summary()
             continue
         report_path, metadata_path = paths[tool]
-        missing_paths = [
-            path.as_posix()
-            for path in (report_path, metadata_path)
-            if not path.exists()
-        ]
+        missing_paths = [path.as_posix() for path in (report_path, metadata_path) if not path.exists()]
         if missing_paths:
             tool_summaries[tool] = missing_input_tool_summary(missing_paths)
             print(f"{tool}: skipped: missing input file(s): {', '.join(missing_paths)}", file=sys.stderr)
@@ -208,13 +205,16 @@ def _run(
         successful = True
     if successful:
         _write_jsonl(output_path, all_findings)
-    _write_summary(resolved_summary_path, build_summary(
-        schema_version=SCHEMA_VERSION,
-        normalizer_version=NORMALIZER_VERSION,
-        normalized_at=normalized_at,
-        output_path=output_path.as_posix() if successful else None,
-        tools=tool_summaries,
-    ))
+    _write_summary(
+        resolved_summary_path,
+        build_summary(
+            schema_version=SCHEMA_VERSION,
+            normalizer_version=NORMALIZER_VERSION,
+            normalized_at=normalized_at,
+            output_path=output_path.as_posix() if successful else None,
+            tools=tool_summaries,
+        ),
+    )
     if successful:
         print(output_path.as_posix())
     return 1 if failed or not successful else 0

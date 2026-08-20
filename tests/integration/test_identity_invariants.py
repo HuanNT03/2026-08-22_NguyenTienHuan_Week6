@@ -46,12 +46,15 @@ def test_scope_filter_preserves_identity_and_raw_order_for_retained_findings(mon
             _context(tool, report_path, base_url),
             normalized_at="2026-08-05T01:00:00Z",
         )
-        identities.extend({
-            "finding_id": finding["finding_id"],
-            "fingerprint": finding["fingerprint"],
-            "group_key": finding["group_key"],
-            "raw_pointer": finding["raw_sources"][0]["json_pointer"],
-        } for finding in normalized.findings)
+        identities.extend(
+            {
+                "finding_id": finding["finding_id"],
+                "fingerprint": finding["fingerprint"],
+                "group_key": finding["group_key"],
+                "raw_pointer": finding["raw_sources"][0]["json_pointer"],
+            }
+            for finding in normalized.findings
+        )
 
     canonical = json.dumps(identities, sort_keys=True, separators=(",", ":")).encode()
     expected = (FIXTURES / "identity-v1.sha256").read_text(encoding="utf-8").strip()

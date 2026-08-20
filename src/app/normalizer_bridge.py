@@ -28,13 +28,17 @@ def execute_normalization(
     """
     args = [
         "normalize-all",
-        "--raw-dir", raw_dir,
-        "--output-dir", output_dir,
-        "--source-root", source_root,
-        "--schema", schema_path,
+        "--raw-dir",
+        raw_dir,
+        "--output-dir",
+        output_dir,
+        "--source-root",
+        source_root,
+        "--schema",
+        schema_path,
     ]
     exit_code = normalizer_cli_main(args)
-    
+
     # Tìm file normalization summary mới nhất trong output_dir
     output_path = Path(output_dir)
     summary_files = list(output_path.glob("normalization-summary-*.json")) if output_path.exists() else []
@@ -67,7 +71,7 @@ def save_uploaded_report(file_name: str, file_bytes: bytes, raw_dir: str = "repo
     """
     target_dir = Path(raw_dir)
     target_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Chuẩn hóa tên tập tin để tránh directory traversal
     safe_basename = Path(file_name).name
     destination = target_dir / safe_basename
@@ -86,15 +90,17 @@ def list_raw_report_files(raw_dir: str = "reports/raw") -> list[dict[str, Any]]:
 
     files = [f for f in target_dir.glob("*") if f.is_file() and not f.name.startswith(".")]
     files.sort(key=os.path.getmtime, reverse=True)
-    
+
     results = []
     for f in files:
-        results.append({
-            "name": f.name,
-            "path": str(f),
-            "size": f.stat().st_size,
-            "mtime": f.stat().st_mtime,
-        })
+        results.append(
+            {
+                "name": f.name,
+                "path": str(f),
+                "size": f.stat().st_size,
+                "mtime": f.stat().st_mtime,
+            }
+        )
     return results
 
 
@@ -103,7 +109,7 @@ def list_normalized_files(output_dir: str = "reports/normalized") -> list[str]:
     target_dir = Path(output_dir)
     if not target_dir.exists():
         return []
-    
+
     files = list(target_dir.glob("unified-findings-*.jsonl"))
     files.sort(key=os.path.getmtime, reverse=True)
     return [str(f) for f in files]

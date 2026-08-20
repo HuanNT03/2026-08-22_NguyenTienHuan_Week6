@@ -92,4 +92,3 @@ def test_document_type_accepts_document_enum() -> None:
     schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
     errors = list(Draft202012Validator(schema).iter_errors(document.to_canonical_dict()))
     assert errors == []
-

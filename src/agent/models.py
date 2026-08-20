@@ -69,9 +69,7 @@ class ReportEntry(BaseModel):
 
     severity: SeverityAssessment
     confidence: ConfidenceAssessment
-    correlation_type: Literal[
-        "sast_only", "dast_only", "sast_dast_confirmed", "sast_dast_suspected", "multi_sast"
-    ]
+    correlation_type: Literal["sast_only", "dast_only", "sast_dast_confirmed", "sast_dast_suspected", "multi_sast"]
     correlated_with: list[str] = Field(default_factory=list)
 
     evidence_summary: str = Field(min_length=1)
@@ -101,8 +99,8 @@ class AnalysisGroup(BaseModel):
     group_id: str = Field(min_length=1)
     primary_cwe: str | None = None
     findings: list[dict[str, Any]] = Field(default_factory=list)
-    correlation_type: Literal[
-        "sast_only", "dast_only", "sast_dast_confirmed", "sast_dast_suspected", "multi_sast"
-    ] = "sast_only"
+    correlation_type: Literal["sast_only", "dast_only", "sast_dast_confirmed", "sast_dast_suspected", "multi_sast"] = (
+        "sast_only"
+    )
     correlated_fingerprints: list[str] = Field(default_factory=list)
     source: str = "group_key"

@@ -48,14 +48,16 @@ def test_request_excerpt_uses_only_present_values(method, uri, parameter, expect
 
 
 def test_zap_direct_http_evidence_mapping() -> None:
-    finding = _normalize({
-        "uri": "http://juice-shop:3000/search",
-        "method": "get",
-        "param": "q",
-        "evidence": "matched header",
-        "otherinfo": "instance note",
-        "attack": "payload",
-    })
+    finding = _normalize(
+        {
+            "uri": "http://juice-shop:3000/search",
+            "method": "get",
+            "param": "q",
+            "evidence": "matched header",
+            "otherinfo": "instance note",
+            "attack": "payload",
+        }
+    )
     evidence = finding["evidence"]
 
     assert evidence["quality"] == "direct"

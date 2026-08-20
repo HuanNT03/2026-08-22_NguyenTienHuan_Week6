@@ -43,27 +43,31 @@ def _result(rule_id: str = "js/test-rule", rule_index: int = 0) -> dict[str, Any
         "ruleId": rule_id,
         "ruleIndex": rule_index,
         "message": {"text": "Instance-specific alert"},
-        "locations": [{
-            "physicalLocation": {
-                "artifactLocation": {"uri": "routes/search.ts"},
-                "region": {"startLine": 12, "startColumn": 4, "endLine": 12, "endColumn": 18},
-            },
-        }],
+        "locations": [
+            {
+                "physicalLocation": {
+                    "artifactLocation": {"uri": "routes/search.ts"},
+                    "region": {"startLine": 12, "startColumn": 4, "endLine": 12, "endColumn": 18},
+                },
+            }
+        ],
     }
 
 
 def _report() -> dict[str, Any]:
     return {
         "version": "2.1.0",
-        "runs": [{
-            "tool": {
-                "driver": {
-                    "version": "2.26.0",
-                    "rules": [_descriptor("js/test-rule", "Rule title", "Rule-level description")],
+        "runs": [
+            {
+                "tool": {
+                    "driver": {
+                        "version": "2.26.0",
+                        "rules": [_descriptor("js/test-rule", "Rule title", "Rule-level description")],
+                    },
                 },
-            },
-            "results": [_result()],
-        }],
+                "results": [_result()],
+            }
+        ],
     }
 
 
@@ -124,39 +128,41 @@ def test_missing_rule_descriptor_is_reported_without_fabricating_metadata() -> N
 def test_region_snippet_is_direct_evidence_without_changing_data_flow() -> None:
     report = _report()
     result = report["runs"][0]["results"][0]
-    result["locations"][0]["physicalLocation"]["region"]["snippet"] = {
-        "text": "const result = unsafe(input)"
-    }
-    result["codeFlows"] = [{
-        "threadFlows": [{
-            "locations": [
+    result["locations"][0]["physicalLocation"]["region"]["snippet"] = {"text": "const result = unsafe(input)"}
+    result["codeFlows"] = [
+        {
+            "threadFlows": [
                 {
-                    "location": {
-                        "physicalLocation": {
-                            "artifactLocation": {"uri": "routes/search.ts"},
-                            "region": {
-                                "startLine": 8,
-                                "snippet": {"text": "const input = req.query.q"},
+                    "locations": [
+                        {
+                            "location": {
+                                "physicalLocation": {
+                                    "artifactLocation": {"uri": "routes/search.ts"},
+                                    "region": {
+                                        "startLine": 8,
+                                        "snippet": {"text": "const input = req.query.q"},
+                                    },
+                                },
+                                "message": {"text": "req.query.q"},
                             },
                         },
-                        "message": {"text": "req.query.q"},
-                    },
-                },
-                {
-                    "location": {
-                        "physicalLocation": {
-                            "artifactLocation": {"uri": "routes/search.ts"},
-                            "region": {
-                                "startLine": 12,
-                                "snippet": {"text": "const result = unsafe(input)"},
+                        {
+                            "location": {
+                                "physicalLocation": {
+                                    "artifactLocation": {"uri": "routes/search.ts"},
+                                    "region": {
+                                        "startLine": 12,
+                                        "snippet": {"text": "const result = unsafe(input)"},
+                                    },
+                                },
+                                "message": {"text": "unsafe(input)"},
                             },
                         },
-                        "message": {"text": "unsafe(input)"},
-                    },
-                },
+                    ],
+                }
             ],
-        }],
-    }]
+        }
+    ]
 
     finding = _normalize(report).findings[0]
 
@@ -228,21 +234,25 @@ def test_related_context_allows_missing_id_message_and_artifact_uri_fallback() -
     report = _report()
     run = report["runs"][0]
     run["artifacts"] = [{"location": {"uri": "routes/related.ts"}}]
-    run["results"][0]["relatedLocations"] = [{
-        "physicalLocation": {
-            "artifactLocation": {"index": 0},
-            "region": {"startLine": 19},
-        },
-    }]
+    run["results"][0]["relatedLocations"] = [
+        {
+            "physicalLocation": {
+                "artifactLocation": {"index": 0},
+                "region": {"startLine": 19},
+            },
+        }
+    ]
 
     finding = _normalize(report).findings[0]
 
-    assert finding["evidence"]["code_evidence"]["related_context"] == [{
-        "id": None,
-        "message": None,
-        "path": "routes/related.ts",
-        "line": 19,
-    }]
+    assert finding["evidence"]["code_evidence"]["related_context"] == [
+        {
+            "id": None,
+            "message": None,
+            "path": "routes/related.ts",
+            "line": 19,
+        }
+    ]
 
 
 def test_primary_artifact_uri_falls_back_to_artifact_index() -> None:

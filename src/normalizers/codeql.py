@@ -126,13 +126,15 @@ def _data_flows(result: dict[str, Any]) -> list[dict[str, Any]] | None:
             sink = _flow_node(locations[-1], len(locations) - 1)
             if source is None or sink is None:
                 continue
-            flows.append({
-                "kind": "taint",
-                "engine": "codeql",
-                "source": source,
-                "steps": steps,
-                "sink": sink,
-            })
+            flows.append(
+                {
+                    "kind": "taint",
+                    "engine": "codeql",
+                    "source": source,
+                    "steps": steps,
+                    "sink": sink,
+                }
+            )
     return flows or None
 
 
@@ -169,16 +171,20 @@ def _group_key(
     location: dict[str, Any],
     rule_id: str,
 ) -> str:
-    return canonical_sha256("grp", "v1", {
-        "target": context.target_name,
-        "cwe_ids": cwe_ids,
-        "location": {"path": location["path"], "start_line": location["start_line"]},
-        "method": None,
-        "canonical_endpoint": None,
-        "parameter": None,
-        "fallback_rule_id": rule_id if not cwe_ids else None,
-        "rule_reference": None,
-    })
+    return canonical_sha256(
+        "grp",
+        "v1",
+        {
+            "target": context.target_name,
+            "cwe_ids": cwe_ids,
+            "location": {"path": location["path"], "start_line": location["start_line"]},
+            "method": None,
+            "canonical_endpoint": None,
+            "parameter": None,
+            "fallback_rule_id": rule_id if not cwe_ids else None,
+            "rule_reference": None,
+        },
+    )
 
 
 def _rule_descriptor(
@@ -220,7 +226,11 @@ def _diagnostics(sarif: dict[str, Any]) -> tuple[int, int, int]:
                     locations = notification.get("locations")
                     if isinstance(locations, list) and locations:
                         physical = _physical_location(locations[0])
-                        artifact = physical.get("artifactLocation") if isinstance(physical.get("artifactLocation"), dict) else {}
+                        artifact = (
+                            physical.get("artifactLocation")
+                            if isinstance(physical.get("artifactLocation"), dict)
+                            else {}
+                        )
                         uri = optional_string(artifact.get("uri"))
                         if uri is not None:
                             affected_files.add(uri)
@@ -247,14 +257,16 @@ def _related_context(result: dict[str, Any], run: dict[str, Any]) -> list[dict[s
         region = physical.get("region") if isinstance(physical.get("region"), dict) else {}
         raw_id = related.get("id")
         related_id = raw_id if isinstance(raw_id, int) and not isinstance(raw_id, bool) else None
-        normalized.append({
-            "id": related_id,
-            "message": nullable_text(
-                related.get("message", {}).get("text") if isinstance(related.get("message"), dict) else None
-            ),
-            "path": normalize_code_path(_artifact_uri(run, artifact)),
-            "line": positive_int(region.get("startLine")),
-        })
+        normalized.append(
+            {
+                "id": related_id,
+                "message": nullable_text(
+                    related.get("message", {}).get("text") if isinstance(related.get("message"), dict) else None
+                ),
+                "path": normalize_code_path(_artifact_uri(run, artifact)),
+                "line": positive_int(region.get("startLine")),
+            }
+        )
     return normalized
 
 
@@ -357,54 +369,60 @@ def normalize_codeql_report(
                     "native_confidence": native_confidence,
                 },
             )
-            raw_sources = [{
-                "format": "codeql-sarif",
-                "report_path": context.report_path,
-                "json_pointer": f"/runs/{run_index}/results/{result_index}",
-            }]
-            if rule_index is not None:
-                raw_sources.append({
-                    "format": "codeql-sarif-rule",
+            raw_sources = [
+                {
+                    "format": "codeql-sarif",
                     "report_path": context.report_path,
-                    "json_pointer": f"/runs/{run_index}/tool/driver/rules/{rule_index}",
-                })
-            finding.update({
-                "fingerprint": _fingerprint(context, result, rule_id, location),
-                "group_key": _group_key(context, cwe_ids, location, rule_id),
-                "title": short_description,
-                "description": _message_text(result.get("message")) or full_description,
-                "categories": [],
-                "severity": normalize_severity("codeql", native_severity),
-                "confidence": normalize_confidence("codeql", native_confidence),
-                "cwe_ids": cwe_ids,
-                "owasp_categories": normalize_owasp_categories(properties.get("tags")),
-                "wasc_ids": [],
-                "location": location,
-                "evidence": {
-                    "kind": "code",
-                    "code_evidence": {
-                        "code_snippet": {
-                            "content": snippet_content,
-                            "context_before": source_evidence.context_before,
-                            "context_after": source_evidence.context_after,
+                    "json_pointer": f"/runs/{run_index}/results/{result_index}",
+                }
+            ]
+            if rule_index is not None:
+                raw_sources.append(
+                    {
+                        "format": "codeql-sarif-rule",
+                        "report_path": context.report_path,
+                        "json_pointer": f"/runs/{run_index}/tool/driver/rules/{rule_index}",
+                    }
+                )
+            finding.update(
+                {
+                    "fingerprint": _fingerprint(context, result, rule_id, location),
+                    "group_key": _group_key(context, cwe_ids, location, rule_id),
+                    "title": short_description,
+                    "description": _message_text(result.get("message")) or full_description,
+                    "categories": [],
+                    "severity": normalize_severity("codeql", native_severity),
+                    "confidence": normalize_confidence("codeql", native_confidence),
+                    "cwe_ids": cwe_ids,
+                    "owasp_categories": normalize_owasp_categories(properties.get("tags")),
+                    "wasc_ids": [],
+                    "location": location,
+                    "evidence": {
+                        "kind": "code",
+                        "code_evidence": {
+                            "code_snippet": {
+                                "content": snippet_content,
+                                "context_before": source_evidence.context_before,
+                                "context_after": source_evidence.context_after,
+                            },
+                            "matched_contents": [],
+                            "related_context": related_context,
+                            "redacted": False,
+                            "truncated": False,
                         },
-                        "matched_contents": [],
-                        "related_context": related_context,
-                        "redacted": False,
-                        "truncated": False,
+                        "http_evidence": None,
+                        "quality": evidence_quality,
+                        "provenance": (
+                            f"{Path(context.report_path).name}:path={location['path']},"
+                            f"lines={location['start_line']}-{location['end_line']}"
+                        ),
                     },
-                    "http_evidence": None,
-                    "quality": evidence_quality,
-                    "provenance": (
-                        f"{Path(context.report_path).name}:path={location['path']},"
-                        f"lines={location['start_line']}-{location['end_line']}"
-                    ),
-                },
-                "data_flow": _data_flows(result),
-                "solution": None,
-                "references": [],
-                "raw_sources": raw_sources,
-            })
+                    "data_flow": _data_flows(result),
+                    "solution": None,
+                    "references": [],
+                    "raw_sources": raw_sources,
+                }
+            )
             findings.append(finding)
     extraction_errors, parse_errors, affected_files = _diagnostics(sarif)
     return ToolNormalizationResult(

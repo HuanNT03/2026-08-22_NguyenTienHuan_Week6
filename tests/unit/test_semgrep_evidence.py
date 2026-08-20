@@ -23,22 +23,24 @@ def _context(source_root: Path | None = None) -> NormalizationContext:
 def _report(lines="  sink(input)\n"):
     return {
         "version": "1.171.0",
-        "results": [{
-            "check_id": "typescript.test-rule",
-            "path": "/src/target-app/juice-shop/routes/example.ts",
-            "start": {"line": 3, "col": 3},
-            "end": {"line": 3, "col": 14},
-            "extra": {
-                "lines": lines,
-                "message": "test",
-                "severity": "WARNING",
-                "metadata": {},
-                "metavars": {
-                    "$Z_VALUE": {"abstract_content": "  zed"},
-                    "$A_VALUE": {},
+        "results": [
+            {
+                "check_id": "typescript.test-rule",
+                "path": "/src/target-app/juice-shop/routes/example.ts",
+                "start": {"line": 3, "col": 3},
+                "end": {"line": 3, "col": 14},
+                "extra": {
+                    "lines": lines,
+                    "message": "test",
+                    "severity": "WARNING",
+                    "metadata": {},
+                    "metavars": {
+                        "$Z_VALUE": {"abstract_content": "  zed"},
+                        "$A_VALUE": {},
+                    },
                 },
-            },
-        }],
+            }
+        ],
         "errors": [],
     }
 

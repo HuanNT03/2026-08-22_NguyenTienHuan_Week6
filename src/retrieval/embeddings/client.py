@@ -28,16 +28,9 @@ class EmbeddingClient:
         self.provider = provider
         self.dimension = int(os.getenv("EMBEDDING_DIMENSION", str(dimension)))
         self.api_key = (
-            os.getenv("EMBEDDING_API_KEY")
-            or os.getenv("OPENAI_API_KEY")
-            or os.getenv("GEMINI_API_KEY")
-            or ""
+            os.getenv("EMBEDDING_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("GEMINI_API_KEY") or ""
         )
-        self.base_url = (
-            os.getenv("EMBEDDING_BASE_URL")
-            or os.getenv("OPENAI_BASE_URL")
-            or None
-        )
+        self.base_url = os.getenv("EMBEDDING_BASE_URL") or os.getenv("OPENAI_BASE_URL") or None
         self.model = (
             model
             or os.getenv("EMBEDDING_MODEL")
@@ -58,9 +51,7 @@ class EmbeddingClient:
                 "to use dense semantic / hybrid retrieval."
             )
         if not self.model or not self.model.strip():
-            raise EmbeddingConfigurationError(
-                "Missing embedding model name. Please configure EMBEDDING_MODEL in .env."
-            )
+            raise EmbeddingConfigurationError("Missing embedding model name. Please configure EMBEDDING_MODEL in .env.")
 
     def embed_texts(self, texts: list[str]) -> list[list[float]]:
         """Generate normalized vector embeddings for a list of text passages using the configured model."""

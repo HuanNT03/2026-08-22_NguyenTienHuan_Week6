@@ -85,9 +85,7 @@ def read_cwe_csv(path: Path) -> list[CweCsvRecord]:
             if len(row) == len(header) + 1 and row[-1] == "":
                 row = row[:-1]
             if len(row) != len(header):
-                raise InvalidCweCsvRowError(
-                    f"{path}:{line_number}: expected {len(header)} columns, found {len(row)}"
-                )
+                raise InvalidCweCsvRowError(f"{path}:{line_number}: expected {len(header)} columns, found {len(row)}")
             fields = dict(zip(header, row, strict=True))
             cwe_id = fields["CWE-ID"].strip()
             if not cwe_id.isdigit() or int(cwe_id) < 1:
@@ -131,7 +129,8 @@ def _document(record: CweCsvRecord, *, in_view_1435: bool) -> KnowledgeDocument:
     for field, label in CONTENT_FIELDS:
         value = (
             normalize_plain_text(record.fields[field])
-            if field in {"Description", "Extended Description", "Weakness Abstraction", "Status", "Likelihood of Exploit"}
+            if field
+            in {"Description", "Extended Description", "Weakness Abstraction", "Status", "Likelihood of Exploit"}
             else normalize_structured_text(record.fields[field])
         )
         if value:

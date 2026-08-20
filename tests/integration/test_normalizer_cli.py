@@ -28,30 +28,38 @@ def _metadata() -> dict[str, object]:
 def _codeql_report() -> dict[str, object]:
     return {
         "version": "2.1.0",
-        "runs": [{
-            "tool": {
-                "driver": {
-                    "version": "2.26.0",
-                    "rules": [{
-                        "id": "js/test-rule",
-                        "shortDescription": {"text": "Test rule"},
-                        "fullDescription": {"text": "Rule description"},
-                        "properties": {"precision": "high", "security-severity": "7.5", "tags": []},
-                    }],
-                },
-            },
-            "results": [{
-                "ruleId": "js/test-rule",
-                "ruleIndex": 0,
-                "message": {"text": "Finding description"},
-                "locations": [{
-                    "physicalLocation": {
-                        "artifactLocation": {"uri": "routes/search.ts"},
-                        "region": {"startLine": 12, "startColumn": 4},
+        "runs": [
+            {
+                "tool": {
+                    "driver": {
+                        "version": "2.26.0",
+                        "rules": [
+                            {
+                                "id": "js/test-rule",
+                                "shortDescription": {"text": "Test rule"},
+                                "fullDescription": {"text": "Rule description"},
+                                "properties": {"precision": "high", "security-severity": "7.5", "tags": []},
+                            }
+                        ],
                     },
-                }],
-            }],
-        }],
+                },
+                "results": [
+                    {
+                        "ruleId": "js/test-rule",
+                        "ruleIndex": 0,
+                        "message": {"text": "Finding description"},
+                        "locations": [
+                            {
+                                "physicalLocation": {
+                                    "artifactLocation": {"uri": "routes/search.ts"},
+                                    "region": {"startLine": 12, "startColumn": 4},
+                                },
+                            }
+                        ],
+                    }
+                ],
+            }
+        ],
     }
 
 
@@ -74,15 +82,24 @@ def test_single_tool_cli_writes_timestamped_jsonl_and_prints_exact_path(tmp_path
     _write_json(report, _codeql_report())
     _write_json(metadata, _metadata())
 
-    status = cli.main([
-        "--tool", "codeql",
-        "--input", str(report),
-        "--metadata", str(metadata),
-        "--output-dir", str(output_dir),
-        "--source-root", str(SOURCE_FIXTURE_ROOT),
-        "--summary", str(summary),
-        "--schema", str(SCHEMA_PATH),
-    ])
+    status = cli.main(
+        [
+            "--tool",
+            "codeql",
+            "--input",
+            str(report),
+            "--metadata",
+            str(metadata),
+            "--output-dir",
+            str(output_dir),
+            "--source-root",
+            str(SOURCE_FIXTURE_ROOT),
+            "--summary",
+            str(summary),
+            "--schema",
+            str(SCHEMA_PATH),
+        ]
+    )
 
     captured = capsys.readouterr()
     assert status == 0
@@ -112,15 +129,24 @@ def test_single_tool_cli_marks_missing_source_evidence_partial(tmp_path: Path, m
     _write_json(report, _codeql_report())
     _write_json(metadata, _metadata())
 
-    status = cli.main([
-        "--tool", "codeql",
-        "--input", str(report),
-        "--metadata", str(metadata),
-        "--output-dir", str(output_dir),
-        "--source-root", str(tmp_path / "missing-source"),
-        "--summary", str(summary),
-        "--schema", str(SCHEMA_PATH),
-    ])
+    status = cli.main(
+        [
+            "--tool",
+            "codeql",
+            "--input",
+            str(report),
+            "--metadata",
+            str(metadata),
+            "--output-dir",
+            str(output_dir),
+            "--source-root",
+            str(tmp_path / "missing-source"),
+            "--summary",
+            str(summary),
+            "--schema",
+            str(SCHEMA_PATH),
+        ]
+    )
 
     finding = json.loads(output.read_text(encoding="utf-8").strip())
     payload = json.loads(summary.read_text(encoding="utf-8"))
@@ -153,14 +179,21 @@ def test_normalize_all_keeps_successful_tools_when_one_report_is_malformed(
     output = output_dir / "unified-findings-20260805T010000Z.jsonl"
     summary = tmp_path / "summary.json"
 
-    status = cli.main([
-        "normalize-all",
-        "--raw-dir", str(raw_dir),
-        "--output-dir", str(output_dir),
-        "--source-root", str(SOURCE_FIXTURE_ROOT),
-        "--summary", str(summary),
-        "--schema", str(SCHEMA_PATH),
-    ])
+    status = cli.main(
+        [
+            "normalize-all",
+            "--raw-dir",
+            str(raw_dir),
+            "--output-dir",
+            str(output_dir),
+            "--source-root",
+            str(SOURCE_FIXTURE_ROOT),
+            "--summary",
+            str(summary),
+            "--schema",
+            str(SCHEMA_PATH),
+        ]
+    )
 
     captured = capsys.readouterr()
     payload = json.loads(summary.read_text(encoding="utf-8"))
@@ -188,14 +221,22 @@ def test_invalid_schema_returns_structured_failure_without_traceback(tmp_path: P
     output_dir.mkdir(parents=True)
     output.write_text("stale output\n", encoding="utf-8")
 
-    status = cli.main([
-        "--tool", "codeql",
-        "--input", str(report),
-        "--metadata", str(metadata),
-        "--output-dir", str(output_dir),
-        "--summary", str(summary),
-        "--schema", str(schema),
-    ])
+    status = cli.main(
+        [
+            "--tool",
+            "codeql",
+            "--input",
+            str(report),
+            "--metadata",
+            str(metadata),
+            "--output-dir",
+            str(output_dir),
+            "--summary",
+            str(summary),
+            "--schema",
+            str(schema),
+        ]
+    )
 
     captured = capsys.readouterr()
     payload = json.loads(summary.read_text(encoding="utf-8"))
@@ -220,14 +261,22 @@ def test_invalid_metadata_fails_selected_tool_and_removes_stale_output(tmp_path:
     output_dir.mkdir(parents=True)
     output.write_text("stale output\n", encoding="utf-8")
 
-    status = cli.main([
-        "--tool", "codeql",
-        "--input", str(report),
-        "--metadata", str(metadata),
-        "--output-dir", str(output_dir),
-        "--summary", str(summary),
-        "--schema", str(SCHEMA_PATH),
-    ])
+    status = cli.main(
+        [
+            "--tool",
+            "codeql",
+            "--input",
+            str(report),
+            "--metadata",
+            str(metadata),
+            "--output-dir",
+            str(output_dir),
+            "--summary",
+            str(summary),
+            "--schema",
+            str(SCHEMA_PATH),
+        ]
+    )
 
     captured = capsys.readouterr()
     payload = json.loads(summary.read_text(encoding="utf-8"))
@@ -247,14 +296,21 @@ def test_normalize_all_skips_missing_pairs_when_one_tool_succeeds(tmp_path: Path
     output = output_dir / "unified-findings-20260805T010000Z.jsonl"
     summary = tmp_path / "summary.json"
 
-    status = cli.main([
-        "normalize-all",
-        "--raw-dir", str(raw_dir),
-        "--output-dir", str(output_dir),
-        "--source-root", str(SOURCE_FIXTURE_ROOT),
-        "--summary", str(summary),
-        "--schema", str(SCHEMA_PATH),
-    ])
+    status = cli.main(
+        [
+            "normalize-all",
+            "--raw-dir",
+            str(raw_dir),
+            "--output-dir",
+            str(output_dir),
+            "--source-root",
+            str(SOURCE_FIXTURE_ROOT),
+            "--summary",
+            str(summary),
+            "--schema",
+            str(SCHEMA_PATH),
+        ]
+    )
 
     captured = capsys.readouterr()
     payload = json.loads(summary.read_text(encoding="utf-8"))
@@ -285,13 +341,19 @@ def test_missing_metadata_skips_only_that_scanner(tmp_path: Path, monkeypatch) -
     output = output_dir / "unified-findings-20260805T010000Z.jsonl"
     summary = tmp_path / "summary.json"
 
-    status = cli.main([
-        "normalize-all",
-        "--raw-dir", str(raw_dir),
-        "--output-dir", str(output_dir),
-        "--summary", str(summary),
-        "--schema", str(SCHEMA_PATH),
-    ])
+    status = cli.main(
+        [
+            "normalize-all",
+            "--raw-dir",
+            str(raw_dir),
+            "--output-dir",
+            str(output_dir),
+            "--summary",
+            str(summary),
+            "--schema",
+            str(SCHEMA_PATH),
+        ]
+    )
 
     payload = json.loads(summary.read_text(encoding="utf-8"))
     assert status == 0
@@ -315,13 +377,19 @@ def test_all_missing_inputs_exit_nonzero_without_success_output(tmp_path: Path, 
     output_dir.mkdir(parents=True)
     output.write_text("stale output\n", encoding="utf-8")
 
-    status = cli.main([
-        "normalize-all",
-        "--raw-dir", str(raw_dir),
-        "--output-dir", str(output_dir),
-        "--summary", str(summary),
-        "--schema", str(SCHEMA_PATH),
-    ])
+    status = cli.main(
+        [
+            "normalize-all",
+            "--raw-dir",
+            str(raw_dir),
+            "--output-dir",
+            str(output_dir),
+            "--summary",
+            str(summary),
+            "--schema",
+            str(SCHEMA_PATH),
+        ]
+    )
 
     captured = capsys.readouterr()
     payload = json.loads(summary.read_text(encoding="utf-8"))
@@ -354,11 +422,16 @@ def test_full_curated_fixture_run_filters_external_zap_records(tmp_path: Path) -
     status = cli.main(
         [
             "normalize-all",
-            "--raw-dir", str(raw_dir),
-            "--output-dir", str(output_dir),
-            "--source-root", str(tmp_path / "missing-source"),
-            "--summary", str(summary),
-            "--schema", str(SCHEMA_PATH),
+            "--raw-dir",
+            str(raw_dir),
+            "--output-dir",
+            str(output_dir),
+            "--source-root",
+            str(tmp_path / "missing-source"),
+            "--summary",
+            str(summary),
+            "--schema",
+            str(SCHEMA_PATH),
         ],
         clock=fixed_clock,
     )

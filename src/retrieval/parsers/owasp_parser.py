@@ -113,7 +113,9 @@ def parse_owasp_file(path: Path) -> tuple[KnowledgeDocument, list[str]]:
         aliases_list.extend([alt_id, f"OWASP {alt_id}"])
 
     aliases = unique_casefold(aliases_list)
-    tags = unique_casefold(["owasp", "top-10", f"owasp-{version}", *re.findall(r"[a-z0-9]+", category_title.casefold())])
+    tags = unique_casefold(
+        ["owasp", "top-10", f"owasp-{version}", *re.findall(r"[a-z0-9]+", category_title.casefold())]
+    )
     document = KnowledgeDocument(
         doc_id=f"owasp-{version}-a{category_number}",
         doc_type="owasp_category",
@@ -143,11 +145,7 @@ def parse_owasp_directory(path: Path) -> tuple[list[KnowledgeDocument], list[str
     files = sorted(
         path_item
         for path_item in path.rglob("*.md")
-        if (
-            path_item.name.startswith("A")
-            or path_item.name.startswith("0xa")
-            or path_item.name.startswith("0x")
-        )
+        if (path_item.name.startswith("A") or path_item.name.startswith("0xa") or path_item.name.startswith("0x"))
     )
     for source_path in files:
         try:

@@ -136,7 +136,3 @@ def test_check_target_health_all_fail(monkeypatch):
     assert is_alive is False
     assert code == 0
     assert "http://127.0.0.1:" in url
-
-
-
-

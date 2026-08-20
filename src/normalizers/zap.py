@@ -48,15 +48,19 @@ def _fingerprint(
     endpoint: str,
     parameter: str | None,
 ) -> str:
-    return canonical_sha256("fp", "v1", {
-        "target": context.target_name,
-        "tool": "zap",
-        "plugin_id": plugin_id,
-        "alert_ref": alert_ref,
-        "method": method,
-        "endpoint": endpoint,
-        "parameter": parameter,
-    })
+    return canonical_sha256(
+        "fp",
+        "v1",
+        {
+            "target": context.target_name,
+            "tool": "zap",
+            "plugin_id": plugin_id,
+            "alert_ref": alert_ref,
+            "method": method,
+            "endpoint": endpoint,
+            "parameter": parameter,
+        },
+    )
 
 
 def _group_key(
@@ -67,16 +71,20 @@ def _group_key(
     parameter: str | None,
     rule_reference: str,
 ) -> str:
-    return canonical_sha256("grp", "v1", {
-        "target": context.target_name,
-        "cwe_ids": cwe_ids,
-        "location": {"path": None, "start_line": None},
-        "method": method,
-        "canonical_endpoint": endpoint,
-        "parameter": parameter,
-        "fallback_rule_id": None,
-        "rule_reference": rule_reference,
-    })
+    return canonical_sha256(
+        "grp",
+        "v1",
+        {
+            "target": context.target_name,
+            "cwe_ids": cwe_ids,
+            "location": {"path": None, "start_line": None},
+            "method": method,
+            "canonical_endpoint": endpoint,
+            "parameter": parameter,
+            "fallback_rule_id": None,
+            "rule_reference": rule_reference,
+        },
+    )
 
 
 def _request_excerpt(method: str | None, uri: str | None, parameter: str | None) -> str | None:
@@ -137,11 +145,13 @@ def normalize_zap_report(
             description_result = strip_html_with_status(alert.get("desc"))
             solution_result = strip_html_with_status(alert.get("solution"))
             references_result = extract_urls_with_status(alert.get("reference"))
-            text_parse_errors += sum((
-                description_result.had_error,
-                solution_result.had_error,
-                references_result.had_error,
-            ))
+            text_parse_errors += sum(
+                (
+                    description_result.had_error,
+                    solution_result.had_error,
+                    references_result.had_error,
+                )
+            )
             cwe_ids = normalize_cwe_ids(alert.get("cweid"))
             wasc_ids = normalize_wasc_ids(alert.get("wascid"))
             for instance_index, instance in enumerate(instances):
@@ -184,50 +194,54 @@ def normalize_zap_report(
                         "native_confidence": native_confidence,
                     },
                 )
-                finding.update({
-                    "fingerprint": _fingerprint(context, plugin_id, alert_ref, method, endpoint, parameter),
-                    "group_key": _group_key(context, cwe_ids, method, endpoint, parameter, rule_reference),
-                    "title": optional_string(alert.get("name")),
-                    "description": description_result.value,
-                    "categories": [],
-                    "severity": normalize_severity("zap", native_severity),
-                    "confidence": normalize_confidence("zap", native_confidence),
-                    "cwe_ids": cwe_ids,
-                    "owasp_categories": [],
-                    "wasc_ids": wasc_ids,
-                    "location": {
-                        "kind": "http",
-                        "uri": uri,
-                        "endpoint": endpoint,
-                        "method": method,
-                        "parameter": parameter,
-                    },
-                    "evidence": {
-                        "kind": "http",
-                        "code_evidence": None,
-                        "http_evidence": {
-                            "request_excerpt": _request_excerpt(method, uri, parameter),
-                            "matched_evidence": matched_evidence,
-                            "context_note": context_note,
-                            "attack_payload": nullable_text(instance.get("attack")),
-                            "redacted": False,
-                            "truncated": False,
+                finding.update(
+                    {
+                        "fingerprint": _fingerprint(context, plugin_id, alert_ref, method, endpoint, parameter),
+                        "group_key": _group_key(context, cwe_ids, method, endpoint, parameter, rule_reference),
+                        "title": optional_string(alert.get("name")),
+                        "description": description_result.value,
+                        "categories": [],
+                        "severity": normalize_severity("zap", native_severity),
+                        "confidence": normalize_confidence("zap", native_confidence),
+                        "cwe_ids": cwe_ids,
+                        "owasp_categories": [],
+                        "wasc_ids": wasc_ids,
+                        "location": {
+                            "kind": "http",
+                            "uri": uri,
+                            "endpoint": endpoint,
+                            "method": method,
+                            "parameter": parameter,
                         },
-                        "quality": evidence_quality,
-                        "provenance": (
-                            f"{Path(context.report_path).name}:site[{site_index if site_index is not None else 0}]"
-                            f".alerts[{alert_index}].instances[{instance_index}]"
-                        ),
-                    },
-                    "data_flow": None,
-                    "solution": solution_result.value,
-                    "references": references_result.urls,
-                    "raw_sources": [{
-                        "format": "zap-json",
-                        "report_path": context.report_path,
-                        "json_pointer": _pointer(site_index, alert_index, instance_index),
-                    }],
-                })
+                        "evidence": {
+                            "kind": "http",
+                            "code_evidence": None,
+                            "http_evidence": {
+                                "request_excerpt": _request_excerpt(method, uri, parameter),
+                                "matched_evidence": matched_evidence,
+                                "context_note": context_note,
+                                "attack_payload": nullable_text(instance.get("attack")),
+                                "redacted": False,
+                                "truncated": False,
+                            },
+                            "quality": evidence_quality,
+                            "provenance": (
+                                f"{Path(context.report_path).name}:site[{site_index if site_index is not None else 0}]"
+                                f".alerts[{alert_index}].instances[{instance_index}]"
+                            ),
+                        },
+                        "data_flow": None,
+                        "solution": solution_result.value,
+                        "references": references_result.urls,
+                        "raw_sources": [
+                            {
+                                "format": "zap-json",
+                                "report_path": context.report_path,
+                                "json_pointer": _pointer(site_index, alert_index, instance_index),
+                            }
+                        ],
+                    }
+                )
                 findings.append(finding)
     sorted_out_of_scope_uris = sorted(out_of_scope_uris)
     return ToolNormalizationResult(

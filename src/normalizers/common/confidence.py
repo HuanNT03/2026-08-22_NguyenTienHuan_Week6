@@ -7,8 +7,11 @@ def normalize_confidence(tool_name: str, native_value: Any) -> str:
     tool = tool_name.strip().lower()
     value = str(native_value).strip().lower().replace("-", "_").replace(" ", "_")
     common = {
-        "false_positive": "false_positive", "low": "low", "medium": "medium",
-        "high": "high", "confirmed": "confirmed",
+        "false_positive": "false_positive",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "confirmed": "confirmed",
     }
     if tool == "zap":
         return {"0": "false_positive", "1": "low", "2": "medium", "3": "high", "4": "confirmed"}.get(value, "unknown")

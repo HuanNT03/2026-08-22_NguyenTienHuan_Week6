@@ -34,16 +34,13 @@ def maximal_marginal_relevance(
     score_range = max_score - min_score if max_score > min_score else 1.0
 
     normalized_rel: dict[str, float] = {
-        doc_id: (candidate_relevance_scores.get(doc_id, 0.0) - min_score) / score_range
-        for doc_id in candidate_doc_ids
+        doc_id: (candidate_relevance_scores.get(doc_id, 0.0) - min_score) / score_range for doc_id in candidate_doc_ids
     }
 
     # Convert vectors to numpy arrays
     q_vec = np.array(query_vector, dtype=float)
     doc_vectors: dict[str, np.ndarray] = {
-        doc_id: np.array(vec, dtype=float)
-        for doc_id, vec in candidate_vectors.items()
-        if len(vec) > 0
+        doc_id: np.array(vec, dtype=float) for doc_id, vec in candidate_vectors.items() if len(vec) > 0
     }
 
     selected: list[str] = []
@@ -53,8 +50,8 @@ def maximal_marginal_relevance(
     if unselected:
         initial_doc = max(
             unselected,
-            key=lambda d: normalized_rel.get(d, 0.0) + (
-                cosine_similarity(q_vec, doc_vectors[d]) if d in doc_vectors else 0.0
+            key=lambda d: (
+                normalized_rel.get(d, 0.0) + (cosine_similarity(q_vec, doc_vectors[d]) if d in doc_vectors else 0.0)
             ),
         )
         selected.append(initial_doc)
@@ -73,11 +70,7 @@ def maximal_marginal_relevance(
                 rel = normalized_rel.get(doc_id, 0.0)
 
             if v_i is not None and selected:
-                max_sim_to_selected = max(
-                    cosine_similarity(v_i, doc_vectors[s])
-                    for s in selected
-                    if s in doc_vectors
-                )
+                max_sim_to_selected = max(cosine_similarity(v_i, doc_vectors[s]) for s in selected if s in doc_vectors)
             else:
                 max_sim_to_selected = 0.0
 

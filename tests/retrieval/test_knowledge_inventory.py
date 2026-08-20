@@ -47,9 +47,7 @@ def test_collection_result_ingests_all_sources() -> None:
 
 
 def test_every_curated_example_is_listed_in_review_document() -> None:
-    review = (
-        PROJECT_ROOT / "docs" / "reports" / "week2" / "week-2-knowledgebase.md"
-    ).read_text(encoding="utf-8")
+    review = (PROJECT_ROOT / "docs" / "reports" / "week2" / "week-2-knowledgebase.md").read_text(encoding="utf-8")
     examples = parse_example_directory(EXAMPLES_DIR)
     for document in examples:
         assert document.doc_id in review

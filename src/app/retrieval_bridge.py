@@ -41,7 +41,7 @@ def search_knowledge_base(
         raise FileNotFoundError(f"Database Knowledge Base không tồn tại tại: {db_path}. Vui lòng chạy 'make kb-build'.")
 
     service = KnowledgeSearchService(index_path=db_path)
-    
+
     # Lọc bỏ doc_type không hợp lệ
     valid_doc_type = doc_type if doc_type in DOCUMENT_TYPES else None
 
@@ -95,4 +95,3 @@ def inspect_knowledge_document(doc_id: str, index_path: str | Path | None = None
         return result_dict
     except Exception:  # noqa: BLE001
         return None
-

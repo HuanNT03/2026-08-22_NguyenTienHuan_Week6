@@ -32,9 +32,7 @@ def validate_sqlite_capabilities() -> None:
     """Require working SQLite JSON functions and FTS5 from the active Python runtime."""
     connection = sqlite3.connect(":memory:")
     try:
-        row = connection.execute(
-            "SELECT value FROM json_each('[1, 2, 3]') LIMIT 1"
-        ).fetchone()
+        row = connection.execute("SELECT value FROM json_each('[1, 2, 3]') LIMIT 1").fetchone()
         if row is None or row[0] != 1:
             raise UnsupportedSQLiteError("SQLite JSON support returned an unexpected result.")
         connection.execute("CREATE VIRTUAL TABLE fts_smoke_test USING fts5(content)")
