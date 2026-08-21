@@ -1,7 +1,9 @@
-FROM python:3.11-slim
+FROM python:3.11-slim-bookworm
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get clean && \
+    apt-get update -o Acquire::Retries=3 && \
+    apt-get install -y --no-install-recommends \
     curl \
     git \
     sqlite3 \

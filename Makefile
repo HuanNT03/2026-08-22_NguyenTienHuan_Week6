@@ -10,7 +10,7 @@ VENV_PIP := $(VENV)/bin/pip
 .PHONY: help venv install doctor setup-target verify-target down status \
 	target-build target-up target-wait target-smoke target-down target-logs target-status \
 	lint test test-contracts test-python quality sast sast-semgrep sast-codeql dast dast-zap-fullscan dast-zap-admin dast-zap-fullscan-admin dast-sqlmap validate-reports week1 normalize clean-reports clean \
-	ui-build ui ui-down ui-logs
+	ui-build ui-rebuild ui ui-down ui-logs
 
 help: ## Show available commands.
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -213,10 +213,13 @@ agent-test: kb-python-check ## Run Security Analysis Agent tests.
 agent-lint: kb-python-check ## Lint Security Analysis Agent code.
 	@$(VENV_PYTHON) -m ruff check src/agent tests/agent
 
-.PHONY: ui-build ui ui-down ui-logs
+.PHONY: ui-build ui-rebuild ui ui-down ui-logs
 
 ui-build: ## Build the Streamlit Web UI Docker container.
 	docker compose build sentinel-ui
+
+ui-rebuild: ## Clean rebuild the Sentinel UI Docker container (no cache & pull latest base).
+	docker compose build --no-cache --pull sentinel-ui
 
 ui: ## Start the Sentinel Web UI in the background.
 	docker compose up -d sentinel-ui
