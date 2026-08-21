@@ -36,14 +36,14 @@ flowchart TD
     subgraph GuardrailsEngine [4. Động Cơ Guardrails Xử Lý Phản Hồi]
         RawResp[Raw Untrusted HTTP Response]
         Redactor[VỊ TRÍ 2: mask_sensitive_data<br/>Khử khuẩn 100% PII / Secrets / JWT]
-        DetectInj{VỊ TRÍ 3: detect_prompt_injection<br/>Quét Injection Song Ngữ?}
-        WrapWarning[VỊ TRÍ 4: format_injection_warning<br/>Bọc khối cảnh báo an ninh Sentinel]
-        WrapXML[Đóng gói XML Boundary<br/>&lt;untrusted_http_response&gt;]
+        WrapXML[VỊ TRÍ 3: Đóng gói XML Boundary<br/>&lt;untrusted_http_response&gt;]
+        DetectInj{VỊ TRÍ 4: detect_prompt_injection<br/>Quét Injection Song Ngữ?}
+        WrapWarning[VỊ TRÍ 5: format_injection_warning<br/>Bọc khối cảnh báo an ninh ngoài cùng]
     end
 
     subgraph Downstream [5. Phân Tích & Ghi Vết Kiểm Toán]
         AgentLLM[AI Security Analysis Agent<br/>Phân tích an toàn, 0 compliance]
-        AuditLog[VỊ TRÍ 5: logs/gateway_audit.jsonl<br/>Ghi log 100% đã che PII]
+        AuditLog[VỊ TRÍ 6: logs/gateway_audit.jsonl<br/>Ghi log 100% đã che PII]
         Report[Báo Cáo An Ninh Xác Thực<br/>metadata.prompt_injection_detected]
     end
 
@@ -54,11 +54,11 @@ flowchart TD
 
     AgentLLM -.->|Đề xuất kiểm thử| SafeReq
     SafeReq --> KongGW --> TargetApp --> RawResp
-    RawResp --> Redactor --> DetectInj
-    DetectInj -->|Có dấu hiệu Injection| WrapWarning --> WrapXML
-    DetectInj -->|Bình thường| WrapXML
-    WrapXML --> AgentLLM
-    WrapXML --> AuditLog
+    RawResp --> Redactor --> WrapXML --> DetectInj
+    DetectInj -->|Có dấu hiệu Injection| WrapWarning --> AgentLLM
+    DetectInj -->|Có dấu hiệu Injection| WrapWarning --> AuditLog
+    DetectInj -->|Bình thường| AgentLLM
+    DetectInj -->|Bình thường| AuditLog
     AgentLLM --> Report
 ```
 
