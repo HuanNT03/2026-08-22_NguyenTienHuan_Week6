@@ -5,7 +5,8 @@ FROM ubuntu:24.04 AS downloader
 
 ARG CODEQL_VERSION
 
-RUN apt-get update \
+RUN printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' > /etc/apt/apt.conf.d/80retries && \
+    apt-get update \
     && apt-get install --yes --no-install-recommends ca-certificates curl \
     && rm -rf /var/lib/apt/lists/*
 
@@ -26,7 +27,8 @@ RUN set -eux; \
 # ==========================================
 FROM ubuntu:24.04
 
-RUN apt-get update \
+RUN printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' > /etc/apt/apt.conf.d/80retries && \
+    apt-get update \
     && apt-get install --yes --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 

@@ -3,8 +3,8 @@
 # ==========================================
 FROM python:3.11-slim-bookworm AS asset-fetcher
 
-RUN apt-get clean && \
-    apt-get update -o Acquire::Retries=3 && \
+RUN printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' > /etc/apt/apt.conf.d/80retries && \
+    apt-get update && \
     apt-get install -y --no-install-recommends curl ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
@@ -20,9 +20,9 @@ RUN curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-26.
 # ==========================================
 FROM python:3.11-slim-bookworm
 
-# Install system dependencies
-RUN apt-get clean && \
-    apt-get update -o Acquire::Retries=3 && \
+# Install system dependencies with persistent APT retries
+RUN printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' > /etc/apt/apt.conf.d/80retries && \
+    apt-get update && \
     apt-get install -y --no-install-recommends \
     curl \
     git \
@@ -34,15 +34,18 @@ RUN apt-get clean && \
 # Copy static Docker CLI and Docker Compose binaries from asset-fetcher stage
 COPY --from=asset-fetcher /usr/local/bin/docker /usr/local/bin/docker
 COPY --from=asset-fetcher /cli-plugins/docker-compose /usr/libexec/docker/cli-plugins/docker-compose
-RUN ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose
+RUN ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose && \
+    mkdir -p /usr/local/lib/docker/cli-plugins && \
+    ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose
 
 WORKDIR /workspace
 
 # Copy dependency definition files first for Docker layer cache optimization
 COPY pyproject.toml requirements.txt ./
 
-# Install third-party Python dependencies first (cached by Docker when requirements don't change)
-RUN pip install --no-cache-dir --default-timeout=100 --retries 10 -r requirements.txt
+# Upgrade pip to prevent hash/stream bugs in pip 24.0, then install third-party Python dependencies
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir --default-timeout=100 --retries 10 -r requirements.txt
 
 # Copy source code after dependencies are installed
 COPY . .
