@@ -1,3 +1,23 @@
+# ==========================================
+# Stage 1: Asset Fetcher (Static Binaries)
+# ==========================================
+FROM python:3.11-slim-bookworm AS asset-fetcher
+
+RUN apt-get clean && \
+    apt-get update -o Acquire::Retries=3 && \
+    apt-get install -y --no-install-recommends curl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+# Download static Docker CLI and Docker Compose binaries for socket passthrough
+RUN curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-26.1.4.tgz | tar -xz -C /tmp && \
+    mv /tmp/docker/docker /usr/local/bin/docker && \
+    mkdir -p /cli-plugins && \
+    curl -fsSL https://github.com/docker/compose/releases/download/v2.29.2/docker-compose-linux-x86_64 -o /cli-plugins/docker-compose && \
+    chmod +x /cli-plugins/docker-compose
+
+# ==========================================
+# Stage 2: Sentinel UI Runtime
+# ==========================================
 FROM python:3.11-slim-bookworm
 
 # Install system dependencies
@@ -11,14 +31,10 @@ RUN apt-get clean && \
     jq \
     && rm -rf /var/lib/apt/lists/*
 
-# Install static Docker CLI and Docker Compose binaries for socket passthrough
-RUN curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-26.1.4.tgz | tar -xz -C /tmp && \
-    mv /tmp/docker/docker /usr/local/bin/ && \
-    rm -rf /tmp/docker && \
-    mkdir -p /usr/libexec/docker/cli-plugins && \
-    curl -fsSL https://github.com/docker/compose/releases/download/v2.29.2/docker-compose-linux-x86_64 -o /usr/libexec/docker/cli-plugins/docker-compose && \
-    chmod +x /usr/libexec/docker/cli-plugins/docker-compose && \
-    ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose
+# Copy static Docker CLI and Docker Compose binaries from asset-fetcher stage
+COPY --from=asset-fetcher /usr/local/bin/docker /usr/local/bin/docker
+COPY --from=asset-fetcher /cli-plugins/docker-compose /usr/libexec/docker/cli-plugins/docker-compose
+RUN ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose
 
 WORKDIR /workspace
 
