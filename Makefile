@@ -9,6 +9,7 @@ VENV_PIP := $(VENV)/bin/pip
 
 .PHONY: help venv install doctor setup-target verify-target down status \
 	target-build target-up target-wait target-smoke target-down target-logs target-status \
+	gateway-up gateway-down gateway-logs gateway-status \
 	lint test test-contracts test-python quality sast sast-semgrep sast-codeql dast dast-zap-fullscan dast-zap-admin dast-zap-fullscan-admin dast-sqlmap validate-reports week1 normalize clean-reports clean \
 	ui-build ui-rebuild ui ui-down ui-logs
 
@@ -52,11 +53,24 @@ target-logs: ## Follow Juice Shop target container logs.
 target-status: ## Show Juice Shop target container status.
 	docker compose ps juice-shop
 
+gateway-up: verify-target ## Start Kong Gateway and Juice Shop together with host port 3000 mapped to Gateway.
+	docker compose -f docker-compose.yml -f docker-compose.gateway.yml up -d juice-shop kong-gateway
+
+gateway-down: ## Stop and remove Kong Gateway and Juice Shop containers.
+	docker compose -f docker-compose.yml -f docker-compose.gateway.yml stop kong-gateway juice-shop && \
+	docker compose -f docker-compose.yml -f docker-compose.gateway.yml rm -f kong-gateway juice-shop
+
+gateway-logs: ## Follow Kong Gateway container logs.
+	docker compose -f docker-compose.yml -f docker-compose.gateway.yml logs --follow kong-gateway
+
+gateway-status: ## Show Kong Gateway and Juice Shop service status.
+	docker compose -f docker-compose.yml -f docker-compose.gateway.yml ps kong-gateway juice-shop
+
 down: ## Stop all Sentinel Compose resources.
-	docker compose down --remove-orphans
+	docker compose -f docker-compose.yml -f docker-compose.gateway.yml down --remove-orphans
 
 status: ## Show Compose service status.
-	docker compose ps
+	docker compose -f docker-compose.yml -f docker-compose.gateway.yml ps
 
 lint: ## Lint Python, syntax-check shell scripts, and validate Compose configuration.
 	@if [[ -x "$(VENV_PYTHON)" ]]; then \
@@ -66,6 +80,7 @@ lint: ## Lint Python, syntax-check shell scripts, and validate Compose configura
 	fi
 	bash -n scripts/*.sh
 	docker compose config --quiet
+	docker compose -f docker-compose.yml -f docker-compose.gateway.yml config --quiet
 
 test: test-contracts test-python ## Run repository and Python tests.
 

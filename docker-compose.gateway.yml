@@ -1,0 +1,37 @@
+name: soc_sentinel_project
+
+services:
+  juice-shop:
+    ports: !override []
+
+  kong-gateway:
+    image: kong:3.6.1
+    container_name: sentinel-kong-gateway
+    restart: always
+    command: /bin/sh -c "luajit /usr/local/kong/declarative/render_config.lua && exec /docker-entrypoint.sh kong docker-start"
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /tmp/kong.yml
+      KONG_DNS_RESOLVER: "127.0.0.11"
+      KONG_DNS_ORDER: "A,CNAME"
+      KONG_DECLARATIVE_CONFIG_ENV_SUBST: "on"
+      KONG_VAULT_ENV_AGENT_API_KEY: ${KONG_VAULT_ENV_AGENT_API_KEY:-sentinel-agent-secure-key-2026}
+      AGENT_API_KEY: ${AGENT_API_KEY:-sentinel-agent-secure-key-2026}
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_PROXY_LISTEN: 0.0.0.0:8000
+    volumes:
+      - ./configs/gateway/kong.yml.template:/usr/local/kong/declarative/kong.yml.template:ro
+      - ./configs/gateway/render_config.lua:/usr/local/kong/declarative/render_config.lua:ro
+      - ./configs/gateway/allowlist.json:/usr/local/kong/declarative/allowlist.json:ro
+    ports:
+      - "127.0.0.1:${GATEWAY_PORT:-3000}:8000"
+      - "127.0.0.1:${KONG_ADMIN_PORT:-8001}:8001"
+    depends_on:
+      juice-shop:
+        condition: service_healthy
+    networks:
+      - security
