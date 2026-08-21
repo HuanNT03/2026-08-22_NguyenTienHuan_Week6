@@ -17,13 +17,13 @@ CONNECTION_STRING_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-# 3. Inline Secrets, Passwords, API Keys (English & Vietnamese keywords)
+# 3. Inline Secrets, Passwords, API Keys (English & Vietnamese keywords, JSON & text)
 INLINE_PASSWORD_PATTERN = re.compile(
-    r"(?i)\b(password|passwd|pwd|pass|mật\s*khẩu)\s*(?:[:=]|is|\blà\b)\s*[\"']?([^\s\"',;}{]+)[\"']?",
+    r'("?(?:password|passwd|pwd|pass|mật\s*khẩu)"?\s*(?:[:=]|is|\blà\b)\s*["\']?)[^\s"\'},;]+(["\']?)',
     re.IGNORECASE,
 )
 INLINE_SECRET_PATTERN = re.compile(
-    r"(?i)\b(secret(?:_key)?|api[_\s]?key|access[_\s]?token|auth[_\s]?token)\s*(?:[:=]|is|\blà\b)\s*[\"']?([^\s\"',;}{]+)[\"']?",
+    r'("?(?:secret(?:_key)?|api[_\s]?key|access[_\s]?token|auth[_\s]?token)"?\s*(?:[:=]|is|\blà\b)\s*["\']?)[^\s"\'},;]+(["\']?)',
     re.IGNORECASE,
 )
 GENERIC_SECRET_KEY_PATTERN = re.compile(r"\b(?:sk|pk)_(?:live|test|proj)_[0-9a-zA-Z]{16,}\b|\bsk-[a-zA-Z0-9_\-]{8,}\b")
@@ -84,8 +84,8 @@ def _mask_string(text: str) -> str:
     res = CONNECTION_STRING_PATTERN.sub(r"\1:[REDACTED_PASSWORD]\3", res)
 
     # 3. Inline passwords & secrets
-    res = INLINE_PASSWORD_PATTERN.sub(r"\1=[REDACTED_PASSWORD]", res)
-    res = INLINE_SECRET_PATTERN.sub(r"\1=[REDACTED_SECRET]", res)
+    res = INLINE_PASSWORD_PATTERN.sub(r"\1[REDACTED_PASSWORD]\2", res)
+    res = INLINE_SECRET_PATTERN.sub(r"\1[REDACTED_SECRET]\2", res)
     res = GENERIC_SECRET_KEY_PATTERN.sub("[REDACTED_SECRET]", res)
 
     # 4. Credit card PAN

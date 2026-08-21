@@ -5,7 +5,7 @@ import logging
 from typing import Any
 
 from src.agent.models import AnalysisGroup
-from src.agent.redaction import redact_sensitive_data
+from src.guardrails.redactor import mask_sensitive_data
 from src.retrieval.service import KnowledgeSearchService, SearchResult
 
 logger = logging.getLogger(__name__)
@@ -99,5 +99,5 @@ def build_user_prompt(group: AnalysisGroup, kb_snippets: list[dict[str, Any]]) -
     }
 
     # Redact sensitive data before returning string
-    redacted_payload = redact_sensitive_data(payload)
+    redacted_payload = mask_sensitive_data(payload)
     return json.dumps(redacted_payload, indent=2, ensure_ascii=False)
