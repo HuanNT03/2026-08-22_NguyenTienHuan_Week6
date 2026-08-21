@@ -286,7 +286,6 @@ Toàn bộ quy trình quét, chuẩn hóa và phân tích có thể chạy tự 
 # BƯỚC 1: Quét SAST và DAST
 make sast              # Chạy Semgrep và CodeQL phân tích mã nguồn
 make dast              # Chạy OWASP ZAP Baseline DAST
-make dast-sqlmap       # Chạy sqlmap kiểm thử SQL Injection
 
 # BƯỚC 2: Kiểm tra và Chuẩn hóa Scanner Reports
 make validate-reports  # Xác thực định dạng raw reports trong reports/raw/
