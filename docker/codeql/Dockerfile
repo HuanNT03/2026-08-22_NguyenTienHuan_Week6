@@ -1,4 +1,7 @@
-FROM ubuntu:24.04
+# ==========================================
+# Stage 1: Downloader & Verifier
+# ==========================================
+FROM ubuntu:24.04 AS downloader
 
 ARG CODEQL_VERSION
 
@@ -16,11 +19,18 @@ RUN set -eux; \
     curl --fail --location --retry 10 --retry-all-errors --retry-delay 5 -C - --output "$asset.checksum.txt" "$release_url/$asset.checksum.txt"; \
     sha256sum -c "$asset.checksum.txt"; \
     tar -xzf "$asset" -C /opt; \
-    ln -s /opt/codeql/codeql /usr/local/bin/codeql; \
     rm -rf /tmp/codeql-download
+
+# ==========================================
+# Stage 2: CodeQL Analysis Runtime
+# ==========================================
+FROM ubuntu:24.04
 
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
-RUN chmod -R a+rX /opt/codeql
+COPY --from=downloader /opt/codeql /opt/codeql
+
+RUN ln -s /opt/codeql/codeql /usr/local/bin/codeql \
+    && chmod -R a+rX /opt/codeql
