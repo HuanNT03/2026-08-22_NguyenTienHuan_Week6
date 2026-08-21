@@ -1,0 +1,28 @@
+{
+  "description": "Safe, bounded security test payload catalog for Project Sentinel Verification Probes.",
+  "payload_groups": {
+    "boundary_testing": {
+      "long_string": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "empty_string": "",
+      "null_value": null
+    },
+    "character_encoding": {
+      "special_characters": "!@#$%^&*()_+-=[]{}|;:,.<>?/`~",
+      "unicode_vietnamese": "Kiểm thử bảo mật an ninh ứng dụng Project Sentinel 2026",
+      "url_encoded": "%27%20OR%20%271%27%3D%271"
+    },
+    "sql_injection_probes": {
+      "benign_single_quote": "'",
+      "classic_tautology": "' OR '1'='1",
+      "comment_dash": "admin' --"
+    },
+    "cross_site_scripting_probes": {
+      "script_alert": "<script>alert('Sentinel')</script>",
+      "img_onerror": "<img src=x onerror=console.log(1)>"
+    },
+    "rate_limiting_probes": {
+      "rapid_burst_count": 25,
+      "interval_seconds": 0.1
+    }
+  }
+}

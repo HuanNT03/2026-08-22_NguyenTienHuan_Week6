@@ -1,0 +1,119 @@
+{
+  "clients": {
+    "agent": {
+      "consumer": "ai-agent",
+      "auth_method": "key-auth",
+      "rate_limit_per_minute": 20
+    },
+    "guest": {
+      "consumer": "anonymous-user",
+      "auth_method": "anonymous",
+      "rate_limit_per_minute": 60
+    },
+    "user": {
+      "consumer": "juice-shop-users",
+      "auth_method": "jwt",
+      "rate_limit_per_minute": 100
+    }
+  },
+  "routes": [
+    {
+      "name": "route-spa-root",
+      "paths": ["~^/$", "/index.html"],
+      "methods": ["GET", "HEAD", "OPTIONS"],
+      "allow": ["agent", "guest", "user"],
+      "_note": "Khớp chính xác duy nhất trang chủ gốc / và index.html — Loại bỏ hoàn toàn wildcard"
+    },
+    {
+      "name": "route-spa-assets",
+      "paths": [
+        "/assets",
+        "/vendor",
+        "~^/[a-zA-Z0-9_.-]+\\.(js|css|ico|png|svg|woff2?|map)$"
+      ],
+      "methods": ["GET", "HEAD", "OPTIONS"],
+      "allow": ["agent", "guest", "user"],
+      "_note": "Chỉ cho phép tải bundle JS/CSS/Icon tại root và thư mục /assets, /vendor của SPA"
+    },
+    {
+      "name": "route-products-browse",
+      "paths": ["/api/Products", "/rest/products/search"],
+      "methods": ["GET"],
+      "allow": ["agent", "guest", "user"]
+    },
+    {
+      "name": "route-product-reviews-read",
+      "paths": ["~/rest/products/\\d+/reviews$"],
+      "methods": ["GET"],
+      "allow": ["agent", "guest", "user"]
+    },
+    {
+      "name": "route-user-login",
+      "paths": ["/rest/user/login"],
+      "methods": ["POST"],
+      "allow": ["agent", "guest", "user"]
+    },
+    {
+      "name": "route-whoami",
+      "paths": ["/rest/user/whoami"],
+      "methods": ["GET"],
+      "allow": ["agent", "guest", "user"]
+    },
+    {
+      "name": "route-guest-register",
+      "paths": ["/api/Users"],
+      "methods": ["POST"],
+      "allow": ["guest", "user"],
+      "_note": "Cố ý KHÔNG có 'agent' — Agent không cần tự đăng ký tài khoản"
+    },
+    {
+      "name": "route-reset-password",
+      "paths": ["/rest/user/reset-password"],
+      "methods": ["POST"],
+      "allow": ["guest", "user"]
+    },
+    {
+      "name": "route-security-question",
+      "paths": ["/rest/user/security-question", "/api/SecurityQuestions"],
+      "methods": ["GET"],
+      "allow": ["guest", "user"]
+    },
+    {
+      "name": "route-basket-read",
+      "paths": ["~/rest/basket/\\d+$"],
+      "methods": ["GET"],
+      "allow": ["user"],
+      "_note": "Chỉ user đã login — cần JWT hợp lệ"
+    },
+    {
+      "name": "route-basket-checkout",
+      "paths": ["~/rest/basket/\\d+/checkout$"],
+      "methods": ["POST"],
+      "allow": ["user"]
+    },
+    {
+      "name": "route-basket-items",
+      "paths": ["/api/BasketItems"],
+      "methods": ["GET", "POST", "PUT", "DELETE"],
+      "allow": ["user"]
+    },
+    {
+      "name": "route-order-history",
+      "paths": ["/rest/order-history"],
+      "methods": ["GET"],
+      "allow": ["user"]
+    },
+    {
+      "name": "route-profile",
+      "paths": ["/profile"],
+      "methods": ["GET", "POST"],
+      "allow": ["user"]
+    },
+    {
+      "name": "route-profile-image-upload",
+      "paths": ["/profile/image/file"],
+      "methods": ["POST"],
+      "allow": ["user"]
+    }
+  ]
+}
