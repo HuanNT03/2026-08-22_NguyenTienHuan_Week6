@@ -13,7 +13,6 @@ if str(ROOT_DIR) not in sys.path:
 import streamlit as st
 
 from frontend.components.bento import inject_bento_css, render_bento_card, render_bento_header
-from frontend.components.cards import render_metric_card
 
 st.set_page_config(
     page_title="Project Sentinel - Security Operations Dashboard",

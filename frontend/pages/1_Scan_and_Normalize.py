@@ -1,7 +1,8 @@
 """Trang Quét lỗ hổng trực tiếp và Chuẩn hóa Scanner Reports (Bento Box Enhanced)."""
 
-from pathlib import Path
+import os
 import sys
+from pathlib import Path
 
 # Ensure project root is in sys.path for Streamlit execution
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
@@ -11,7 +12,6 @@ if str(ROOT_DIR) not in sys.path:
 import streamlit as st
 
 from frontend.components.bento import inject_bento_css, render_bento_card, render_bento_header
-from frontend.components.cards import render_badge
 from src.app.normalizer_bridge import (
     execute_normalization,
     list_normalized_files,
@@ -21,9 +21,7 @@ from src.app.normalizer_bridge import (
 )
 from src.app.scan_runner import (
     check_target_health,
-    run_scanner,
     run_scanner_stream,
-    run_target_command,
     run_target_command_stream,
 )
 

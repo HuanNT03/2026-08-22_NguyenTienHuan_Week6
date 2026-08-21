@@ -1,6 +1,5 @@
 """Bento Box Design System & UI Renderers cho Project Sentinel Streamlit Dashboard."""
 
-from typing import Any
 import streamlit as st
 
 

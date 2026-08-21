@@ -1,8 +1,8 @@
 """Trang Báo cáo An toàn AI Security Analysis Dashboard (Bento Box Enhanced)."""
 
+import sys
 from collections import defaultdict
 from pathlib import Path
-import sys
 
 # Ensure project root is in sys.path for Streamlit execution
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
