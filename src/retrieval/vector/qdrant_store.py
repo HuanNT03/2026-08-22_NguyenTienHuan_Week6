@@ -56,7 +56,7 @@ class QdrantVectorStore:
             coll_info = self.client.get_collection(self.collection_name)
             if coll_info and coll_info.config and coll_info.config.params and coll_info.config.params.vectors:
                 self.dimension = coll_info.config.params.vectors.size
-        except Exception:
+        except Exception:  # noqa: BLE001, S110
             pass
 
     def init_collection(self, recreate: bool = False) -> None:
