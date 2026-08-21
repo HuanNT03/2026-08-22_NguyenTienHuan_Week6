@@ -201,6 +201,8 @@ class KnowledgeSearchService:
         Returns:
             List of SearchResult objects with child section matched snippets and full parent content.
         """
+        if self.embedding_client.provider == "mock" and self.embedding_client.dimension != self.vector_store.dimension:
+            self.embedding_client.dimension = self.vector_store.dimension
         query_vector = self.embedding_client.embed_query(query)
         dense_results = self.vector_store.search_parents(
             query_vector=query_vector,
@@ -260,6 +262,8 @@ class KnowledgeSearchService:
         sparse_doc_ids = [r.doc_id for r in sparse_results]
 
         # 2. Dense Candidate Retrieval (Qdrant Cosine with Parent Aggregation)
+        if self.embedding_client.provider == "mock" and self.embedding_client.dimension != self.vector_store.dimension:
+            self.embedding_client.dimension = self.vector_store.dimension
         query_vector = self.embedding_client.embed_query(query)
         try:
             dense_results = self.vector_store.search_parents(

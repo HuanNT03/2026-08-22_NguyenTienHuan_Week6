@@ -52,6 +52,12 @@ class QdrantVectorStore:
             self.dimension = int(env_dim) if (env_dim and env_dim.strip().isdigit()) else 1536
         self.storage_path.mkdir(parents=True, exist_ok=True)
         self.client = QdrantClient(path=str(self.storage_path))
+        try:
+            coll_info = self.client.get_collection(self.collection_name)
+            if coll_info and coll_info.config and coll_info.config.params and coll_info.config.params.vectors:
+                self.dimension = coll_info.config.params.vectors.size
+        except Exception:
+            pass
 
     def init_collection(self, recreate: bool = False) -> None:
         """Create or recreate the vector collection with Cosine distance.
