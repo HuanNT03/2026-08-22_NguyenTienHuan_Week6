@@ -253,27 +253,24 @@ def sanitize_llm_entry_dict(
     return item
 
 
-def analyze_group(
+from src.agent.react_engine import ReActAnalysisEngine
+from src.agent.tools import ToolDispatcher
+
+
+def analyze_group_static(
     group: AnalysisGroup,
     kb_service: KnowledgeSearchService,
-    client: OpenAI | None = None,
-    config: AgentConfig | None = None,
+    client: OpenAI,
+    config: AgentConfig,
 ) -> list[ReportEntry]:
-    """Execute LLM security analysis for a single AnalysisGroup with retry & fallback."""
-    cfg = config or AgentConfig()
-
-    if client is None:
-        client = OpenAI(
-            api_key=cfg.api_key or "placeholder_key",
-            base_url=cfg.base_url,
-        )
-
+    """Execute legacy 1-pass static LLM security analysis for a single AnalysisGroup."""
+    cfg = config
     system_prompt = (
         cfg.system_prompt_path.read_text(encoding="utf-8") if cfg.system_prompt_path.is_file() else "System Prompt"
     )
 
     # Step 1: KB retrieval
-    kb_snippets, kb_results = fetch_kb_context_for_group(group, kb_service=kb_service)
+    kb_snippets, _ = fetch_kb_context_for_group(group, kb_service=kb_service)
 
     # Step 2: Build user prompt
     user_prompt = build_user_prompt(group, kb_snippets)
@@ -286,7 +283,7 @@ def analyze_group(
     last_error_msg = ""
     for attempt in range(cfg.max_retries + 1):
         try:
-            logger.info("Analyzing group %s (attempt %d/%d)", group.group_id, attempt + 1, cfg.max_retries + 1)
+            logger.info("Analyzing group %s (static attempt %d/%d)", group.group_id, attempt + 1, cfg.max_retries + 1)
             response = client.chat.completions.create(
                 model=cfg.model,
                 temperature=cfg.temperature,
@@ -318,7 +315,6 @@ def analyze_group(
             group_fps = {f["fingerprint"] for f in group.findings}
 
             if not group_fps.issubset(covered_fps):
-                # If some findings are missing in LLM output, generate entries for missing findings
                 for f in group.findings:
                     if f["fingerprint"] not in covered_fps:
                         fallback_entry = create_fallback_error_entry(
@@ -330,10 +326,9 @@ def analyze_group(
 
         except (json.JSONDecodeError, ValidationError, ValueError, Exception) as err:  # noqa: BLE001
             last_error_msg = str(err)
-            logger.warning("Group %s attempt %d failed: %s", group.group_id, attempt + 1, last_error_msg)
+            logger.warning("Group %s static attempt %d failed: %s", group.group_id, attempt + 1, last_error_msg)
 
             if attempt < cfg.max_retries:
-                # Add retry feedback message for next attempt
                 messages.append({"role": "assistant", "content": raw_content if "raw_content" in locals() else ""})
                 messages.append(
                     {
@@ -345,6 +340,36 @@ def analyze_group(
                     }
                 )
 
-    # Max retries exceeded -> return fallback error entries for all group findings
-    logger.error("Group %s failed after %d retries. Generating fallback entries.", group.group_id, cfg.max_retries)
+    logger.error("Group %s static failed after %d retries. Generating fallback entries.", group.group_id, cfg.max_retries)
     return [create_fallback_error_entry(f, group, last_error_msg, cfg, cfg.max_retries) for f in group.findings]
+
+
+def analyze_group(
+    group: AnalysisGroup,
+    kb_service: KnowledgeSearchService,
+    client: OpenAI | None = None,
+    config: AgentConfig | None = None,
+) -> list[ReportEntry]:
+    """Execute security analysis for a single AnalysisGroup routing to ReAct or Static engine."""
+    cfg = config or AgentConfig()
+
+    if client is None:
+        client = OpenAI(
+            api_key=cfg.api_key or "placeholder_key",
+            base_url=cfg.base_url,
+        )
+
+    # Route to ReAct Analysis Engine (Default for Week 6)
+    if cfg.agent_mode == "react":
+        dispatcher = ToolDispatcher(kb_service=kb_service, max_repeat_tool_calls=2)
+        engine = ReActAnalysisEngine(client=client, config=cfg, dispatcher=dispatcher)
+        system_prompt = (
+            cfg.system_prompt_path.read_text(encoding="utf-8")
+            if cfg.system_prompt_path.is_file()
+            else "System Prompt"
+        )
+        return engine.run_group_analysis(group=group, system_prompt=system_prompt)
+
+    # Fallback to Static 1-Pass RAG Analysis (Week 3 Compatibility)
+    return analyze_group_static(group=group, kb_service=kb_service, client=client, config=cfg)
+
