@@ -17,7 +17,10 @@ def get_configured_model() -> str:
 def run_agent_analysis(
     findings_path: str,
     model: str | None = None,
+    agent_mode: str = "react",
+    max_react_steps: int = 5,
     output_dir: str = "reports/analyzed",
+    log_file: str | None = None,
 ) -> tuple[bool, dict[str, Any]]:
     """
     Kích hoạt Security Analysis Agent chạy phân tích trên tập findings_path.
@@ -25,7 +28,10 @@ def run_agent_analysis(
     Args:
         findings_path: Đường dẫn tới file Unified Findings JSONL
         model: Tên mô hình LLM tùy chọn (vd: 'qwen-plus')
+        agent_mode: Chế độ suy luận ('react' hoặc 'static')
+        max_react_steps: Số bước ReAct tối đa cho mỗi nhóm
         output_dir: Thư mục chứa báo cáo xuất ra
+        log_file: Tệp ghi log tùy chọn
 
     Returns:
         tuple[bool, dict]: (Thành công hay không, Thông tin tóm tắt kết quả analysis summary)
@@ -37,10 +43,12 @@ def run_agent_analysis(
     config = AgentConfig()
     if model:
         config.model = model
+    config.agent_mode = "react" if agent_mode.lower() == "react" else "static"
+    config.max_react_steps = int(max_react_steps)
     config.output_dir = Path(output_dir)
 
     try:
-        summary = run_analysis(findings_path=findings, config=config)
+        summary = run_analysis(findings_path=findings, config=config, log_file=log_file)
         return True, summary
     except Exception as exc:  # noqa: BLE001
         return False, {"error": f"Lỗi trong quá trình chạy Security Analysis Agent: {exc}"}

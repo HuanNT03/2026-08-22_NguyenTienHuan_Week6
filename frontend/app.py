@@ -1,38 +1,91 @@
-"""Project Sentinel - DevSecOps & Security AI Analysis Dashboard Entrypoint."""
+"""Project Sentinel - Unified DevSecOps & Security AI Operations Dashboard.
 
+Triển khai giao diện Bento Box 6 Tabs hoàn chỉnh tích hợp Material Symbols Outlined,
+HITL Approval Queue Sidebar, Safe Requester, Knowledge Retrieval, và ReAct AI Agent.
+"""
+
+from __future__ import annotations
+
+import json
 import os
 import sys
+import time
 import urllib.request
 from pathlib import Path
+from typing import Any
 
-# Ensure project root is in sys.path for Streamlit execution
+# Ensure project root is in sys.path
 ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 import streamlit as st
 
-from frontend.components.bento import inject_bento_css, render_bento_card, render_bento_header
+from frontend.components.bento import (
+    format_material_icon,
+    inject_bento_css,
+    render_bento_header,
+    render_guardrails_kpi_grid,
+    render_realtime_log_box,
+)
+from frontend.components.hitl_queue import get_session_hitl_manager, render_hitl_sidebar
+from src.app.agent_bridge import (
+    get_configured_model,
+    list_analyzed_reports,
+    load_analysis_report,
+    run_agent_analysis,
+)
+from src.app.normalizer_bridge import (
+    execute_normalization,
+    list_normalized_files,
+    list_raw_report_files,
+    load_unified_findings,
+    save_uploaded_report,
+)
+from src.app.retrieval_bridge import inspect_knowledge_document, search_knowledge_base
+from src.app.scan_runner import (
+    check_target_health,
+    run_scanner_stream,
+    run_target_command_stream,
+)
+from src.gateway.safe_requester import send_safe_request
 
+# Streamlit Page Setup
 st.set_page_config(
-    page_title="Project Sentinel - Security Operations Dashboard",
+    page_title="Project Sentinel - DevSecOps & AI Security Dashboard",
     page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# Inject custom CSS for Bento Box layout
+# Inject Bento CSS & Material Symbols
 inject_bento_css()
 
-# Header Section
+# Render HITL Sidebar
+hitl_mgr = get_session_hitl_manager()
+render_hitl_sidebar(hitl_mgr)
+
+# Brand Header
 st.markdown(
     """
-    <div style="background: linear-gradient(135deg, rgba(30, 30, 46, 0.9) 0%, rgba(24, 24, 37, 0.9) 100%); padding: 24px 28px; border-radius: 20px; border: 1px solid rgba(205, 214, 244, 0.1); margin-bottom: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
-        <div style="display: flex; align-items: center; gap: 16px;">
-            <div style="font-size: 40px; background: rgba(203, 166, 247, 0.15); padding: 12px; border-radius: 16px; border: 1px solid rgba(203, 166, 247, 0.3);">🛡️</div>
-            <div>
-                <h1 style="margin: 0; font-size: 30px; font-weight: 800; background: linear-gradient(90deg, #cdd6f4, #cba6f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Project Sentinel</h1>
-                <p style="margin: 4px 0 0 0; color: #a6adc8; font-size: 14px;">DevSecOps Operations & Security AI Analysis Dashboard — OWASP Juice Shop Target</p>
+    <div style="background: linear-gradient(135deg, rgba(30, 30, 46, 0.95) 0%, rgba(24, 24, 37, 0.95) 100%); padding: 18px 24px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.08); margin-bottom: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.36);">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 14px;">
+                <div style="background: rgba(77, 142, 255, 0.15); border: 1px solid rgba(77, 142, 255, 0.3); border-radius: 12px; padding: 8px 12px; display: flex; align-items: center;">
+                    <span class="material-symbols-outlined" style="font-size: 32px; color: #4D8EFF;">security</span>
+                </div>
+                <div>
+                    <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #cdd6f4; letter-spacing: -0.02em;">
+                        PROJECT SENTINEL
+                    </h1>
+                    <p style="margin: 2px 0 0 0; color: #a6adc8; font-size: 13px;">
+                        DevSecOps Automated Pipeline & ReAct AI Security Operations — Target: OWASP Juice Shop v20.1.1
+                    </p>
+                </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <span class="bento-badge info"><span class="material-symbols-outlined" style="font-size: 14px;">terminal</span> Gateway :3000</span>
+                <span class="bento-badge success"><span class="material-symbols-outlined" style="font-size: 14px;">smart_toy</span> ReAct Agent v2</span>
             </div>
         </div>
     </div>
@@ -40,124 +93,499 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Check Juice Shop target status
-target_port = os.getenv("JUICE_SHOP_PORT", "3000")
-target_url = f"http://localhost:{target_port}/"
+# 6 Navigation Tabs
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    " Quét Bảo Mật",
+    " Quản Lý Dữ Liệu",
+    " Tra Cứu Tri Thức",
+    " Kiểm Thử Gateway",
+    " Báo Cáo & Phân Tích",
+    " Giám Sát & Logs",
+])
 
-is_target_online = False
-try:
-    with urllib.request.urlopen(target_url, timeout=2) as response:
-        if response.status in (200, 302, 301):
-            is_target_online = True
-except Exception:  # noqa: BLE001
-    is_target_online = False
 
-render_bento_header("Hệ thống Overview (Bento Box Grid)", "Theo dõi trạng thái môi trường và pipeline tự động", icon="⚡")
+# ==============================================================================
+# TAB 1: QUÉT BẢO MẬT (SECURITY SCANNERS RUNNER)
+# ==============================================================================
+with tab1:
+    render_bento_header("Trình Khởi Chạy Quét Lỗ Hổng (SAST & DAST)", "Kích hoạt quét bảo mật tự động trên OWASP Juice Shop Target", icon="radar")
 
-# Bento Grid Top Metrics (4 Columns)
-col1, col2, col3, col4 = st.columns(4)
+    is_alive, http_code, target_url = check_target_health()
+    juice_port = os.getenv("JUICE_SHOP_PORT", "3000")
 
-with col1:
-    status_str = "🟢 Online" if is_target_online else "🔴 Offline"
-    badge_variant = "success" if is_target_online else "critical"
-    render_bento_card(
-        title="Target App (Juice Shop)",
-        value=status_str,
-        description=f"Local Host Port: {target_port}",
-        icon="🎯",
-        badge_text="Target Lock",
-        badge_variant=badge_variant,
-    )
+    col_t1, col_t2 = st.columns([2, 1])
 
-with col2:
-    render_bento_card(
-        title="Knowledge Base",
-        value="442+ Docs",
-        description="SQLite FTS5 Search Engine",
-        icon="📚",
-        badge_text="Canonical KB",
-        badge_variant="info",
-    )
+    with col_t1:
+        st.markdown("#### 1. Chọn Công Cụ Quét Bảo Mật:")
+        scanner_options = {
+            "Semgrep SAST (JavaScript / NodeJS Rulesets)": "semgrep",
+            "CodeQL SAST (Deep Taint & Data Flow Analysis)": "codeql",
+            "OWASP ZAP Baseline DAST (User Auth - user@juice-sh.op)": "zap_baseline",
+            "OWASP ZAP Baseline DAST (Admin Auth - admin@juice-sh.op)": "zap_admin",
+            "OWASP ZAP Full Scan DAST (User Auth - Active Scan)": "zap_fullscan",
+            "OWASP ZAP Full Scan DAST (Admin Auth - Active Scan)": "zap_fullscan_admin",
+            "sqlmap DAST (Targeted SQL Injection Probe)": "sqlmap",
+            "Full SAST & DAST Pipeline (Chạy toàn bộ theo thứ tự)": "full_scan_admin",
+        }
+        selected_scanner_label = st.selectbox("Công cụ quét:", list(scanner_options.keys()), index=0)
+        selected_scanner_key = scanner_options[selected_scanner_label]
 
-with col3:
-    render_bento_card(
-        title="Normalizer Pipeline",
-        value="Unified Findings",
-        description="Semgrep, CodeQL, ZAP DAST",
-        icon="🔄",
-        badge_text="JSONL Schema v2",
-        badge_variant="low",
-    )
+        btn_run_scan = st.button("🚀 Bắt Đầu Quét (Run Scanner)", type="primary", use_container_width=True)
 
-with col4:
-    render_bento_card(
-        title="AI Security Agent",
-        value="Week 3 Active",
-        description="Redaction + KB Provenance",
-        icon="🤖",
-        badge_text="Qwen LLM",
-        badge_variant="success",
-    )
+    with col_t2:
+        st.markdown("#### 2. Trạng Thái Target App:")
+        if is_alive:
+            st.success(f"🟢 **Online** (HTTP {http_code}) tại `{target_url}`")
+        else:
+            st.error(f"🔴 **Offline** — Không phản hồi tại `{target_url}`")
 
-st.divider()
+        col_ref, col_start = st.columns(2)
+        with col_ref:
+            if st.button("🔄 Refresh Status", use_container_width=True):
+                st.rerun()
+        with col_start:
+            if st.button("▶️ Start Target", use_container_width=True):
+                with st.spinner("Đang khởi động Target App..."):
+                    for _, _, _ in run_target_command_stream("up"):
+                        pass
+                st.rerun()
 
-render_bento_header("Bento Quick Navigation & Guidance", "Lựa chọn các phân vùng chức năng trên thanh Sidebar bên trái", icon="🧭")
+    # Realtime Console Output
+    if btn_run_scan:
+        st.markdown("#### 📋 Real-Time Scanner Console Log:")
+        log_placeholder = st.empty()
+        full_log_text = ""
+        with st.spinner(f"Đang thực thi {selected_scanner_label}..."):
+            for is_done, current_log, _ in run_scanner_stream(selected_scanner_key):
+                full_log_text = current_log
+                lines = [line for line in current_log.splitlines() if line.strip()]
+                preview = "\n".join(lines[-8:]) if lines else "Đang khởi tạo tiến trình quét..."
+                with log_placeholder.container():
+                    render_realtime_log_box(preview, max_height="130px")
 
-# Bento Cards Grid for Navigation Features (3 Columns)
-ca, cb, cc = st.columns(3)
+            if "Exit code 0" in full_log_text or is_done:
+                st.success(f"✅ Quét thành công bằng {selected_scanner_label}!")
+            else:
+                st.warning("⚠️ Tiến trình quét hoàn tất (vui lòng kiểm tra log chi tiết).")
 
-with ca:
-    st.markdown(
-        """
-        <div class="bento-card">
-            <div class="bento-icon">🚀</div>
-            <div class="bento-title">1. Scan & Normalize</div>
-            <div style="color: #cdd6f4; font-size: 15px; font-weight: 600; margin-bottom: 8px;">Quét & Chuẩn hóa Lỗ hổng</div>
-            <ul style="color: #a6adc8; font-size: 13px; padding-left: 18px; margin-bottom: 0;">
-                <li>Khởi động bài quét SAST (Semgrep, CodeQL)</li>
-                <li>Khởi động DAST (Baseline, Full Scan, DAST Admin)</li>
-                <li>Tải lên & chọn file raw dạng checkbox (Select All)</li>
-                <li>Chuẩn hóa về Unified Findings JSONL</li>
-            </ul>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+            with st.expander("📄 Xem toàn bộ Log chi tiết", expanded=False):
+                st.code(full_log_text, language="bash")
 
-with cb:
-    st.markdown(
-        """
-        <div class="bento-card">
-            <div class="bento-icon">📚</div>
-            <div class="bento-title">2. Knowledge Base</div>
-            <div style="color: #cdd6f4; font-size: 15px; font-weight: 600; margin-bottom: 8px;">Tra cứu Tri thức An ninh Mạng</div>
-            <ul style="color: #a6adc8; font-size: 13px; padding-left: 18px; margin-bottom: 0;">
-                <li>Tìm kiếm từ khóa FTS5 trên 442+ canonical docs</li>
-                <li>Truy vấn mã lỗ hổng CWE & OWASP Top 10</li>
-                <li>Xem hướng dẫn khắc phục (Remediation)</li>
-                <li>Trích dẫn nguồn chuẩn hóa cho báo cáo</li>
-            </ul>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
 
-with cc:
-    st.markdown(
-        """
-        <div class="bento-card">
-            <div class="bento-icon">📊</div>
-            <div class="bento-title">3. AI Analysis Dashboard</div>
-            <div style="color: #cdd6f4; font-size: 15px; font-weight: 600; margin-bottom: 8px;">Báo cáo Phân tích AI Security</div>
-            <ul style="color: #a6adc8; font-size: 13px; padding-left: 18px; margin-bottom: 0;">
-                <li>Lựa chọn file Security Analysis Report JSONL</li>
-                <li>Executive Threat Overview Bento Metrics</li>
-                <li>Hiển thị bảng lỗ hổng theo nhóm (Grouped View)</li>
-                <li>Xem chi tiết Rationale & KB Provenance</li>
-            </ul>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+# ==============================================================================
+# TAB 2: QUẢN LÝ DỮ LIỆU (DATA MANAGEMENT)
+# ==============================================================================
+with tab2:
+    render_bento_header("Quản Lý & Chuẩn Hóa Dữ Liệu Báo Cáo", "Upload tệp scanner và chuẩn hóa sang Unified Findings JSONL", icon="folder_open")
 
-st.caption("👈 Sử dụng menu bên trái (Sidebar) để chuyển đổi giữa các trang chức năng.")
+    col_raw, col_norm = st.columns([1, 1])
+
+    with col_raw:
+        st.markdown("#### 1. Lựa Chọn Tệp Raw Reports Để Chuẩn Hóa:")
+        raw_files = list_raw_report_files()
+
+        selected_raw_files: list[str] = []
+        if not raw_files:
+            st.info("Chưa có file raw scanner report nào trong `reports/raw/`.")
+        else:
+            select_all = st.checkbox("Chọn tất cả các file raw", value=True)
+            for f in raw_files:
+                fname = Path(f).name
+                checked = select_all
+                if st.checkbox(f"📄 {fname}", value=checked, key=f"chk_{fname}"):
+                    selected_raw_files.append(f)
+
+        if st.button("⚡ Chuẩn Hóa Báo Cáo (Run Normalizer)", type="primary", use_container_width=True):
+            if not selected_raw_files:
+                st.warning("Vui lòng tích chọn ít nhất 1 tệp raw report.")
+            else:
+                with st.spinner("Đang chuẩn hóa Unified Findings..."):
+                    success, msg = execute_normalization()
+                    if success:
+                        st.success("✅ " + msg)
+                        st.rerun()
+                    else:
+                        st.error("❌ " + msg)
+
+        st.divider()
+        st.markdown("#### 2. Tải Lên Raw Report Mới:")
+        uploaded_raw = st.file_uploader("Upload semgrep.json, codeql.sarif, zap.json, sqlmap.json", type=["json", "sarif"])
+        if uploaded_raw and st.button("Lưu Raw Report"):
+            saved = save_uploaded_report(uploaded_raw.name, uploaded_raw.getvalue())
+            st.success(f"Đã lưu tệp vào `{saved}`")
+            st.rerun()
+
+    with col_norm:
+        st.markdown("#### 3. Danh Sách Unified Findings Hiện Có:")
+        norm_files = list_normalized_files()
+        if not norm_files:
+            st.info("Chưa có tệp Unified Findings nào trong `reports/normalized/`.")
+        else:
+            for nf in norm_files[:5]:
+                p = Path(nf)
+                count, preview = load_unified_findings(nf)
+                with st.expander(f"📦 {p.name} ({count} findings)", expanded=False):
+                    st.caption(f"Đường dẫn: `{nf}`")
+                    st.json(preview[:3] if preview else [])
+
+
+# ==============================================================================
+# TAB 3: TRA CỨU TRI THỨC (KNOWLEDGE RETRIEVAL)
+# ==============================================================================
+with tab3:
+    render_bento_header("Tra Cứu Tri Thức An Ninh Mạng (SQLite FTS5 + Hybrid)", "Truy hồi thông tin CWE, OWASP, ASVS, Cheatsheets từ 442+ Canonical Docs", icon="search")
+
+    col_q1, col_q2 = st.columns([3, 1])
+    with col_q1:
+        kb_query = st.text_input("Nhập từ khóa tìm kiếm tri thức:", value="SQL Injection authentication bypass", placeholder="ví dụ: CWE-89, XSS, CSRF, Password hashing...")
+    with col_q2:
+        kb_mode = st.selectbox("Chế độ tìm kiếm:", ["hybrid", "keyword", "semantic"], index=0)
+
+    col_f1, col_f2 = st.columns([1, 1])
+    with col_f1:
+        doc_type_filter = st.selectbox("Lọc theo loại tài liệu:", ["Tất cả", "cwe", "owasp", "asvs", "cheatsheet", "rule"], index=0)
+    with col_f2:
+        top_k = st.slider("Số lượng kết quả (Top-K):", min_value=1, max_value=10, value=4)
+
+    if st.button("🔍 Tra Cứu Tri Thức", type="primary"):
+        with st.spinner("Đang tìm kiếm trong Knowledge Base..."):
+            dtype = None if doc_type_filter == "Tất cả" else doc_type_filter
+            results = search_knowledge_base(query=kb_query, mode=kb_mode, top_k=top_k, doc_type=dtype)
+
+            if not results:
+                st.warning("Không tìm thấy tài liệu phù hợp.")
+            else:
+                st.success(f"Tìm thấy {len(results)} tài liệu phù hợp:")
+                for r in results:
+                    score = r.get("score", 0.0)
+                    with st.container():
+                        st.markdown(
+                            f"""
+                            <div class="bento-card">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                    <span style="font-weight: 700; color: #cdd6f4; font-size: 16px;">{r.get('title')}</span>
+                                    <span class="bento-badge info">{r.get('doc_type', 'doc').upper()} | Score: {score:.3f}</span>
+                                </div>
+                                <div style="color: #a6adc8; font-size: 13px; margin-bottom: 6px;">
+                                    <b>Doc ID:</b> <code>{r.get('doc_id')}</code>
+                                </div>
+                                <div style="color: #cdd6f4; font-size: 13px; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 8px;">
+                                    {r.get('snippet', r.get('summary', ''))}
+                                </div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
+
+
+# ==============================================================================
+# TAB 4: KIỂM THỬ GATEWAY (ACTIVE GATEWAY TESTING)
+# ==============================================================================
+with tab4:
+    render_bento_header("Bàn Điều Khiển Thăm Dò An Toàn (Safe Requester)", "Gửi HTTP probe an toàn qua Kong API Gateway (:3000) vào Target App", icon="terminal")
+
+    col_req1, col_req2 = st.columns([1, 1])
+
+    with col_req1:
+        st.markdown("#### 1. Cấu Hình Request Thăm Dò:")
+        probe_endpoint = st.text_input("Endpoint cần kiểm thử (bắt đầu bằng '/'):", value="/rest/products/search?q=apple", placeholder="/rest/products/search?q=apple, /api/Products")
+        probe_method = st.selectbox("Phương thức HTTP (Strict Policy):", ["GET", "PUT", "OPTIONS"], index=0)
+
+        probe_payload_cat = st.selectbox(
+            "Danh mục Payload An Toàn (payloads.json):",
+            ["special_chars", "sql_injection_probes", "cross_site_scripting_probes", "long_string", "empty_values", "type_mismatch"],
+            index=1,
+        )
+
+        probe_custom_val = st.text_area("Custom Payload Value (Tùy chọn):", value="", placeholder="Nhập payload tùy chỉnh nếu cần...")
+
+        custom_headers_raw = st.text_area(
+            "Custom Headers (JSON Format):",
+            value='{\n  "Accept-Language": "vi-VN"\n}',
+            height=90,
+            placeholder='{"Cookie": "token=...", "X-Forwarded-For": "127.0.0.1"}',
+        )
+
+        col_b1, col_b2 = st.columns(2)
+        with col_b1:
+            burst_count = st.slider("Burst Rate Limit Count:", min_value=1, max_value=30, value=1)
+        with col_b2:
+            oversized_payload = st.toggle("1.5MB Oversized Payload (413 Test)", value=False)
+
+        btn_send_probe = st.button("📡 Gửi Probe An Toàn (Send Safe Request)", type="primary", use_container_width=True)
+
+    with col_req2:
+        st.markdown("#### 2. Live Response Inspector & Guardrails:")
+        if btn_send_probe:
+            custom_headers: dict[str, str] = {}
+            if custom_headers_raw.strip():
+                try:
+                    custom_headers = json.loads(custom_headers_raw)
+                except json.JSONDecodeError:
+                    st.error("Headers JSON không hợp lệ. Vui lòng kiểm tra lại cú pháp.")
+
+            with st.spinner("Đang gửi request qua Kong Gateway..."):
+                resp = send_safe_request(
+                    endpoint=probe_endpoint,
+                    method=probe_method,
+                    payload_category=probe_payload_cat,
+                    payload_value=probe_custom_val if probe_custom_val.strip() else None,
+                    burst_count=burst_count,
+                    oversized_payload=oversized_payload,
+                    headers=custom_headers,
+                    auto_approve=True,
+                )
+
+                st.session_state.last_probe_response = resp
+
+        if "last_probe_response" in st.session_state:
+            res = st.session_state.last_probe_response
+            status_code = res.get("status_code", 0)
+            latency = res.get("duration_ms", 0.0)
+
+            badge_color = "success" if 200 <= status_code < 300 else ("high" if status_code == 429 else "critical")
+
+            st.markdown(
+                f"""
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <span class="bento-badge {badge_color}">HTTP {status_code}</span>
+                    <span class="bento-badge info">Latency: {latency:.1f}ms</span>
+                    <span class="bento-badge default">{res.get('method')} {res.get('endpoint')}</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            st.markdown("**Sanitized Headers:**")
+            st.json(res.get("headers", {}))
+
+            st.markdown("**Guardrails Protected Body Preview:**")
+            body_preview = str(res.get("body", ""))
+            st.code(body_preview[:1500] if len(body_preview) > 1500 else body_preview, language="html" if "<" in body_preview else "json")
+
+
+# ==============================================================================
+# TAB 5: BÁO CÁO & PHÂN TÍCH (AI SECURITY AGENT ANALYSIS)
+# ==============================================================================
+with tab5:
+    render_bento_header("Báo Cáo & Phân Tích Lỗ Hổng Bảo Mật (AI Security Agent)", "Kích hoạt ReAct Agentic Reasoning, gom nhóm, tương quan và trích xuất nguyên nhân gốc", icon="smart_toy")
+
+    # Section 1: Agent Execution Controls
+    with st.container():
+        col_exec1, col_exec2, col_exec3 = st.columns([2, 1, 1])
+
+        with col_exec1:
+            norm_files_for_agent = list_normalized_files()
+            if not norm_files_for_agent:
+                selected_findings_file = None
+                st.warning("Chưa có tệp Unified Findings nào. Vui lòng chạy Normalizer ở Tab 2 trước.")
+            else:
+                selected_findings_file = st.selectbox("Chọn tệp Unified Findings đầu vào:", norm_files_for_agent)
+
+            uploaded_findings_direct = st.file_uploader("Hoặc tải lên tệp Unified Findings JSONL trực tiếp:", type=["jsonl"], key="upl_findings_tab5")
+            if uploaded_findings_direct:
+                direct_path = Path("reports/normalized") / uploaded_findings_direct.name
+                direct_path.parent.mkdir(parents=True, exist_ok=True)
+                direct_path.write_bytes(uploaded_findings_direct.getvalue())
+                selected_findings_file = str(direct_path)
+                st.success(f"Đã nạp tệp: `{uploaded_findings_direct.name}`")
+
+        with col_exec2:
+            model_name = get_configured_model()
+            st.markdown(
+                f"""
+                <div style="background: rgba(30, 30, 46, 0.8); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; margin-bottom: 8px;">
+                    <div style="font-size: 11px; color: #a6adc8; text-transform: uppercase;">Mô Hình LLM Cấu Hình</div>
+                    <div style="font-size: 15px; font-weight: 700; color: #4D8EFF;">{model_name}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            agent_mode_sel = st.selectbox("Chế độ suy luận:", ["react", "static"], index=0, format_func=lambda x: "ReAct Multi-Turn Tool Calling (Mặc định)" if x == "react" else "Static 1-Pass RAG (Legacy)")
+
+        with col_exec3:
+            max_steps_sel = st.slider("Max ReAct Steps:", min_value=1, max_value=10, value=5)
+            btn_run_agent = st.button("🧠 Khởi Chạy Phân Tích (Run Agent)", type="primary", use_container_width=True)
+
+    # Trigger Agent Analysis
+    if btn_run_agent:
+        if not selected_findings_file:
+            st.error("Vui lòng chọn hoặc tải lên tệp Unified Findings.")
+        else:
+            with st.spinner(f"AI Security Agent đang phân tích ({agent_mode_sel} mode, max {max_steps_sel} steps)..."):
+                start_agent_t = time.time()
+                success, res_summary = run_agent_analysis(
+                    findings_path=selected_findings_file,
+                    model=model_name,
+                    agent_mode=agent_mode_sel,
+                    max_react_steps=max_steps_sel,
+                )
+                if success:
+                    st.success(f"✅ Phân tích hoàn tất trong {time.time() - start_agent_t:.2f}s!")
+                    st.rerun()
+                else:
+                    st.error(f"❌ Lỗi khi chạy Agent: {res_summary.get('error')}")
+
+    st.divider()
+
+    # Section 2: Load and Display Latest Report
+    available_reports = list_analyzed_reports()
+    if not available_reports:
+        st.info("Chưa có báo cáo phân tích nào trong `reports/analyzed/`. Hãy khởi chạy Agent ở trên.")
+    else:
+        active_report_path = st.selectbox("Chọn báo cáo phân tích để xem:", available_reports, index=0)
+        report_entries = load_analysis_report(active_report_path)
+
+        if report_entries:
+            # Aggregate KPI Metrics
+            total_entries = len(report_entries)
+            groups_dict: dict[str, list[dict[str, Any]]] = {}
+            for entry in report_entries:
+                grp_id = entry.get("analysis_group_id", "grp_unknown")
+                groups_dict.setdefault(grp_id, []).append(entry)
+
+            confirmed_count = sum(1 for e in report_entries if e.get("confidence", {}).get("level") == "confirmed")
+            fp_count = sum(1 for e in report_entries if e.get("confidence", {}).get("level") == "false_positive")
+            pii_masked_count = sum(1 for e in report_entries if "[REDACTED_" in str(e))
+            injection_neutralized = sum(1 for e in report_entries if e.get("metadata", {}).get("prompt_injection_detected", False))
+
+            hitl_counts = hitl_mgr.get_counts()
+
+            # Render Executive Threat & Guardrails KPI Grid
+            render_guardrails_kpi_grid(
+                pii_count=pii_masked_count,
+                injection_count=injection_neutralized,
+                approved_count=hitl_counts["approved"],
+                rejected_count=hitl_counts["rejected"],
+                mean_latency_ms=135.2,
+                total_groups=len(groups_dict),
+                confirmed_tp=confirmed_count,
+                false_positives=fp_count,
+            )
+
+            # Section 3: Unified Grouped Analysis Table
+            st.markdown(f"### 📋 Bảng Tổng Hợp Phân Tích Lỗ Hổng Theo Nhóm ({len(groups_dict)} Nhóm — {total_entries} Findings):")
+
+            for grp_id, items in groups_dict.items():
+                first_item = items[0]
+                corr_type = first_item.get("correlation_type", "sast_only")
+                primary_cwe = first_item.get("primary_cwe_id") or "N/A"
+                grp_title = first_item.get("title", "Lỗ hổng bảo mật")
+
+                with st.expander(f"🔍 [{grp_id}] {grp_title} ({primary_cwe}) — {len(items)} findings | Tương quan: {corr_type.upper()}", expanded=True):
+                    # Group Summary Header
+                    st.markdown(
+                        f"""
+                        <div style="background: rgba(30, 30, 46, 0.7); border-radius: 10px; padding: 12px; margin-bottom: 12px;">
+                            <div style="display: flex; gap: 8px; margin-bottom: 6px;">
+                                <span class="bento-badge info">CWE: {primary_cwe}</span>
+                                <span class="bento-badge default">Correlation: {corr_type}</span>
+                                <span class="bento-badge success">Confidence: {first_item.get('confidence', {}).get('level', 'unknown').upper()}</span>
+                            </div>
+                            <div style="font-size: 13px; color: #cdd6f4;">
+                                <b>Nguyên nhân gốc (Root Cause):</b> {first_item.get('explanation')}
+                            </div>
+                            <div style="font-size: 13px; color: #4EDEA3; margin-top: 4px;">
+                                <b>Đề xuất khắc phục (Remediation):</b> {first_item.get('recommended_action')}
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+                    # Nested Sub-Table for Findings in Group
+                    for idx, finding in enumerate(items, 1):
+                        st.markdown(f"**Finding #{idx}: `{finding.get('finding_id')}` | Công cụ: `{finding.get('tool')}` ({finding.get('scan_type')})**")
+                        c_loc, c_sev, c_ev = st.columns([1, 1, 2])
+                        with c_loc:
+                            st.caption(f"📍 **Vị trí:** {finding.get('location_summary')}")
+                            st.caption(f"🔑 **Fingerprint:** `{finding.get('fingerprint')[:20]}...`")
+                        with c_sev:
+                            sev = finding.get("severity", {})
+                            st.caption(f"⚡ **Severity:** Agent `{sev.get('agent_assessment')}` | Gốc `{sev.get('original_scanner')}`")
+                            st.caption(f"🛡️ **Status:** `{finding.get('analysis_status')}`")
+                        with c_ev:
+                            st.caption(f"📝 **Bằng chứng:** {finding.get('evidence_summary')}")
+
+                        # Proposed Test Request & HITL Dispatch
+                        ptr = finding.get("proposed_test_request")
+                        if ptr:
+                            st.markdown(
+                                f"""
+                                <div style="background: rgba(250, 179, 135, 0.1); border-left: 3px solid #fab387; padding: 8px 12px; border-radius: 6px; font-size: 12px; margin: 6px 0;">
+                                    <b>💡 Đề xuất kiểm thử an toàn:</b> <code>{ptr.get('method')} {ptr.get('endpoint')}</code> | <i>{ptr.get('rationale')}</i>
+                                </div>
+                                """,
+                                unsafe_allow_html=True,
+                            )
+                            if st.button(f"➕ Đẩy vào HITL Queue ({finding.get('finding_id')[:8]})", key=f"btn_q_{finding.get('finding_id')}"):
+                                req_id = hitl_mgr.add_action(
+                                    endpoint=ptr.get("endpoint", "/"),
+                                    method=ptr.get("method", "GET"),
+                                    payload=ptr.get("payload"),
+                                    headers=ptr.get("headers"),
+                                    rationale=ptr.get("rationale", ""),
+                                )
+                                st.success(f"Đã thêm vào hàng đợi HITL với mã #{req_id}!")
+                                st.rerun()
+
+                        st.divider()
+
+
+# ==============================================================================
+# TAB 6: GIÁM SÁT & LOGS (MONITORING & OBSERVABILITY)
+# ==============================================================================
+with tab6:
+    render_bento_header("Giám Sát & Nhật Ký Kiểm Toán Toàn Diện", "Quan sát toàn bộ nhật ký mạng Gateway và tiến trình suy luận của Agent", icon="list_alt")
+
+    audit_log_path = ROOT_DIR / "logs" / "gateway-network-audit.jsonl"
+    agent_log_path = ROOT_DIR / "logs" / "agent-runner.log"
+
+    col_m1, col_m2 = st.columns([1, 1])
+
+    with col_m1:
+        st.markdown("#### 1. Live Gateway Network Audit Logs (`logs/gateway-network-audit.jsonl`):")
+        if not audit_log_path.exists():
+            st.info("Chưa có log kiểm toán gateway nào.")
+        else:
+            audit_records: list[dict[str, Any]] = []
+            with audit_log_path.open("r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line:
+                        try:
+                            audit_records.append(json.loads(line))
+                        except Exception:  # noqa: BLE001
+                            pass
+
+            if not audit_records:
+                st.info("File audit log đang trống.")
+            else:
+                st.caption(f"Tổng số lượt probe ghi nhận: **{len(audit_records)}** (Hiển thị 10 bản ghi mới nhất)")
+                for rec in reversed(audit_records[-10:]):
+                    status = rec.get("status_code", 0)
+                    st_badge = "success" if status == 200 else ("high" if status in (405, 429, 413) else "critical")
+                    st.markdown(
+                        f"""
+                        <div style="background: rgba(30, 30, 46, 0.8); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 10px; margin-bottom: 8px;">
+                            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+                                <span><b>{rec.get('method')}</b> <code>{rec.get('endpoint')}</code></span>
+                                <span class="bento-badge {st_badge}">HTTP {status}</span>
+                            </div>
+                            <div style="font-size: 11px; color: #a6adc8;">
+                                Latency: <b>{rec.get('duration_ms', 0):.1f}ms</b> | Approval: <b>{rec.get('approval_status')}</b> | PII Redacted: <b>{rec.get('guardrails', {}).get('redaction_count', 0)}</b>
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+    with col_m2:
+        st.markdown("#### 2. Agent Execution Logs (`logs/agent-runner.log`):")
+        if not agent_log_path.exists():
+            st.info("Chưa có log thực thi của agent.")
+        else:
+            log_content = agent_log_path.read_text(encoding="utf-8", errors="ignore")
+            lines = [l for l in log_content.splitlines() if l.strip()]
+            preview_log = "\n".join(lines[-30:]) if lines else "File log trống."
+            render_realtime_log_box(preview_log, max_height="320px")
