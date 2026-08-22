@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sentinel.local/schemas/gateway-audit/1.0.0/schema.json",
+  "title": "Project Sentinel Gateway Network Audit Log Entry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "timestamp",
+    "endpoint",
+    "method",
+    "status_code",
+    "duration_ms",
+    "approval_status",
+    "guardrails",
+    "request_headers",
+    "response_headers",
+    "response_body_snippet"
+  ],
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp of the audit event."
+    },
+    "endpoint": {
+      "type": "string",
+      "description": "Target HTTP endpoint path requested through Gateway."
+    },
+    "method": {
+      "type": "string",
+      "pattern": "^[A-Z]+$",
+      "description": "HTTP method (GET, PUT, OPTIONS, etc.)."
+    },
+    "status_code": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 599,
+      "description": "HTTP response status code (0 if connection error/rejected before sending)."
+    },
+    "duration_ms": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Roundtrip execution time in milliseconds."
+    },
+    "approval_status": {
+      "enum": [
+        "APPROVED",
+        "AUTO_APPROVED",
+        "REJECTED_BY_USER",
+        "REJECTED_BY_TIMEOUT",
+        "NOT_REQUIRED"
+      ],
+      "description": "Human-in-the-Loop approval decision state."
+    },
+    "guardrails": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "redaction_applied",
+        "redacted_types",
+        "redaction_count",
+        "prompt_injection_detected",
+        "prompt_injection_risk"
+      ],
+      "properties": {
+        "redaction_applied": {
+          "type": "boolean",
+          "description": "Whether any secret/PII masking was applied."
+        },
+        "redacted_types": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true,
+          "description": "Categories of sensitive entities masked (e.g. EMAIL, SECRET_TOKEN, PHONE)."
+        },
+        "redaction_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of sensitive items masked."
+        },
+        "prompt_injection_detected": {
+          "type": "boolean",
+          "description": "Whether indirect prompt injection patterns were detected in response."
+        },
+        "prompt_injection_risk": {
+          "enum": ["NONE", "SUSPICIOUS_INJECTION_DETECTED"],
+          "description": "Prompt injection assessment category."
+        }
+      }
+    },
+    "request_headers": {
+      "type": "object",
+      "description": "Outbound request headers with secrets masked."
+    },
+    "response_headers": {
+      "type": "object",
+      "description": "Inbound response headers with secrets masked."
+    },
+    "response_body_snippet": {
+      "type": "string",
+      "description": "Sanitized preview snippet of response body (truncated at max 2KB)."
+    }
+  }
+}
