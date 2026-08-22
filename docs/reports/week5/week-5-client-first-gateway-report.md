@@ -132,7 +132,7 @@ plugins:
 | **`guest`** | `anonymous-user` | `anonymous` (Key-Auth Fallback) | `guest-group` | **60 req/phút** | Dành cho người dùng công khai duyệt sản phẩm, đăng ký tài khoản. |
 | **`user`** | `juice-shop-users` | `jwt` (Native Juice Shop Auth) | `user-group` | **100 req/phút** | Dành cho người dùng đã đăng nhập thao tác giỏ hàng, đặt hàng, profile. |
 
-- **Khóa Trang Gốc (Giải Pháp 1 - Exact Regex `~^/$`)**: `route-spa-root` chỉ chấp nhận duy nhất `/` và `/index.html`.
+- **Khóa Trang Gốc (Giải Pháp 1 - Exact Regex `~/$`)**: `route-spa-root` chỉ chấp nhận duy nhất `/` và `/index.html`.
 - **Khóa Static Assets (Giải Pháp 2 - Root Bundle Regex)**: `route-spa-assets` chỉ mở `/assets`, `/vendor` và các bundle `.js`, `.css`, `.ico`, `.png`, `.svg`, `.woff2`, `.map` tại root.
 - Mọi truy cập vào `/ftp/*`, `/encryptionkeys/*`, `/support/logs/*`, `/rest/admin/*` đều bị chặn 100%.
 
