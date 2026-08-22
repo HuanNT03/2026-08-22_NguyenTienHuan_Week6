@@ -29,21 +29,60 @@
       "paths": [
         "/assets",
         "/vendor",
-        "~/[a-zA-Z0-9_.-]+\\.(js|css|ico|png|svg|woff2?|map)$"
+        "/media",
+        "/i18n",
+        "~/[a-zA-Z0-9_.-]+\\.(js|css|ico|png|svg|woff2?|map|json)$"
       ],
       "methods": ["GET", "HEAD", "OPTIONS"],
       "allow": ["agent", "guest", "user"],
-      "_note": "Chỉ cho phép tải bundle JS/CSS/Icon tại root và thư mục /assets, /vendor của SPA"
+      "_note": "Cho phép tải static assets, fonts trong /media, /vendor, i18n và JS/CSS bundles"
     },
     {
       "name": "route-products-browse",
-      "paths": ["/api/Products", "/rest/products/search"],
+      "paths": ["/api/Products", "~/api/Products/\\d+$", "/rest/products/search"],
       "methods": ["GET"],
       "allow": ["agent", "guest", "user"]
     },
     {
-      "name": "route-product-reviews-read",
+      "name": "route-product-reviews",
       "paths": ["~/rest/products/\\d+/reviews$"],
+      "methods": ["GET", "PUT"],
+      "allow": ["agent", "guest", "user"]
+    },
+    {
+      "name": "route-quantities-browse",
+      "paths": ["/api/Quantitys", "~/api/Quantitys/.*$"],
+      "methods": ["GET"],
+      "allow": ["agent", "guest", "user"],
+      "_note": "Hiển thị số lượng tồn kho sản phẩm cho giao diện"
+    },
+    {
+      "name": "route-app-meta",
+      "paths": [
+        "/rest/admin/application-version",
+        "/rest/admin/application-configuration",
+        "/rest/languages",
+        "/rest/captcha"
+      ],
+      "methods": ["GET"],
+      "allow": ["agent", "guest", "user"],
+      "_note": "Thông tin phiên bản, cấu hình ứng dụng và ngôn ngữ cho SPA"
+    },
+    {
+      "name": "route-feedbacks",
+      "paths": ["/api/Feedbacks"],
+      "methods": ["GET", "POST"],
+      "allow": ["agent", "guest", "user"]
+    },
+    {
+      "name": "route-deliverys",
+      "paths": ["/api/Deliverys", "~/api/Deliverys/\\d+$"],
+      "methods": ["GET"],
+      "allow": ["agent", "guest", "user"]
+    },
+    {
+      "name": "route-challenges",
+      "paths": ["/api/Challenges", "/rest/continue-code"],
       "methods": ["GET"],
       "allow": ["agent", "guest", "user"]
     },
@@ -61,7 +100,7 @@
     },
     {
       "name": "route-guest-register",
-      "paths": ["/api/Users"],
+      "paths": ["/api/Users", "/api/SecurityAnswers"],
       "methods": ["POST"],
       "allow": ["guest", "user"],
       "_note": "Cố ý KHÔNG có 'agent' — Agent không cần tự đăng ký tài khoản"
@@ -82,8 +121,7 @@
       "name": "route-basket-read",
       "paths": ["~/rest/basket/\\d+$"],
       "methods": ["GET"],
-      "allow": ["user"],
-      "_note": "Chỉ user đã login — Juice Shop backend tự xác thực JWT"
+      "allow": ["user"]
     },
     {
       "name": "route-basket-checkout",
@@ -93,7 +131,7 @@
     },
     {
       "name": "route-basket-items",
-      "paths": ["/api/BasketItems"],
+      "paths": ["/api/BasketItems", "~/api/BasketItems/\\d+$"],
       "methods": ["GET", "POST", "PUT", "DELETE"],
       "allow": ["user"]
     },
@@ -101,6 +139,18 @@
       "name": "route-order-history",
       "paths": ["/rest/order-history"],
       "methods": ["GET"],
+      "allow": ["user"]
+    },
+    {
+      "name": "route-cards",
+      "paths": ["/api/Cards", "~/api/Cards/\\d+$"],
+      "methods": ["GET", "POST", "DELETE"],
+      "allow": ["user"]
+    },
+    {
+      "name": "route-address",
+      "paths": ["/api/Addresss", "~/api/Addresss/\\d+$"],
+      "methods": ["GET", "POST", "PUT", "DELETE"],
       "allow": ["user"]
     },
     {
