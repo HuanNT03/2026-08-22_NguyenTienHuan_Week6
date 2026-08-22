@@ -101,3 +101,33 @@ def build_user_prompt(group: AnalysisGroup, kb_snippets: list[dict[str, Any]]) -
     # Redact sensitive data before returning string
     redacted_payload = mask_sensitive_data(payload)
     return json.dumps(redacted_payload, indent=2, ensure_ascii=False)
+
+
+def build_react_user_prompt(group: AnalysisGroup) -> str:
+    """Build initial user prompt for ReAct Agent containing compressed findings.
+
+    Args:
+        group: The AnalysisGroup containing unified findings to analyze.
+
+    Returns:
+        str: Redacted JSON-formatted string of group context for LLM ReAct loop.
+    """
+    compressed_findings = [compress_finding(f) for f in group.findings]
+
+    payload = {
+        "analysis_group_id": group.group_id,
+        "primary_cwe": group.primary_cwe,
+        "correlation_type": group.correlation_type,
+        "correlated_fingerprints": group.correlated_fingerprints,
+        "findings_count": len(compressed_findings),
+        "unified_findings": compressed_findings,
+        "instructions": (
+            "Hãy áp dụng quy trình ReAct: Suy luận (Thought) -> Gọi công cụ (Tool Call) nếu cần tra cứu KB, "
+            "tra cứu payloads.json, hoặc gửi request kiểm thử an toàn qua Gateway để xác thực -> Đánh giá quan sát (Observation) "
+            "-> Xuất báo cáo JSON cuối cùng theo đúng schema ReportEntry cho TẤT CẢ các findings trong nhóm."
+        ),
+    }
+
+    redacted_payload = mask_sensitive_data(payload)
+    return json.dumps(redacted_payload, indent=2, ensure_ascii=False)
+
