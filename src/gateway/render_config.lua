@@ -1,6 +1,6 @@
 -- ==============================================================================
 -- PROJECT SENTINEL - KONG DECLARATIVE CONFIG RENDERER (BOOT-TIME LUAJIT)
--- File: configs/gateway/render_config.lua
+-- File: src/gateway/render_config.lua
 -- Purpose: Đọc allowlist.json, trích xuất danh sách endpoint cho phép của AI Agent,
 --          format thành chuỗi Lua table ["/path"] = true và thay thế các placeholder
 --          (${ALLOWED_PATHS_LUA}, ${AGENT_API_KEY}) trong kong.yml.template

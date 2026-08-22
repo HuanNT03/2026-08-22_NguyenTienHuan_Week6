@@ -5,14 +5,14 @@ from pathlib import Path
 
 import yaml
 
-GATEWAY_DIR = Path(__file__).parent.parent.parent / "configs" / "gateway"
+GATEWAY_DIR = Path(__file__).parent.parent.parent / "src" / "gateway"
 ROOT_DIR = Path(__file__).parent.parent.parent
 
 
 def test_allowlist_json_structure_and_clients() -> None:
     """Verify that allowlist.json is valid and contains the required Client-First schema."""
     allowlist_path = GATEWAY_DIR / "allowlist.json"
-    assert allowlist_path.is_file(), "configs/gateway/allowlist.json must exist"
+    assert allowlist_path.is_file(), "src/gateway/allowlist.json must exist"
 
     with open(allowlist_path, encoding="utf-8") as f:
         data = json.load(f)
@@ -74,7 +74,7 @@ def test_allowlist_no_dangerous_wildcards() -> None:
 def test_payloads_json_validity() -> None:
     """Verify that payloads.json is valid and contains standard security test payload groups."""
     payloads_path = GATEWAY_DIR / "payloads.json"
-    assert payloads_path.is_file(), "configs/gateway/payloads.json must exist"
+    assert payloads_path.is_file(), "src/gateway/payloads.json must exist"
 
     with open(payloads_path, encoding="utf-8") as f:
         data = json.load(f)
@@ -90,7 +90,7 @@ def test_payloads_json_validity() -> None:
 def test_kong_template_structure_and_placeholders() -> None:
     """Verify that kong.yml.template contains all necessary declarative sections and placeholders."""
     template_path = GATEWAY_DIR / "kong.yml.template"
-    assert template_path.is_file(), "configs/gateway/kong.yml.template must exist"
+    assert template_path.is_file(), "src/gateway/kong.yml.template must exist"
 
     content = template_path.read_text(encoding="utf-8")
     assert "${ALLOWED_PATHS_LUA}" in content, "Template must contain ${ALLOWED_PATHS_LUA} placeholder"
@@ -113,7 +113,7 @@ def test_kong_template_structure_and_placeholders() -> None:
 def test_lua_renderer_script_exists_and_syntax() -> None:
     """Verify that render_config.lua exists and contains required fallback logic."""
     lua_path = GATEWAY_DIR / "render_config.lua"
-    assert lua_path.is_file(), "configs/gateway/render_config.lua must exist"
+    assert lua_path.is_file(), "src/gateway/render_config.lua must exist"
 
     content = lua_path.read_text(encoding="utf-8")
     assert "DEFAULT_AGENT_PATHS" in content

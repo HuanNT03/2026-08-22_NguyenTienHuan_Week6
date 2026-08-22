@@ -11,7 +11,7 @@ Trong khuôn khổ **Project Sentinel**, việc đưa **Kong API Gateway (`kong:
 
 ## 2. Ma Trận Phân Quyền Client-First & Cấu Trúc Allowlist
 
-Hệ thống quản lý phân quyền thông qua `configs/gateway/allowlist.json` với ma trận 3 nhóm Client:
+Hệ thống quản lý phân quyền thông qua `src/gateway/allowlist.json` với ma trận 3 nhóm Client:
 
 | Nhóm Client | Consumer Định Danh | Phương Thức Xác Thực | Nhóm ACL | Rate Limit | Mục Đích Sử Dụng |
 | :--- | :--- | :--- | :--- | :---: | :--- |
@@ -61,7 +61,7 @@ Cả 2 chế độ vận hành đều dùng chung cổng `http://localhost:3000`
 
 ## 6. Bộ Biên Dịch Boot-Time Lua (`render_config.lua`)
 
-Khi Kong Gateway khởi động, lệnh boot-time thực thi script LuaJIT `configs/gateway/render_config.lua`:
+Khi Kong Gateway khởi động, lệnh boot-time thực thi script LuaJIT `src/gateway/render_config.lua`:
 - Đọc và phân tích `allowlist.json` bằng thư viện `cjson`.
 - Tự động chuyển đổi các path cho phép của `agent` thành bảng tra cứu in-memory `["/path"] = true`.
 - Nạp khóa RSA public key và thay thế các biến môi trường vào template `kong.yml.template`, xuất ra `/tmp/kong.yml`.
