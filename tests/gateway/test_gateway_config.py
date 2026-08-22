@@ -93,11 +93,40 @@ def test_kong_template_structure_and_placeholders() -> None:
     assert template_path.is_file(), "src/gateway/kong.yml.template must exist"
 
     content = template_path.read_text(encoding="utf-8")
+    assert "${GENERATED_ROUTES_YAML}" in content, "Template must contain ${GENERATED_ROUTES_YAML} placeholder"
     assert "${ALLOWED_PATHS_LUA}" in content, "Template must contain ${ALLOWED_PATHS_LUA} placeholder"
     assert "${AGENT_API_KEY}" in content, "Template must contain ${AGENT_API_KEY} placeholder"
 
-    # Simulate variable substitution to ensure valid YAML structure
-    simulated_yaml = content.replace("${ALLOWED_PATHS_LUA}", '["/test"] = true').replace("${AGENT_API_KEY}", "test-key-123")
+    # Simulate dynamic routes generation from allowlist.json to verify valid YAML compilation
+    allowlist_path = GATEWAY_DIR / "allowlist.json"
+    with open(allowlist_path, encoding="utf-8") as f:
+        data = json.load(f)
+
+    route_blocks = []
+    for route in data["routes"]:
+        r_name = route["name"]
+        paths_str = "\n".join(f"          - {p}" for p in route["paths"])
+        methods_str = "\n".join(f"          - {m}" for m in route["methods"])
+        block = f"""      - name: {r_name}
+        paths:
+{paths_str}
+        methods:
+{methods_str}
+        strip_path: false
+        plugins:
+          - name: rate-limiting
+            config:
+              minute: 60
+              policy: local"""
+        route_blocks.append(block)
+
+    simulated_routes_yaml = "\n\n".join(route_blocks)
+
+    simulated_yaml = (
+        content.replace("${GENERATED_ROUTES_YAML}", simulated_routes_yaml)
+        .replace("${ALLOWED_PATHS_LUA}", '["/api/Products"] = true')
+        .replace("${AGENT_API_KEY}", "test-key-123")
+    )
     parsed = yaml.safe_load(simulated_yaml)
 
     assert parsed.get("_format_version") == "3.0"
@@ -106,19 +135,22 @@ def test_kong_template_structure_and_placeholders() -> None:
     assert service["name"] == "juice-shop-service"
     assert service["host"] == "juice-shop"
     assert service["port"] == 3000
-    assert "routes" in service and len(service["routes"]) > 0
+    assert "routes" in service and len(service["routes"]) == len(data["routes"])
     assert "consumers" in parsed and len(parsed["consumers"]) >= 3
 
 
 def test_lua_renderer_script_exists_and_syntax() -> None:
-    """Verify that render_config.lua exists and contains required fallback logic."""
+    """Verify that render_config.lua exists and contains required dynamic route compilation logic."""
     lua_path = GATEWAY_DIR / "render_config.lua"
     assert lua_path.is_file(), "src/gateway/render_config.lua must exist"
 
     content = lua_path.read_text(encoding="utf-8")
     assert "DEFAULT_AGENT_PATHS" in content
+    assert "DEFAULT_FALLBACK_ROUTES_YAML" in content
     assert "cjson" in content
-    assert "get_agent_allowed_paths" in content
+    assert "extract_agent_paths" in content
+    assert "generate_routes_yaml" in content
+    assert "GENERATED_ROUTES_YAML" in content
     assert "ALLOWED_PATHS_LUA" in content
     assert "AGENT_API_KEY" in content
 

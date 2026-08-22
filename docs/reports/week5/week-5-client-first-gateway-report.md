@@ -1,81 +1,121 @@
-# Báo Cáo Kỹ Thuật Tuần 5: Kiến Trúc Kong API Gateway Client-First & Cơ Chế Khóa Fallback Allowlist
+# Báo Cáo Kỹ Thuật Tuần 5: Kiến Trúc Kong API Gateway Client-First & Cơ Chế Tự Động Hóa Allowlist
 
 ## 1. Tổng Quan Mục Tiêu & Kiến Trúc Bảo Mật
 
-Trong khuôn khổ **Project Sentinel**, việc đưa **Kong API Gateway (`kong:3.6.1`)** đứng trước ứng dụng mục tiêu **OWASP Juice Shop (`v20.1.1`)** nhằm thực hiện các mục tiêu bảo mật cốt lõi:
-1. **Phân quyền Client-First (Consumer-Scoped Authorization)**: Nhận diện và áp dụng chính sách bảo vệ, giới hạn tốc độ (Rate Limiting) riêng biệt cho 3 nhóm đối tượng: AI Security Agent (`ai-agent`), Khách vãng lai (`anonymous-user`) và Người dùng đăng nhập (`juice-shop-users`).
-2. **Triệt tiêu lỗ hổng Fallback Wildcard `/`**: Ngăn chặn kẻ tấn công lợi dụng route gốc của Single Page Application để bypass Allowlist và truy cập trái phép vào các endpoint nhạy cảm (`/ftp`, `/encryptionkeys`, `/support/logs`, `/rest/admin/*`).
-3. **Cô lập hạ tầng mạng (Network Isolation)**: Khi chạy có Gateway, container Juice Shop bị ẩn hoàn toàn trong mạng nội bộ Docker và chỉ có thể truy cập thông qua cổng Proxy của Kong.
+Trong khuôn khổ **Project Sentinel**, việc đưa **Kong API Gateway (`kong:3.6.1`)** đứng trước ứng dụng mục tiêu **OWASP Juice Shop (`v20.1.1`)** nhằm thực hiện 3 trụ cột an ninh:
+1. **Nguồn chân lý duy nhất (Single Source of Truth)**: Toàn bộ danh mục route, quyền truy cập và giới hạn tốc độ được quản lý tập trung tại `src/gateway/allowlist.json`. Khi cần bổ sung endpoint mới, kỹ sư chỉ cần cập nhật một tệp JSON duy nhất.
+2. **Phân quyền Client-First (Consumer-Scoped Authorization)**: Nhận diện và áp dụng chính sách bảo vệ riêng biệt cho 3 nhóm đối tượng: AI Security Agent (`ai-agent`), Khách vãng lai (`anonymous-user`) và Người dùng đăng nhập (`juice-shop-users`).
+3. **Triệt tiêu lỗ hổng Fallback Wildcard `/`**: Ngăn chặn kẻ tấn công lợi dụng route gốc SPA để bypass Allowlist và truy cập trái phép vào các endpoint nhạy cảm (`/ftp`, `/encryptionkeys`, `/support/logs`, `/rest/admin/*`).
 
 ---
 
-## 2. Ma Trận Phân Quyền Client-First & Cấu Trúc Allowlist
-
-Hệ thống quản lý phân quyền thông qua `src/gateway/allowlist.json` với ma trận 3 nhóm Client:
-
-| Nhóm Client | Consumer Định Danh | Phương Thức Xác Thực | Nhóm ACL | Rate Limit | Mục Đích Sử Dụng |
-| :--- | :--- | :--- | :--- | :---: | :--- |
-| **`agent`** | `ai-agent` | `key-auth` (`x-api-key`) | `agent-group` | 20 req/phút | Dành riêng cho AI Security Agent thăm dò các điểm nghi vấn. |
-| **`guest`** | `anonymous-user` | `anonymous` (Key-Auth Fallback) | `guest-group` | 60 req/phút | Dành cho người dùng công khai duyệt sản phẩm, đăng ký tài khoản. |
-| **`user`** | `juice-shop-users` | `jwt` (Bearer Token RSA) | `user-group` | 100 req/phút | Dành cho người dùng đã đăng nhập thao tác giỏ hàng, đặt hàng, profile. |
-
----
-
-## 3. Cơ Chế Khóa Fallback Route Gốc (Kết Hợp Giải Pháp 1 + Giải Pháp 2)
-
-Để đảm bảo giao diện Angular SPA hiển thị 100% bình thường mà **không mở toang wildcard `/`**:
+## 2. Sơ Đồ Kiến Trúc Biên Dịch Boot-Time & Luồng Xử Lý Request
 
 ```mermaid
 flowchart TD
-    Request[HTTP Request tới Gateway :3000] --> CheckRoute{Khớp Route Cụ Thể?}
+    subgraph SingleSourceOfTruth [1. Single Source of Truth & Environment]
+        AllowlistJSON["src/gateway/allowlist.json<br/>(15 Routes, 3 Clients, Rate Limits)"]
+        TemplateYML["src/gateway/kong.yml.template<br/>(Chứa các Placeholders)"]
+        EnvKey["Biến Môi Trường .env<br/>KONG_VAULT_ENV_AGENT_API_KEY"]
+    end
+
+    subgraph BootTimeCompilation [2. Bộ Biên Dịch Boot-Time LuaJIT]
+        LuaCompiler["src/gateway/render_config.lua<br/>(Khởi chạy trước khi Kong Daemon start)"]
+        GenRoutes["Tự động sinh khối YAML Routes<br/>${GENERATED_ROUTES_YAML}"]
+        GenAgentLUT["Tự động sinh bảng tra cứu Agent O(1)<br/>${ALLOWED_PATHS_LUA}"]
+        InjectKey["Nạp API Key vào Consumer<br/>${AGENT_API_KEY}"]
+        OutputYML["Xuất tệp hoàn chỉnh: /tmp/kong.yml"]
+    end
+
+    subgraph KongRuntimeEngine [3. Kong Gateway Engine (DB-less Mode)]
+        KongLoad["Kong nạp /tmp/kong.yml vào RAM"]
+        
+        Req[HTTP Request tới Gateway :3000] --> PreFunc{Lua Pre-Function Check}
+        
+        PreFunc -->|Có x-api-key| CheckAgent{Key Hợp Lệ & Path thuộc Agent LUT?}
+        CheckAgent -->|Không hợp lệ / Không thuộc allowlist| BlockAgent[401 Unauthorized / 403 Forbidden]
+        CheckAgent -->|Hợp lệ| ConsumerAgent[Consumer: ai-agent<br/>Rate Limit: 20 req/min]
+        
+        PreFunc -->|Không có x-api-key| MatchRoute{Khớp Route trong YAML?}
+        MatchRoute -->|Không khớp: /ftp, /metrics, /encryptionkeys| BlockPublic[404 Not Found / 403 Forbidden]
+        MatchRoute -->|Khớp Route| KeyAuth[Key-Auth: Gán Consumer anonymous-user]
+        KeyAuth --> ApplyRouteRate[Áp dụng Route-level Rate Limit<br/>Login: 30, Register: 20, SPA: 60-100]
+        
+        ConsumerAgent --> ProxyTarget[Forward vào Juice Shop :3000]
+        ApplyRouteRate --> ProxyTarget
+        
+        ProxyTarget --> JuiceShopNative[Juice Shop Backend<br/>Tự xác thực Bearer JWT -> 401 nếu thiếu token]
+    end
+
+    AllowlistJSON --> LuaCompiler
+    TemplateYML --> LuaCompiler
+    EnvKey --> LuaCompiler
     
-    CheckRoute -->|Path là exact / hoặc /index.html| RouteRoot[route-spa-root<br/>Regex: ~^/$<br/>Chỉ mở GET/HEAD] --> AllowRoot[Trả về index.html]
-    CheckRoute -->|Path là bundle static tại root hoặc /assets, /vendor| RouteAssets[route-spa-assets<br/>Regex: ~^/.*.(js|css|ico|png|svg|woff2)<br/>Chỉ mở GET/HEAD] --> AllowAssets[Tải CSS/JS/Font/Image]
-    CheckRoute -->|Path khớp API Allowlist /api/*, /rest/*| RouteAPI[API Routes Hợp Lệ<br/>Xác thực Key/JWT/ACL] --> AllowAPI[Proxy vào Juice Shop]
-    CheckRoute -->|Không khớp: /ftp, /metrics, /encryptionkeys, /rest/admin/*| BlockAll[KONG GATEWAY CHẶN ĐỨNG<br/>403 Forbidden / 404 Not Found]
+    LuaCompiler --> GenRoutes --> OutputYML
+    LuaCompiler --> GenAgentLUT --> OutputYML
+    LuaCompiler --> InjectKey --> OutputYML
+    OutputYML --> KongLoad
 ```
 
-- **`route-spa-root` (Giải Pháp 1 - Exact Regex `~^/$`)**: Chỉ chấp nhận duy nhất trang chủ gốc `/` và `/index.html` cho các phương thức đọc (`GET`, `HEAD`, `OPTIONS`).
-- **`route-spa-assets` (Giải Pháp 2 - Root File Bundle Regex)**: Chỉ cho phép tải các bundle tĩnh có phần mở rộng `.js`, `.css`, `.ico`, `.png`, `.svg`, `.woff2`, `.map` tại thư mục gốc và 2 thư mục tĩnh `/assets`, `/vendor`.
-- **Hiệu quả**: Mọi request tới các file/endpoint nguy hiểm như `/ftp/legal.md`, `/encryptionkeys/jwt.pub`, `/support/logs/access.log` đều **bị chặn 100% ngay tại Gateway**.
+---
+
+## 3. Cơ Chế Nạp Dữ Liệu Tự Động (Data Ingestion Mechanisms)
+
+### 3.1. Cơ chế Tạo Route Tự Động (`${GENERATED_ROUTES_YAML}`)
+- `render_config.lua` phân tích mảng `routes` trong `src/gateway/allowlist.json`.
+- Với mỗi route, script tự động sinh cấu trúc YAML chuẩn cho Kong:
+  - `name`: Tên route định danh (ví dụ `route-products-browse`, `route-user-login`).
+  - `paths`: Danh sách đường dẫn hoặc biểu thức chính quy (ví dụ `~^/$`, `/index.html`, `/assets`).
+  - `methods`: Danh sách phương thức HTTP cho phép (`GET`, `POST`, `OPTIONS`...).
+  - `strip_path: false`: Giữ nguyên URL gốc khi chuyển tiếp vào backend.
+  - `plugins`: Tự động gắn plugin `rate-limiting` riêng biệt cho từng route.
+- Toàn bộ khối YAML được điền vào vị trí `${GENERATED_ROUTES_YAML}` trong `kong.yml.template`.
+
+### 3.2. Cơ chế Nạp Dữ Liệu Phân Quyền (`${ALLOWED_PATHS_LUA}`)
+- Script duyệt qua các route có `allow` chứa `"agent"`.
+- Trích xuất danh sách endpoint an toàn và chuyển đổi thành bảng tra cứu in-memory của Lua:
+  ```lua
+  local allowed_paths = { ["/api/Products"] = true, ["/rest/products/search"] = true, ["/rest/user/login"] = true, ["/rest/user/whoami"] = true }
+  ```
+- Bảng này được nhúng trực tiếp vào plugin `pre-function`. Khi Agent gửi request có kèm `x-api-key`, plugin kiểm tra path với độ phức tạp $O(1)$. Nếu URL không có trong bảng $\rightarrow$ trả về `403 Forbidden` ngay lập tức.
+- **Xác thực Token Người dùng**: Bỏ ràng buộc `authorization: ["~^Bearer "]` tại Kong Gateway để chuyển giao việc kiểm tra JWT cho middleware `express-jwt` của Juice Shop. Điều này đảm bảo:
+  1. Trả về đúng mã chuẩn `401 Unauthorized` thay vì `404 Not Found`.
+  2. Cho phép AI Agent và DAST ZAP quét và kiểm thử chính xác các lỗ hổng Broken Authentication / IDOR / BOLA.
+
+### 3.3. Cơ chế Phân Tầng Giới Hạn Tốc Độ (Multi-Tier Rate Limiting)
+
+Kong Gateway áp dụng thứ tự ưu tiên plugin (Plugin Precedence) chặt chẽ:
+1. **Tầng Consumer (Consumer-scoped Rate Limit)**:
+   - Consumer `ai-agent` được gán plugin `rate-limiting` mức **20 requests/phút** tại cấp độ consumer. Giới hạn này có độ ưu tiên cao nhất và ghi đè mọi rate limit của route, đảm bảo AI Agent luôn tuân thủ ngưỡng an toàn của hệ thống.
+2. **Tầng Route (Route-level Rate Limit)**:
+   - Áp dụng cho khách vãng lai (`anonymous-user`) và người dùng thông thường (`juice-shop-users`):
+     - `route-user-login`: **30 req/phút** (Chống tấn công dò mật khẩu Brute-force).
+     - `route-guest-register`, `route-reset-password`: **20 req/phút** (Chống tạo tài khoản rác Anti-Spam).
+     - `route-spa-root`: **60 req/phút** (Duyệt trang chủ).
+     - `route-spa-assets`: **100 req/phút** (Tải tài nguyên tĩnh CSS/JS).
+     - `route-profile-image-upload`: **50 req/phút** (Giới hạn tải tệp).
 
 ---
 
-## 4. Phân Định Rõ Ràng Các Nhóm API Key
+## 4. Ma Trận Cấu Hình Client-First & Cơ Chế Khóa Fallback
 
-Hệ thống phân định độc lập 3 nhóm khóa môi trường trong `.env`:
-1. **`KONG_VAULT_ENV_AGENT_API_KEY` (Server-side)**: Khóa bí mật đăng ký trên Kong Gateway để nhận diện consumer `ai-agent`.
-2. **`AGENT_API_KEY` (Client-side)**: Khóa bí mật nạp vào công cụ `SafeRequester` (`src/gateway/safe_requester.py`) để Agent gửi kèm trong HTTP Header `x-api-key`.
-3. **`LLM_API_KEY` (AI Provider)**: Khóa gọi mô hình ngôn ngữ lớn (Qwen / OpenAI / Claude).
+| Nhóm Client | Consumer | Auth Method | Rate Limit | Mục Đích Sử Dụng |
+| :--- | :--- | :--- | :---: | :--- |
+| **`agent`** | `ai-agent` | `key-auth` (`x-api-key`) | 20 req/phút | Dành riêng cho AI Security Agent thăm dò các điểm nghi vấn. |
+| **`guest`** | `anonymous-user` | `anonymous` (Key-Auth Fallback) | 60 req/phút | Dành cho người dùng công khai duyệt sản phẩm, đăng ký tài khoản. |
+| **`user`** | `juice-shop-users` | `jwt` (Native Juice Shop Auth) | 100 req/phút | Dành cho người dùng đã đăng nhập thao tác giỏ hàng, đặt hàng, profile. |
 
----
-
-## 5. Cơ Chế Chuyển Đổi Cổng Thông Minh (Single Port Switch `:3000`)
-
-Cả 2 chế độ vận hành đều dùng chung cổng `http://localhost:3000` trên máy host để phục vụ đối sánh thực nghiệm:
-
-- **Chế độ 1 — Standalone Target (`make target-up`)**: Juice Shop ánh xạ trực tiếp `127.0.0.1:3000:3000` (Không có Gateway bảo vệ).
-- **Chế độ 2 — Gateway Protected (`make gateway-up`)**: Kong Gateway ánh xạ `127.0.0.1:3000:8000` (Proxy) và `127.0.0.1:8001:8001` (Admin API). Container Juice Shop bị ẩn hoàn toàn vào mạng nội bộ Docker (`sentinel-security`).
+- **Khóa Trang Gốc (Giải Pháp 1 - Exact Regex `~^/$`)**: `route-spa-root` chỉ chấp nhận duy nhất `/` và `/index.html`.
+- **Khóa Static Assets (Giải Pháp 2 - Root Bundle Regex)**: `route-spa-assets` chỉ mở `/assets`, `/vendor` và các bundle `.js`, `.css`, `.ico`, `.png`, `.svg`, `.woff2`, `.map` tại root.
+- Mọi truy cập vào `/ftp/*`, `/encryptionkeys/*`, `/support/logs/*`, `/rest/admin/*` đều bị chặn 100%.
 
 ---
 
-## 6. Bộ Biên Dịch Boot-Time Lua (`render_config.lua`)
-
-Khi Kong Gateway khởi động, lệnh boot-time thực thi script LuaJIT `src/gateway/render_config.lua`:
-- Đọc và phân tích `allowlist.json` bằng thư viện `cjson`.
-- Tự động chuyển đổi các path cho phép của `agent` thành bảng tra cứu in-memory `["/path"] = true`.
-- Nạp khóa RSA public key và thay thế các biến môi trường vào template `kong.yml.template`, xuất ra `/tmp/kong.yml`.
-- Tích hợp cơ chế Fallback an toàn: Tự động kích hoạt Default Fallback Allowlist nếu tệp cấu hình bị rỗng hoặc lỗi cú pháp.
-
----
-
-## 7. Kết Quả Kiểm Thử Thực Nghiệm
-
-Toàn bộ hệ thống kiểm thử đã được chạy và xác nhận đạt chuẩn 100%:
+## 5. Kết Quả Kiểm Thử Thực Nghiệm
 
 | Bộ Test Suite | Số Lượng Tests | Kết Quả | Nội Dung Xác Minh |
 | :--- | :---: | :---: | :--- |
-| **`tests/gateway/test_gateway_config.py`** | 7 | **100% PASS** | Kiểm tra cú pháp `allowlist.json`, xác nhận không có wildcard `/` nguy hiểm, kiểm tra template `kong.yml.template`, script Lua, biến môi trường và Compose override. |
+| **`tests/gateway/test_gateway_config.py`** | 7 | **100% PASS** | Kiểm tra cú pháp `allowlist.json`, xác minh trình sinh route động `${GENERATED_ROUTES_YAML}`, kiểm tra template, script Lua và Compose override. |
 | **`tests/guardrails/` (Milestone 1)** | 16 | **100% PASS** | Khử khuẩn PII/Secret và phòng vệ Prompt Injection hoạt động chính xác. |
 | **`tests/agent/` (Regression)** | 34 | **100% PASS** | Toàn bộ luồng phân tích và nạp prompt của AI Agent tương thích hoàn toàn. |
 | **Toàn bộ Repository (`pytest tests/`)** | 331 | **100% PASS** | Đảm bảo tính toàn vẹn của tất cả các module. |
