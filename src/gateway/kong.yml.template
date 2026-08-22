@@ -77,14 +77,28 @@ services:
 ${GENERATED_ROUTES_YAML}
 
 # ------------------------------------------------------------------------------
-# 3. CONSUMER-SCOPED PLUGINS
+# 3. CONSUMER-SCOPED PLUGINS (Pure Client-First Rate Limiting)
 # ------------------------------------------------------------------------------
 plugins:
-  # Dedicated Rate Limiting for AI Security Agent: 20 requests per minute
+  # 1. AI Security Agent: 20 requests per minute
   - name: rate-limiting
     consumer: ai-agent
     config:
       minute: 20
+      policy: local
+
+  # 2. Anonymous / Guest User: 60 requests per minute
+  - name: rate-limiting
+    consumer: anonymous-user
+    config:
+      minute: 60
+      policy: local
+
+  # 3. Authenticated Juice Shop Users: 100 requests per minute
+  - name: rate-limiting
+    consumer: juice-shop-users
+    config:
+      minute: 100
       policy: local
 
 # ------------------------------------------------------------------------------

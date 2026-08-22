@@ -3,9 +3,9 @@
 ## 1. Tổng Quan Mục Tiêu & Kiến Trúc Bảo Mật
 
 Trong khuôn khổ **Project Sentinel**, việc đưa **Kong API Gateway (`kong:3.6.1`)** đứng trước ứng dụng mục tiêu **OWASP Juice Shop (`v20.1.1`)** nhằm thực hiện 3 trụ cột an ninh:
-1. **Nguồn chân lý duy nhất (Single Source of Truth)**: Toàn bộ danh mục route, quyền truy cập và giới hạn tốc độ được quản lý tập trung tại `src/gateway/allowlist.json`. Khi cần bổ sung endpoint mới, kỹ sư chỉ cần cập nhật một tệp JSON duy nhất.
-2. **Phân quyền Client-First (Consumer-Scoped Authorization)**: Nhận diện và áp dụng chính sách bảo vệ riêng biệt cho 3 nhóm đối tượng: AI Security Agent (`ai-agent`), Khách vãng lai (`anonymous-user`) và Người dùng đăng nhập (`juice-shop-users`).
-3. **Triệt tiêu lỗ hổng Fallback Wildcard `/`**: Ngăn chặn kẻ tấn công lợi dụng route gốc SPA để bypass Allowlist và truy cập trái phép vào các endpoint nhạy cảm (`/ftp`, `/encryptionkeys`, `/support/logs`, `/rest/admin/*`).
+1. **Nguồn chân lý duy nhất (Single Source of Truth)**: Toàn bộ danh mục route, phân quyền truy cập và hạn ngạch tốc độ được quản lý tập trung tại `src/gateway/allowlist.json`. Khi cần bổ sung endpoint mới, kỹ sư chỉ cần cập nhật một tệp JSON duy nhất mà không cần can thiệp vào tệp cấu hình Gateway.
+2. **Phân quyền Client-First (Consumer-Scoped Authorization & Rate Limiting)**: Nhận diện và áp dụng chính sách giới hạn tốc độ riêng biệt ở cấp độ danh tính Client (Consumer) cho 3 nhóm đối tượng: AI Security Agent (`ai-agent`: 20 req/min), Khách vãng lai (`anonymous-user`: 60 req/min) và Người dùng đăng nhập (`juice-shop-users`: 100 req/min).
+3. **Triệt tiêu lỗ hổng Fallback Wildcard `/`**: Ngăn chặn kẻ tấn công lợi dụng route gốc Single Page Application (SPA) để bypass Allowlist và truy cập trái phép vào các endpoint nhạy cảm (`/ftp`, `/encryptionkeys`, `/support/logs`, `/rest/admin/*`).
 
 ---
 
@@ -14,16 +14,16 @@ Trong khuôn khổ **Project Sentinel**, việc đưa **Kong API Gateway (`kong:
 ```mermaid
 flowchart TD
     subgraph SingleSourceOfTruth [1. Single Source of Truth & Environment]
-        AllowlistJSON["src/gateway/allowlist.json<br/>(15 Routes, 3 Clients, Rate Limits)"]
-        TemplateYML["src/gateway/kong.yml.template<br/>(Chứa các Placeholders)"]
+        AllowlistJSON["src/gateway/allowlist.json<br/>(15 Routes, 3 Clients Matrix)"]
+        TemplateYML["src/gateway/kong.yml.template<br/>(Chứa Placeholders & Consumer Plugins)"]
         EnvKey["Biến Môi Trường .env<br/>KONG_VAULT_ENV_AGENT_API_KEY"]
     end
 
     subgraph BootTimeCompilation [2. Bộ Biên Dịch Boot-Time LuaJIT]
         LuaCompiler["src/gateway/render_config.lua<br/>(Khởi chạy trước khi Kong Daemon start)"]
-        GenRoutes["Tự động sinh khối YAML Routes<br/>${GENERATED_ROUTES_YAML}"]
+        GenRoutes["Tự động sinh khối Routes tối giản<br/>${GENERATED_ROUTES_YAML}"]
         GenAgentLUT["Tự động sinh bảng tra cứu Agent O(1)<br/>${ALLOWED_PATHS_LUA}"]
-        InjectKey["Nạp API Key vào Consumer<br/>${AGENT_API_KEY}"]
+        InjectKey["Nạp API Key vào Consumer ai-agent<br/>${AGENT_API_KEY}"]
         OutputYML["Xuất tệp hoàn chỉnh: /tmp/kong.yml"]
     end
 
@@ -34,15 +34,21 @@ flowchart TD
         
         PreFunc -->|Có x-api-key| CheckAgent{Key Hợp Lệ & Path thuộc Agent LUT?}
         CheckAgent -->|Không hợp lệ / Không thuộc allowlist| BlockAgent[401 Unauthorized / 403 Forbidden]
-        CheckAgent -->|Hợp lệ| ConsumerAgent[Consumer: ai-agent<br/>Rate Limit: 20 req/min]
+        CheckAgent -->|Hợp lệ| ConsumerAgent[Consumer: ai-agent]
+        ConsumerAgent --> RateAgent["Consumer Rate Limit:<br/>20 req/phút"]
         
         PreFunc -->|Không có x-api-key| MatchRoute{Khớp Route trong YAML?}
         MatchRoute -->|Không khớp: /ftp, /metrics, /encryptionkeys| BlockPublic[404 Not Found / 403 Forbidden]
-        MatchRoute -->|Khớp Route| KeyAuth[Key-Auth: Gán Consumer anonymous-user]
-        KeyAuth --> ApplyRouteRate[Áp dụng Route-level Rate Limit<br/>Login: 30, Register: 20, SPA: 60-100]
+        MatchRoute -->|Khớp Route| KeyAuth{Key-Auth Plugin}
+        KeyAuth -->|Khách vãng lai| ConsumerGuest[Consumer: anonymous-user]
+        KeyAuth -->|User có Token| ConsumerUser[Consumer: juice-shop-users]
         
-        ConsumerAgent --> ProxyTarget[Forward vào Juice Shop :3000]
-        ApplyRouteRate --> ProxyTarget
+        ConsumerGuest --> RateGuest["Consumer Rate Limit:<br/>60 req/phút"]
+        ConsumerUser --> RateUser["Consumer Rate Limit:<br/>100 req/phút"]
+        
+        RateAgent --> ProxyTarget[Forward vào Juice Shop :3000]
+        RateGuest --> ProxyTarget
+        RateUser --> ProxyTarget
         
         ProxyTarget --> JuiceShopNative[Juice Shop Backend<br/>Tự xác thực Bearer JWT -> 401 nếu thiếu token]
     end
@@ -61,15 +67,19 @@ flowchart TD
 
 ## 3. Cơ Chế Nạp Dữ Liệu Tự Động (Data Ingestion Mechanisms)
 
-### 3.1. Cơ chế Tạo Route Tự Động (`${GENERATED_ROUTES_YAML}`)
-- `render_config.lua` phân tích mảng `routes` trong `src/gateway/allowlist.json`.
-- Với mỗi route, script tự động sinh cấu trúc YAML chuẩn cho Kong:
-  - `name`: Tên route định danh (ví dụ `route-products-browse`, `route-user-login`).
-  - `paths`: Danh sách đường dẫn hoặc biểu thức chính quy (ví dụ `~^/$`, `/index.html`, `/assets`).
-  - `methods`: Danh sách phương thức HTTP cho phép (`GET`, `POST`, `OPTIONS`...).
-  - `strip_path: false`: Giữ nguyên URL gốc khi chuyển tiếp vào backend.
-  - `plugins`: Tự động gắn plugin `rate-limiting` riêng biệt cho từng route.
-- Toàn bộ khối YAML được điền vào vị trí `${GENERATED_ROUTES_YAML}` trong `kong.yml.template`.
+### 3.1. Cơ chế Tạo Route Tự Động Tối Giản (`${GENERATED_ROUTES_YAML}`)
+- Script `render_config.lua` phân tích mảng `routes` trong `src/gateway/allowlist.json`.
+- Với mỗi route, script tự động sinh cấu trúc YAML chuẩn sạch cho Kong Gateway:
+  ```yaml
+        - name: route-products-browse
+          paths:
+            - /api/Products
+            - /rest/products/search
+          methods:
+            - GET
+          strip_path: false
+  ```
+- **Tối ưu hóa**: Toàn bộ định nghĩa Route không cần chứa khối `plugins: [rate-limiting]` lặp đi lặp lại. Cấu hình Route trở nên trong sáng, ngắn gọn và tập trung thuần túy vào việc định tuyến URL.
 
 ### 3.2. Cơ chế Nạp Dữ Liệu Phân Quyền (`${ALLOWED_PATHS_LUA}`)
 - Script duyệt qua các route có `allow` chứa `"agent"`.
@@ -82,28 +92,45 @@ flowchart TD
   1. Trả về đúng mã chuẩn `401 Unauthorized` thay vì `404 Not Found`.
   2. Cho phép AI Agent và DAST ZAP quét và kiểm thử chính xác các lỗ hổng Broken Authentication / IDOR / BOLA.
 
-### 3.3. Cơ chế Phân Tầng Giới Hạn Tốc Độ (Multi-Tier Rate Limiting)
+### 3.3. Cơ chế Giới Hạn Tốc Độ Chuẩn Client-First (Consumer-Scoped Rate Limiting)
 
-Kong Gateway áp dụng thứ tự ưu tiên plugin (Plugin Precedence) chặt chẽ:
-1. **Tầng Consumer (Consumer-scoped Rate Limit)**:
-   - Consumer `ai-agent` được gán plugin `rate-limiting` mức **20 requests/phút** tại cấp độ consumer. Giới hạn này có độ ưu tiên cao nhất và ghi đè mọi rate limit của route, đảm bảo AI Agent luôn tuân thủ ngưỡng an toàn của hệ thống.
-2. **Tầng Route (Route-level Rate Limit)**:
-   - Áp dụng cho khách vãng lai (`anonymous-user`) và người dùng thông thường (`juice-shop-users`):
-     - `route-user-login`: **30 req/phút** (Chống tấn công dò mật khẩu Brute-force).
-     - `route-guest-register`, `route-reset-password`: **20 req/phút** (Chống tạo tài khoản rác Anti-Spam).
-     - `route-spa-root`: **60 req/phút** (Duyệt trang chủ).
-     - `route-spa-assets`: **100 req/phút** (Tải tài nguyên tĩnh CSS/JS).
-     - `route-profile-image-upload`: **50 req/phút** (Giới hạn tải tệp).
+Hệ thống quản lý Rate Limiting tập trung 100% ở **cấp độ Consumer (Client Identity)** tại `kong.yml.template`:
+
+```yaml
+plugins:
+  # 1. AI Security Agent: 20 requests per minute
+  - name: rate-limiting
+    consumer: ai-agent
+    config:
+      minute: 20
+      policy: local
+
+  # 2. Khách vãng lai (Guest / Anonymous): 60 requests per minute
+  - name: rate-limiting
+    consumer: anonymous-user
+    config:
+      minute: 60
+      policy: local
+
+  # 3. Người dùng đăng nhập (Authenticated Users): 100 requests per minute
+  - name: rate-limiting
+    consumer: juice-shop-users
+    config:
+      minute: 100
+      policy: local
+```
+
+- **Nguyên lý vận hành**: Khi bất kỳ Client nào gửi request, Kong nhận diện danh tính thông qua `key-auth` và tự động áp dụng chính xác hạn ngạch của Client đó trên toàn bộ các route mà không cần cấu hình phân tán ở từng API.
 
 ---
 
 ## 4. Ma Trận Cấu Hình Client-First & Cơ Chế Khóa Fallback
 
-| Nhóm Client | Consumer | Auth Method | Rate Limit | Mục Đích Sử Dụng |
-| :--- | :--- | :--- | :---: | :--- |
-| **`agent`** | `ai-agent` | `key-auth` (`x-api-key`) | 20 req/phút | Dành riêng cho AI Security Agent thăm dò các điểm nghi vấn. |
-| **`guest`** | `anonymous-user` | `anonymous` (Key-Auth Fallback) | 60 req/phút | Dành cho người dùng công khai duyệt sản phẩm, đăng ký tài khoản. |
-| **`user`** | `juice-shop-users` | `jwt` (Native Juice Shop Auth) | 100 req/phút | Dành cho người dùng đã đăng nhập thao tác giỏ hàng, đặt hàng, profile. |
+| Nhóm Client | Consumer Định Danh | Phương Thức Xác Thực | Nhóm ACL | Rate Limit (Toàn Hệ Thống) | Mục Đích Sử Dụng |
+| :--- | :--- | :--- | :--- | :---: | :--- |
+| **`agent`** | `ai-agent` | `key-auth` (`x-api-key`) | `agent-group` | **20 req/phút** | Dành riêng cho AI Security Agent thăm dò các điểm nghi vấn. |
+| **`guest`** | `anonymous-user` | `anonymous` (Key-Auth Fallback) | `guest-group` | **60 req/phút** | Dành cho người dùng công khai duyệt sản phẩm, đăng ký tài khoản. |
+| **`user`** | `juice-shop-users` | `jwt` (Native Juice Shop Auth) | `user-group` | **100 req/phút** | Dành cho người dùng đã đăng nhập thao tác giỏ hàng, đặt hàng, profile. |
 
 - **Khóa Trang Gốc (Giải Pháp 1 - Exact Regex `~^/$`)**: `route-spa-root` chỉ chấp nhận duy nhất `/` và `/index.html`.
 - **Khóa Static Assets (Giải Pháp 2 - Root Bundle Regex)**: `route-spa-assets` chỉ mở `/assets`, `/vendor` và các bundle `.js`, `.css`, `.ico`, `.png`, `.svg`, `.woff2`, `.map` tại root.
@@ -115,7 +142,7 @@ Kong Gateway áp dụng thứ tự ưu tiên plugin (Plugin Precedence) chặt c
 
 | Bộ Test Suite | Số Lượng Tests | Kết Quả | Nội Dung Xác Minh |
 | :--- | :---: | :---: | :--- |
-| **`tests/gateway/test_gateway_config.py`** | 7 | **100% PASS** | Kiểm tra cú pháp `allowlist.json`, xác minh trình sinh route động `${GENERATED_ROUTES_YAML}`, kiểm tra template, script Lua và Compose override. |
+| **`tests/gateway/test_gateway_config.py`** | 7 | **100% PASS** | Kiểm tra cú pháp `allowlist.json`, xác minh trình sinh route động `${GENERATED_ROUTES_YAML}`, kiểm tra template, consumer plugins, script Lua và Compose override. |
 | **`tests/guardrails/` (Milestone 1)** | 16 | **100% PASS** | Khử khuẩn PII/Secret và phòng vệ Prompt Injection hoạt động chính xác. |
 | **`tests/agent/` (Regression)** | 34 | **100% PASS** | Toàn bộ luồng phân tích và nạp prompt của AI Agent tương thích hoàn toàn. |
 | **Toàn bộ Repository (`pytest tests/`)** | 331 | **100% PASS** | Đảm bảo tính toàn vẹn của tất cả các module. |

@@ -112,12 +112,7 @@ def test_kong_template_structure_and_placeholders() -> None:
 {paths_str}
         methods:
 {methods_str}
-        strip_path: false
-        plugins:
-          - name: rate-limiting
-            config:
-              minute: 60
-              policy: local"""
+        strip_path: false"""
         route_blocks.append(block)
 
     simulated_routes_yaml = "\n\n".join(route_blocks)
@@ -137,6 +132,7 @@ def test_kong_template_structure_and_placeholders() -> None:
     assert service["port"] == 3000
     assert "routes" in service and len(service["routes"]) == len(data["routes"])
     assert "consumers" in parsed and len(parsed["consumers"]) >= 3
+    assert "plugins" in parsed and len(parsed["plugins"]) >= 3
 
 
 def test_lua_renderer_script_exists_and_syntax() -> None:

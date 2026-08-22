@@ -38,11 +38,6 @@ local DEFAULT_FALLBACK_ROUTES_YAML = [[
           - HEAD
           - OPTIONS
         strip_path: false
-        plugins:
-          - name: rate-limiting
-            config:
-              minute: 60
-              policy: local
 
       - name: route-spa-assets
         paths:
@@ -54,11 +49,6 @@ local DEFAULT_FALLBACK_ROUTES_YAML = [[
           - HEAD
           - OPTIONS
         strip_path: false
-        plugins:
-          - name: rate-limiting
-            config:
-              minute: 100
-              policy: local
 
       - name: route-products-browse
         paths:
@@ -68,11 +58,6 @@ local DEFAULT_FALLBACK_ROUTES_YAML = [[
           - GET
           - OPTIONS
         strip_path: false
-        plugins:
-          - name: rate-limiting
-            config:
-              minute: 60
-              policy: local
 
       - name: route-user-login
         paths:
@@ -81,11 +66,6 @@ local DEFAULT_FALLBACK_ROUTES_YAML = [[
           - POST
           - OPTIONS
         strip_path: false
-        plugins:
-          - name: rate-limiting
-            config:
-              minute: 30
-              policy: local
 ]]
 
 --- Đọc toàn bộ nội dung của tệp tin
@@ -166,8 +146,10 @@ local function extract_agent_paths(decoded)
 end
 
 --- Tự động sinh khối cấu hình YAML 'routes:' cho Kong Gateway từ dữ liệu allowlist.json
+-- Theo chuẩn Client-First: Rate limiting được quản lý ở cấp độ Consumer,
+-- do đó các Route chỉ cần định nghĩa name, paths, methods và strip_path: false.
 -- @param decoded Bảng Lua parse từ allowlist.json
--- @return Chuỗi YAML chứa toàn bộ routes đã được định dạng và gán rate limit
+-- @return Chuỗi YAML chứa toàn bộ routes đã được định dạng chuẩn
 local function generate_routes_yaml(decoded)
     if type(decoded) ~= "table" or type(decoded.routes) ~= "table" or #decoded.routes == 0 then
         return DEFAULT_FALLBACK_ROUTES_YAML
@@ -178,28 +160,6 @@ local function generate_routes_yaml(decoded)
         local name = route.name or string.format("route-%d", idx)
         local paths = route.paths or {}
         local methods = route.methods or {"GET"}
-
-        -- Xác định Rate Limit phù hợp theo từng route / client
-        local rate_limit = route.rate_limit_per_minute
-        if not rate_limit then
-            if name == "route-user-login" then
-                rate_limit = 30
-            elseif name == "route-guest-register" or name == "route-reset-password" then
-                rate_limit = 20
-            elseif name == "route-spa-root" then
-                rate_limit = 60
-            elseif name == "route-profile-image-upload" then
-                rate_limit = 50
-            elseif name == "route-spa-assets" then
-                rate_limit = 100
-            else
-                local is_user_only = false
-                if type(route.allow) == "table" and #route.allow == 1 and route.allow[1] == "user" then
-                    is_user_only = true
-                end
-                rate_limit = is_user_only and 100 or 60
-            end
-        end
 
         local lines = {}
         table.insert(lines, string.format("      - name: %s", name))
@@ -212,11 +172,6 @@ local function generate_routes_yaml(decoded)
             table.insert(lines, string.format("          - %s", m))
         end
         table.insert(lines, "        strip_path: false")
-        table.insert(lines, "        plugins:")
-        table.insert(lines, "          - name: rate-limiting")
-        table.insert(lines, "            config:")
-        table.insert(lines, string.format("              minute: %d", rate_limit))
-        table.insert(lines, "              policy: local")
 
         table.insert(route_blocks, table.concat(lines, "\n"))
     end
