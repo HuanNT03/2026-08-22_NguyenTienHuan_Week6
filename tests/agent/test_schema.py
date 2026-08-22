@@ -13,7 +13,7 @@ REPORT_SCHEMA_PATH = ROOT / "schemas/security_analysis_report.schema.json"
 
 def _valid_report_entry() -> dict[str, Any]:
     return {
-        "schema_version": "1.0.0",
+        "schema_version": "1.1.0",
         "analysis_id": "analysis_0123456789abcdef0123456789abcdef",
         "analysis_group_id": "grp_sqli_login",
         "analysis_status": "success",

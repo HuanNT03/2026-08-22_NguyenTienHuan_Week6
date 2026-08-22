@@ -52,7 +52,7 @@ class AnalysisMetadata(BaseModel):
 class ReportEntry(BaseModel):
     """One single finding security analysis report entry (1 entry / fingerprint)."""
 
-    schema_version: Literal["1.0.0"] = "1.0.0"
+    schema_version: Literal["1.1.0"] = "1.1.0"
     analysis_id: str = Field(pattern=r"^analysis_[0-9a-f]{32}$")
     analysis_group_id: str = Field(pattern=r"^grp_[a-zA-Z0-9_:-]+$")
     analysis_status: Literal["success", "error"] = "success"

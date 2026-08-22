@@ -50,7 +50,7 @@ def create_fallback_error_entry(
         loc_summary = f"{loc.get('endpoint', '/')} param={loc.get('parameter')}"
 
     return ReportEntry(
-        schema_version="1.0.0",
+        schema_version="1.1.0",
         analysis_id=analysis_id,
         analysis_group_id=group.group_id,
         analysis_status="error",
@@ -147,7 +147,7 @@ def sanitize_llm_entry_dict(
 
     # 4. Fix analysis_group_id
     item["analysis_group_id"] = group.group_id
-    item["schema_version"] = "1.0.0"
+    item["schema_version"] = "1.1.0"
     item.setdefault("analysis_status", "success")
 
     # 5. Fix severity
