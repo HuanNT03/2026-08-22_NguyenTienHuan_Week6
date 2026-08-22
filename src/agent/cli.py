@@ -59,6 +59,20 @@ def analyze_command(
             help="Override LLM base URL.",
         ),
     ] = None,
+    mode: Annotated[
+        str,
+        typer.Option(
+            "--mode",
+            help="Agent reasoning execution mode: 'react' (default) or 'static'.",
+        ),
+    ] = "react",
+    max_steps: Annotated[
+        int,
+        typer.Option(
+            "--max-steps",
+            help="Maximum ReAct steps permitted per group (default: 5).",
+        ),
+    ] = 5,
 ) -> None:
     """Execute full 3-phase Security Analysis Agent pipeline."""
     config = AgentConfig()
@@ -68,9 +82,16 @@ def analyze_command(
         config.base_url = base_url
     if output_dir:
         config.output_dir = output_dir
+    if mode:
+        config.agent_mode = "react" if mode.lower() == "react" else "static"
+    if max_steps:
+        config.max_react_steps = int(max_steps)
 
     console.print(f"[bold blue]Starting Security Analysis Agent[/bold blue] on {findings}")
-    console.print(f"Model: [cyan]{config.model}[/cyan] | Base URL: [cyan]{config.base_url}[/cyan]")
+    console.print(
+        f"Mode: [cyan]{config.agent_mode}[/cyan] | Max Steps: [cyan]{config.max_react_steps}[/cyan] | "
+        f"Model: [cyan]{config.model}[/cyan]"
+    )
 
     try:
         summary = run_analysis(findings_path=findings, config=config)

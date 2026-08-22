@@ -113,10 +113,12 @@ def run_analysis(
         "entries_by_status": dict(status_counts),
         "entries_by_correlation_type": dict(corr_counts),
         "config": {
+            "agent_mode": cfg.agent_mode,
             "model": cfg.model,
             "base_url": cfg.base_url,
             "temperature": cfg.temperature,
             "max_retries": cfg.max_retries,
+            "max_react_steps": cfg.max_react_steps,
             "prompt_version": cfg.prompt_version,
         },
     }
