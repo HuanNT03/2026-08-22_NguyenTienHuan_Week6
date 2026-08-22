@@ -166,15 +166,18 @@ class ToolDispatcher:
         self,
         kb_service: KnowledgeSearchService | None = None,
         max_repeat_tool_calls: int = 2,
+        approval_callback: Any = None,
     ) -> None:
         """Initialize ToolDispatcher with knowledge service and loop repetition thresholds.
 
         Args:
             kb_service: Optional instance of KnowledgeSearchService. If None, lazy initialized.
             max_repeat_tool_calls: Maximum identical tool calls permitted before blocking.
+            approval_callback: Optional callable for in-flight HITL approval interception.
         """
         self._kb_service = kb_service
         self.max_repeat_tool_calls = max_repeat_tool_calls
+        self.approval_callback = approval_callback
         self.call_history: list[tuple[str, str]] = []
 
     @property
@@ -374,6 +377,7 @@ class ToolDispatcher:
             burst_count=burst_count,
             oversized_payload=oversized_payload,
             headers=headers if isinstance(headers, dict) else None,
+            approval_callback=self.approval_callback,
         )
 
         return result

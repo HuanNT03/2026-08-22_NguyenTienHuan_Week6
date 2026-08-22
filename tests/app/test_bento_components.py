@@ -1,17 +1,12 @@
 """Unit tests for Bento Box components, Material Symbols renderers, and HITL Queue."""
 
-import time
-from typing import Any
-
-import pytest
-
 from frontend.components.bento import (
     build_guardrails_kpi_grid_html,
     build_realtime_log_box_html,
     build_security_badge_html,
     format_material_icon,
 )
-from frontend.components.hitl_queue import HITLAction, HITLQueueManager
+from frontend.components.hitl_queue import HITLQueueManager
 
 
 def test_format_material_icon() -> None:

@@ -1,5 +1,6 @@
 """Unit tests for Project Sentinel ReAct Agent Tool Registry and Dispatcher."""
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 from src.agent.tools import (
@@ -153,3 +154,48 @@ def test_dispatcher_unknown_tool() -> None:
     result = dispatcher.execute("execute_arbitrary_code", {"cmd": "rm -rf /"})
     assert result["status"] == "error"
     assert "Unknown tool" in result["message"]
+
+
+def test_dispatcher_hitl_rejection_interception() -> None:
+    """Verify that when HITL callback rejects an action, probe returns rejected observation."""
+    # Callback simulates operator rejection
+    def mock_hitl_reject(assessment: dict[str, Any]) -> bool:
+        return False
+
+    dispatcher = ToolDispatcher(approval_callback=mock_hitl_reject)
+
+    with patch("src.gateway.safe_requester.log_audit_event"):
+        # PUT method requires HITL approval
+        res = dispatcher.execute(
+            "send_safe_request",
+            {"endpoint": "/rest/products/1/reviews", "method": "PUT", "payload_category": "special_chars"},
+        )
+        assert res["status"] == "rejected"
+        assert "rejected by human operator" in res["message"]
+        assert "HITL REJECTED" in res["body"]
+
+
+def test_dispatcher_hitl_approval_interception() -> None:
+    """Verify that when HITL callback approves an action, probe proceeds to execute."""
+    def mock_hitl_approve(assessment: dict[str, Any]) -> bool:
+        return True
+
+    dispatcher = ToolDispatcher(approval_callback=mock_hitl_approve)
+
+    with patch("src.gateway.safe_requester._execute_single_http_request") as mock_exec:
+        mock_exec.return_value = {
+            "status": "success",
+            "status_code": 200,
+            "endpoint": "/rest/products/1/reviews",
+            "method": "PUT",
+            "headers": {},
+            "body": "<untrusted_http_response>success</untrusted_http_response>",
+            "truncated": False,
+            "duration_ms": 45.0,
+        }
+        res = dispatcher.execute(
+            "send_safe_request",
+            {"endpoint": "/rest/products/1/reviews", "method": "PUT", "payload_category": "special_chars"},
+        )
+        assert res["status_code"] == 200
+        mock_exec.assert_called_once()

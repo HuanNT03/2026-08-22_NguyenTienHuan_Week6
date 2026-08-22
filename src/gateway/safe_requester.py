@@ -178,6 +178,7 @@ def send_safe_request(
     headers: dict[str, str] | None = None,
     timeout: float = DEFAULT_TIMEOUT,
     auto_approve: bool = False,
+    approval_callback: Any = None,
     gateway_host: str | None = None,
     log_file: Path | str | None = None,
 ) -> dict[str, Any]:
@@ -194,6 +195,7 @@ def send_safe_request(
         headers: Additional custom HTTP headers.
         timeout: Socket timeout in seconds (default 7.0s).
         auto_approve: If True, bypass interactive HITL prompt.
+        approval_callback: Optional callable(assessment) -> bool for custom/UI/In-Flight HITL handlers.
         gateway_host: Base Gateway URL override (default http://localhost:3000).
         log_file: Custom audit log path override.
 
@@ -251,7 +253,11 @@ def send_safe_request(
 
     approval_status = "NOT_REQUIRED"
     if assessment["requires_approval"]:
-        is_approved = prompt_cli_approval(assessment, auto_approve=auto_approve)
+        if approval_callback is not None and callable(approval_callback):
+            is_approved = bool(approval_callback(assessment))
+        else:
+            is_approved = prompt_cli_approval(assessment, auto_approve=auto_approve)
+
         if not is_approved:
             log_audit_event(
                 endpoint=endpoint,
