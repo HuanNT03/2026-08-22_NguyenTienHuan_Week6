@@ -19,6 +19,7 @@ Project Sentinel là nền tảng DevSecOps tự động hóa toàn diện, cung
   - [2. Quét DAST (OWASP ZAP & sqlmap)](#2-quét-dast-owasp-zap--sqlmap)
   - [3. Chuẩn hóa Scanner Reports sang Unified Findings](#3-chuẩn-hóa-scanner-reports-sang-unified-findings)
   - [4. Phân tích Chuyên sâu với AI Security Agent](#4-phân-tích-chuyên-sâu-với-ai-security-agent)
+  - [5. Kiểm thử An toàn qua API Gateway (Safe Requester & HITL)](#5-kiểm-thử-an-toàn-qua-api-gateway-safe-requester--hitl)
 - [Kiểm thử & Đảm bảo Chất lượng](#kiểm-thử--đảm-bảo-chất-lượng)
 - [Gitleaks Git hooks](#gitleaks-git-hooks)
 - [CI/CD GitHub Actions](#cicd-github-actions)
@@ -371,15 +372,64 @@ AI Security Analysis Agent thực hiện phân tích tự động theo quy trìn
 
 ---
 
+### 5. Kiểm thử An toàn qua API Gateway (Safe Requester & HITL)
+
+Module `src/gateway/safe_requester.py` cung cấp công cụ gửi HTTP Request thăm dò an toàn dành cho AI Agent và chuyên viên DevSecOps:
+- **Chính sách Phương thức Nghiêm ngặt**: Chỉ chấp nhận `GET`, `PUT`, và `OPTIONS`. Chặn mọi phương thức khác (`POST`, `DELETE`, `PATCH`) với mã `405 Method Not Allowed`.
+- **Zero-Trust Secret Injection**: Tự động tiêm `x-api-key: <AGENT_API_KEY>` từ biến môi trường; tuyệt đối không lưu secret vào code hay file log.
+- **Chốt chặn Phê duyệt HITL**: Đánh giá rủi ro (`LOW`, `MEDIUM`, `HIGH`) và yêu cầu người dùng xác nhận (`y/N`) với cơ chế Timeout 120s (Default to Reject).
+- **Phòng thủ & Khử khuẩn 2 chiều**: Cắt cụt response tại 2KB, lọc sạch PII/Secrets, quét phát hiện Indirect Prompt Injection và bọc trong thẻ an toàn `<untrusted_http_response>`.
+- **Kiểm toán Toàn diện**: Ghi 1 bản ghi JSONL hợp lệ theo `schemas/gateway_audit.schema.json` vào `reports/logs/gateway-network-audit.jsonl`.
+
+#### Bảng tham số dòng lệnh CLI (`make test-request`):
+| Tham Số | Ý Nghĩa / Định Dạng | Mặc Định | Ví Dụ |
+| :--- | :--- | :--- | :--- |
+| `--url`, `-u` | Đường dẫn endpoint hoặc URL đầy đủ | **Bắt buộc** | `--url /rest/products/search?q=apple` |
+| `--method`, `-m` | Phương thức HTTP (`GET`, `PUT`, `OPTIONS`) | `GET` | `--method OPTIONS` hoặc `-m PUT` |
+| `--payload-category`, `-c` | Nhóm payload an toàn từ `payloads.json` | `None` | `--payload-category special_chars` |
+| `--payload-value`, `-v` | Giá trị payload cụ thể tùy chỉnh | `None` | `--payload-value "' OR 1=1--"` |
+| `--count`, `-n` | Số lượng request gửi liên tiếp (Burst Mode) | `1` | `--count 25` (Kiểm thử Rate Limit 429) |
+| `--interval`, `-i` | Khoảng nghỉ giữa các request burst (giây) | `0.05` | `--interval 0.1` |
+| `--oversized` | Tự động sinh buffer 1.5MB để probe Gateway | `False` | `--oversized` (Kiểm thử Payload 413) |
+| `--auto-approve` | Tự động duyệt qua chốt chặn HITL (CI/Automation) | `False` | `--auto-approve` |
+| `--gateway-host` | Base URL của Kong Gateway | `http://localhost:3000` | `--gateway-host http://localhost:3000` |
+
+#### Các ví dụ thực thi thực tế:
+```bash
+# 1. Khởi động Kong Gateway và Juice Shop
+make gateway-up
+
+# 2. Thăm dò tìm kiếm sản phẩm cơ bản (GET - LOW risk)
+make test-request ARGS="--url /rest/products/search?q=apple"
+
+# 3. Kiểm tra CORS Preflight và HTTP Methods (OPTIONS)
+make test-request ARGS="--url /api/Products --method OPTIONS"
+
+# 4. Kiểm tra giới hạn tần suất (Burst Rate Limit 429)
+make test-request ARGS="--url /api/Products --method GET --count 25"
+
+# 5. Kiểm tra Gateway chặn Payload ngoại cỡ (413 Request Entity Too Large)
+make test-request ARGS="--url /api/Products --method GET --oversized"
+
+# 6. Gửi đánh giá sản phẩm (PUT review - kích hoạt HITL 120s)
+make test-request ARGS="--url /rest/products/1/reviews --method PUT --payload-category special_chars"
+
+# 7. Kiểm tra Tool chặn phương thức cấm (405 Method Not Allowed)
+make test-request ARGS="--url /api/Users --method POST"
+```
+
+---
+
 ## 🧪 Kiểm thử & Đảm bảo Chất lượng
 
 Chạy toàn bộ các bộ kiểm thử tự động của dự án:
 
 ```bash
-make quality       # Kiểm tra toàn diện: linter Ruff, shell scripts, compose config và 125 test suites
+make quality       # Kiểm tra toàn diện: linter Ruff, shell scripts, compose config và toàn bộ test suites
 make test          # Chạy unit & integration tests cho normalizers và platform
-make kb-test       # Chạy 137 tests cho Knowledge Base, SQLite FTS5, FastEmbed và Hybrid Search
+make kb-test       # Chạy tests cho Knowledge Base, SQLite FTS5, FastEmbed và Hybrid Search
 make agent-test    # Chạy test suite cho Security Analysis Agent
+make gateway-test  # Chạy test suite cho Kong Gateway, Safe Requester, HITL và Audit Logger
 ```
 
 ---
