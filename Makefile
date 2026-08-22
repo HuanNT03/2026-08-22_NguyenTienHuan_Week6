@@ -223,10 +223,15 @@ kb-clean: kb-python-check ## Remove only generated knowledge-base artifacts.
 
 .PHONY: agent-analyze agent-test agent-lint
 
-agent-analyze: kb-python-check ## Run Security Analysis Agent on FINDINGS=path (optional: OUTPUT_DIR=path, MODEL=model).
+agent-analyze: kb-python-check ## Run Security Analysis Agent on FINDINGS=path (optional: OUTPUT_DIR=path, MODEL=model, MODE=react|static, MAX_STEPS=5).
 	@test -n "$(FINDINGS)" || \
-		(echo 'Usage: make agent-analyze FINDINGS=reports/normalized/unified-findings-YYYYMMDDTHHMMSSZ.jsonl' && exit 1)
-	@$(VENV_PYTHON) -m src.agent.cli analyze --findings "$(FINDINGS)" $(if $(OUTPUT_DIR),--output-dir "$(OUTPUT_DIR)",) $(if $(MODEL),--model "$(MODEL)",)
+		(echo 'Usage: make agent-analyze FINDINGS=reports/normalized/unified-findings-YYYYMMDDTHHMMSSZ.jsonl [MODE=react|static] [MAX_STEPS=5]' && exit 1)
+	@$(VENV_PYTHON) -m src.agent.cli analyze --findings "$(FINDINGS)" \
+		$(if $(OUTPUT_DIR),--output-dir "$(OUTPUT_DIR)",) \
+		$(if $(MODEL),--model "$(MODEL)",) \
+		$(if $(MODE),--mode "$(MODE)",) \
+		$(if $(MAX_STEPS),--max-steps "$(MAX_STEPS)",)
+
 
 agent-test: kb-python-check ## Run Security Analysis Agent tests.
 	@$(VENV_PYTHON) -m pytest tests/agent -v
