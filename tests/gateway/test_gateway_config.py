@@ -109,12 +109,18 @@ def test_kong_template_structure_and_placeholders() -> None:
         r_name = route["name"]
         paths_str = "\n".join(f"          - {p}" for p in route["paths"])
         methods_str = "\n".join(f"          - {m}" for m in route["methods"])
+        acl_str = "\n".join(f"                - {client}-group" for client in route.get("allow", []))
         block = f"""      - name: {r_name}
         paths:
 {paths_str}
         methods:
 {methods_str}
-        strip_path: false"""
+        strip_path: false
+        plugins:
+          - name: acl
+            config:
+              allow:
+{acl_str}"""
         route_blocks.append(block)
 
     simulated_routes_yaml = "\n\n".join(route_blocks)
@@ -135,6 +141,30 @@ def test_kong_template_structure_and_placeholders() -> None:
     assert "routes" in service and len(service["routes"]) == len(data["routes"])
     assert "consumers" in parsed and len(parsed["consumers"]) >= 3
     assert "plugins" in parsed and len(parsed["plugins"]) >= 3
+
+    # Verify service-level plugins contain response-transformer
+    service_plugin_names = [p["name"] for p in service.get("plugins", [])]
+    assert "response-transformer" in service_plugin_names, "Service must have response-transformer plugin"
+    assert "request-size-limiting" in service_plugin_names
+    assert "key-auth" in service_plugin_names
+
+
+def test_route_level_acl_generation_and_rules() -> None:
+    """Verify that every route in allowlist maps properly to corresponding client ACL groups."""
+    allowlist_path = GATEWAY_DIR / "allowlist.json"
+    with open(allowlist_path, encoding="utf-8") as f:
+        data = json.load(f)
+
+    for route in data["routes"]:
+        allow_list = route.get("allow", [])
+        expected_groups = [f"{client}-group" for client in allow_list]
+        assert len(expected_groups) > 0, f"Route {route['name']} must have at least one allowed group"
+
+        # Specific invariant check for basket items and order history: user-only
+        if route["name"] in ("route-basket-items", "route-order-history", "route-basket-read"):
+            assert expected_groups == ["user-group"], (
+                f"Route {route['name']} must strictly be restricted to user-group"
+            )
 
 
 def test_lua_renderer_script_exists_and_syntax() -> None:

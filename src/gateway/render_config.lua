@@ -38,6 +38,13 @@ local DEFAULT_FALLBACK_ROUTES_YAML = [[
           - HEAD
           - OPTIONS
         strip_path: false
+        plugins:
+          - name: acl
+            config:
+              allow:
+                - agent-group
+                - guest-group
+                - user-group
 
       - name: route-spa-assets
         paths:
@@ -49,6 +56,13 @@ local DEFAULT_FALLBACK_ROUTES_YAML = [[
           - HEAD
           - OPTIONS
         strip_path: false
+        plugins:
+          - name: acl
+            config:
+              allow:
+                - agent-group
+                - guest-group
+                - user-group
 
       - name: route-products-browse
         paths:
@@ -58,6 +72,13 @@ local DEFAULT_FALLBACK_ROUTES_YAML = [[
           - GET
           - OPTIONS
         strip_path: false
+        plugins:
+          - name: acl
+            config:
+              allow:
+                - agent-group
+                - guest-group
+                - user-group
 
       - name: route-user-login
         paths:
@@ -66,6 +87,13 @@ local DEFAULT_FALLBACK_ROUTES_YAML = [[
           - POST
           - OPTIONS
         strip_path: false
+        plugins:
+          - name: acl
+            config:
+              allow:
+                - agent-group
+                - guest-group
+                - user-group
 ]]
 
 --- Đọc toàn bộ nội dung của tệp tin
@@ -146,8 +174,9 @@ local function extract_agent_paths(decoded)
 end
 
 --- Tự động sinh khối cấu hình YAML 'routes:' cho Kong Gateway từ dữ liệu allowlist.json
--- Theo chuẩn Client-First: Rate limiting được quản lý ở cấp độ Consumer,
--- do đó các Route chỉ cần định nghĩa name, paths, methods và strip_path: false.
+-- Theo chuẩn Client-First & Route-level ACL Enforcement:
+-- Mỗi route được gán trực tiếp plugin 'acl' với danh sách allow tương ứng
+-- (agent -> agent-group, guest -> guest-group, user -> user-group)
 -- @param decoded Bảng Lua parse từ allowlist.json
 -- @return Chuỗi YAML chứa toàn bộ routes đã được định dạng chuẩn
 local function generate_routes_yaml(decoded)
@@ -160,6 +189,7 @@ local function generate_routes_yaml(decoded)
         local name = route.name or string.format("route-%d", idx)
         local paths = route.paths or {}
         local methods = route.methods or {"GET"}
+        local allow = route.allow or {"agent", "guest", "user"}
 
         local lines = {}
         table.insert(lines, string.format("      - name: %s", name))
@@ -172,6 +202,18 @@ local function generate_routes_yaml(decoded)
             table.insert(lines, string.format("          - %s", m))
         end
         table.insert(lines, "        strip_path: false")
+
+        -- Route-Level ACL Plugin: Enforces strict group access per route
+        if type(allow) == "table" and #allow > 0 then
+            table.insert(lines, "        plugins:")
+            table.insert(lines, "          - name: acl")
+            table.insert(lines, "            config:")
+            table.insert(lines, "              allow:")
+            for _, client in ipairs(allow) do
+                local group = string.format("%s-group", client)
+                table.insert(lines, string.format("                - %s", group))
+            end
+        end
 
         table.insert(route_blocks, table.concat(lines, "\n"))
     end

@@ -51,6 +51,15 @@ services:
                 end
               end
 
+      # Service-Level Response Transformer: Suppress backend tech stack fingerprinting
+      - name: response-transformer
+        config:
+          remove:
+            headers:
+              - x-powered-by
+              - server
+              - via
+
       # Service-Level Key-Auth: Resolves consumer identity
       # Valid key -> consumer: ai-agent
       # No key -> consumer: anonymous-user
@@ -61,14 +70,6 @@ services:
             - apikey
           hide_credentials: true
           anonymous: anonymous-user
-
-      # Service-Level ACL: Enforces group access
-      - name: acl
-        config:
-          allow:
-            - agent-group
-            - guest-group
-            - user-group
 
     # --------------------------------------------------------------------------
     # 2. DYNAMICALLY GENERATED ROUTES (Compiled from allowlist.json at Boot-Time)

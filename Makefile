@@ -69,8 +69,6 @@ gateway-status: ## Show Kong Gateway and Juice Shop service status.
 test-request: kb-python-check ## Send safe HTTP probe request via API Gateway (e.g. make test-request ARGS="--url /api/Products").
 	@$(VENV_PYTHON) -m src.gateway.safe_requester $(ARGS)
 
-stest-request: test-request ## Alias for test-request
-
 gateway-test: kb-python-check ## Run API Gateway and Safe Requester tests.
 	@$(VENV_PYTHON) -m pytest tests/gateway -v
 
