@@ -146,6 +146,11 @@ AGENT_TOOLS: list[dict[str, Any]] = [
                         "default": False,
                         "description": "Nếu True, tự động sinh buffer 1.5MB để kiểm thử giới hạn kích thước gói tin Gateway.",
                     },
+                    "headers": {
+                        "type": "object",
+                        "description": "Từ điển các HTTP headers bổ sung tùy chỉnh gửi kèm request (ví dụ: {'Cookie': '...', 'X-Custom-Header': 'val'}).",
+                        "additionalProperties": {"type": "string"},
+                    },
                 },
                 "required": ["endpoint"],
             },
@@ -354,6 +359,12 @@ class ToolDispatcher:
         payload_value = args.get("payload_value")
         burst_count = int(args.get("burst_count", 1))
         oversized_payload = bool(args.get("oversized_payload", False))
+        headers = args.get("headers")
+        if isinstance(headers, str):
+            try:
+                headers = json.loads(headers)
+            except json.JSONDecodeError:
+                headers = None
 
         result = send_safe_request_core(
             endpoint=endpoint,
@@ -362,6 +373,7 @@ class ToolDispatcher:
             payload_value=payload_value,
             burst_count=burst_count,
             oversized_payload=oversized_payload,
+            headers=headers if isinstance(headers, dict) else None,
         )
 
         return result
