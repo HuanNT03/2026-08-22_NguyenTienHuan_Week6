@@ -247,6 +247,7 @@ def sanitize_llm_entry_dict(
     meta.setdefault("prompt_version", cfg.prompt_version)
     meta.setdefault("grouping_source", group.source)
     meta.setdefault("retry_count", retry_count)
+    meta.setdefault("prompt_injection_detected", False)
     item["metadata"] = meta
 
     return item

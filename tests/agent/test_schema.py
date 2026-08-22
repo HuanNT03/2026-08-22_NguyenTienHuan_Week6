@@ -106,3 +106,13 @@ def test_nullable_proposed_test_request() -> None:
     entry = _valid_report_entry()
     entry["proposed_test_request"] = None
     assert list(validator.iter_errors(entry)) == []
+
+
+def test_metadata_prompt_injection_detected_field() -> None:
+    validator = _get_validator()
+    entry = _valid_report_entry()
+    entry["metadata"]["prompt_injection_detected"] = True
+    assert list(validator.iter_errors(entry)) == []
+
+    entry["metadata"]["prompt_injection_detected"] = "not_a_bool"
+    assert len(list(validator.iter_errors(entry))) > 0

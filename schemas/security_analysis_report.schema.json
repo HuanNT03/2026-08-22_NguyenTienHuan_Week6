@@ -116,7 +116,8 @@
         "model": { "type": "string", "minLength": 1 },
         "prompt_version": { "type": "string", "minLength": 1 },
         "grouping_source": { "type": "string", "minLength": 1 },
-        "retry_count": { "type": "integer", "minimum": 0 }
+        "retry_count": { "type": "integer", "minimum": 0 },
+        "prompt_injection_detected": { "type": "boolean", "default": false }
       }
     }
   }

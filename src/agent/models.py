@@ -46,6 +46,7 @@ class AnalysisMetadata(BaseModel):
     prompt_version: str = Field(min_length=1)
     grouping_source: str = Field(min_length=1)
     retry_count: int = Field(ge=0, default=0)
+    prompt_injection_detected: bool = Field(default=False)
 
 
 class ReportEntry(BaseModel):
