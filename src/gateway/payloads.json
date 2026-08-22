@@ -1,28 +1,45 @@
 {
   "description": "Safe, bounded security test payload catalog for Project Sentinel Verification Probes.",
-  "payload_groups": {
-    "boundary_testing": {
-      "long_string": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-      "empty_string": "",
-      "null_value": null
-    },
-    "character_encoding": {
-      "special_characters": "!@#$%^&*()_+-=[]{}|;:,.<>?/`~",
-      "unicode_vietnamese": "Kiểm thử bảo mật an ninh ứng dụng Project Sentinel 2026",
-      "url_encoded": "%27%20OR%20%271%27%3D%271"
-    },
-    "sql_injection_probes": {
-      "benign_single_quote": "'",
-      "classic_tautology": "' OR '1'='1",
-      "comment_dash": "admin' --"
-    },
-    "cross_site_scripting_probes": {
-      "script_alert": "<script>alert('Sentinel')</script>",
-      "img_onerror": "<img src=x onerror=console.log(1)>"
-    },
-    "rate_limiting_probes": {
-      "rapid_burst_count": 25,
-      "interval_seconds": 0.1
-    }
-  }
+  "long_string": [
+    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+  ],
+  "special_chars": [
+    "' \" < > & ; --",
+    "<script>alert(1)</script>",
+    "'; SELECT 1;--",
+    "!@#$%^&*()_+-=[]{}\\|;:'\",.<>/?~",
+    "Kiểm thử bảo mật an ninh ứng dụng Project Sentinel 2026"
+  ],
+  "empty_values": [
+    "",
+    null,
+    {}
+  ],
+  "type_mismatch": [
+    {"quantity": "invalid_string"},
+    {"email": 99999},
+    {"length": 999999999999},
+    {"_id": "1"}
+  ],
+  "query_param_injection": [
+    "' OR 1=1",
+    "' OR 1=1--",
+    "<img src=x>",
+    "<script>alert(1)</script>",
+    "%00",
+    "q=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+  ],
+  "sql_injection_probes": [
+    "'",
+    "' OR '1'='1",
+    "admin' --",
+    "' UNION SELECT id, email, password FROM Users--"
+  ],
+  "cross_site_scripting_probes": [
+    "<script>alert('Sentinel')</script>",
+    "<iframe src=\"javascript:alert(1)\">",
+    "<img src=x onerror=console.log(1)>"
+  ],
+  "oversized_payload": "__AUTO_GENERATE_1.5MB__"
 }

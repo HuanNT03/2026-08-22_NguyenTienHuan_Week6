@@ -31,7 +31,7 @@ local DEFAULT_AGENT_PATHS = {
 local DEFAULT_FALLBACK_ROUTES_YAML = [[
       - name: route-spa-root
         paths:
-          - ~^/$
+          - ~/$
           - /index.html
         methods:
           - GET
@@ -43,7 +43,7 @@ local DEFAULT_FALLBACK_ROUTES_YAML = [[
         paths:
           - /assets
           - /vendor
-          - ~^/[a-zA-Z0-9_.-]+\.(js|css|ico|png|svg|woff2?|map)$
+          - ~/[a-zA-Z0-9_.-]+\.(js|css|ico|png|svg|woff2?|map)$
         methods:
           - GET
           - HEAD

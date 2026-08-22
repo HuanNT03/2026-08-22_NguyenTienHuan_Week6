@@ -79,12 +79,14 @@ def test_payloads_json_validity() -> None:
     with open(payloads_path, encoding="utf-8") as f:
         data = json.load(f)
 
-    assert "payload_groups" in data
-    groups = data["payload_groups"]
-    assert "boundary_testing" in groups
-    assert "character_encoding" in groups
-    assert "sql_injection_probes" in groups
-    assert "cross_site_scripting_probes" in groups
+    assert "long_string" in data
+    assert "special_chars" in data
+    assert "empty_values" in data
+    assert "type_mismatch" in data
+    assert "query_param_injection" in data
+    assert "sql_injection_probes" in data
+    assert "cross_site_scripting_probes" in data
+    assert "oversized_payload" in data
 
 
 def test_kong_template_structure_and_placeholders() -> None:

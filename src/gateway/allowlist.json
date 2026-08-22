@@ -19,17 +19,17 @@
   "routes": [
     {
       "name": "route-spa-root",
-      "paths": ["~^/$", "/index.html"],
+      "paths": ["~/$", "/index.html"],
       "methods": ["GET", "HEAD", "OPTIONS"],
       "allow": ["agent", "guest", "user"],
-      "_note": "Khớp chính xác duy nhất trang chủ gốc / và index.html — Loại bỏ hoàn toàn wildcard"
+      "_note": "Khớp chính xác duy nhất trang chủ gốc / và index.html — Regex bắt đầu bằng ~/"
     },
     {
       "name": "route-spa-assets",
       "paths": [
         "/assets",
         "/vendor",
-        "~^/[a-zA-Z0-9_.-]+\\.(js|css|ico|png|svg|woff2?|map)$"
+        "~/[a-zA-Z0-9_.-]+\\.(js|css|ico|png|svg|woff2?|map)$"
       ],
       "methods": ["GET", "HEAD", "OPTIONS"],
       "allow": ["agent", "guest", "user"],
@@ -83,7 +83,7 @@
       "paths": ["~/rest/basket/\\d+$"],
       "methods": ["GET"],
       "allow": ["user"],
-      "_note": "Chỉ user đã login — cần JWT hợp lệ"
+      "_note": "Chỉ user đã login — Juice Shop backend tự xác thực JWT"
     },
     {
       "name": "route-basket-checkout",
