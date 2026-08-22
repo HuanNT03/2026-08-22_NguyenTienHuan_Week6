@@ -1,0 +1,220 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sentinel.local/schemas/agent-runner-log/1.0.0/schema.json",
+  "title": "Project Sentinel Agent Reasoning & Execution Trace Log (LangSmith Compatible)",
+  "description": "Schema for structured agent execution spans, multi-turn reasoning steps, LLM calls, tool interactions, and token metrics.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "trace_id",
+    "run_id",
+    "group_id",
+    "step_index",
+    "run_type",
+    "name",
+    "start_time",
+    "end_time",
+    "duration_ms",
+    "status",
+    "inputs",
+    "outputs",
+    "metadata"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "trace_id": {
+      "type": "string",
+      "pattern": "^trc_[0-9a-f]{32}$",
+      "description": "Unique root trace identifier grouping all steps within a single analysis run."
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^run_[0-9a-f]{32}$",
+      "description": "Unique span identifier for this specific reasoning, LLM, or tool execution step."
+    },
+    "parent_run_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^run_[0-9a-f]{32}$",
+      "description": "Parent span run_id for hierarchical call trees (e.g. tool execution called by LLM step)."
+    },
+    "group_id": {
+      "type": "string",
+      "pattern": "^grp_[a-zA-Z0-9_:-]+$",
+      "description": "Target AnalysisGroup identifier being processed in this reasoning turn."
+    },
+    "step_index": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Zero-indexed sequence number of the ReAct turn or execution stage."
+    },
+    "run_type": {
+      "enum": [
+        "chain",
+        "llm",
+        "tool",
+        "retriever",
+        "guardrail",
+        "hitl"
+      ],
+      "description": "Span type in LangSmith execution graph: chain (high-level flow), llm (model generation), tool (action invocation), retriever (knowledge search), guardrail (sanitization/PII), hitl (human approval)."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Descriptive name of the step (e.g. 'ReActAnalysisEngine', 'qwen-plus', 'send_safe_request', 'SQLiteFTS5Retriever')."
+    },
+    "start_time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp when step execution started."
+    },
+    "end_time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp when step execution completed."
+    },
+    "duration_ms": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Elapsed execution time for this step in milliseconds."
+    },
+    "status": {
+      "enum": [
+        "running",
+        "success",
+        "error",
+        "rejected",
+        "timed_out"
+      ],
+      "description": "Execution status outcome of the reasoning step."
+    },
+    "inputs": {
+      "type": "object",
+      "description": "Structured inputs supplied to the step (e.g. user prompt messages, tool arguments, query string, finding payload)."
+    },
+    "outputs": {
+      "type": [
+        "object",
+        "array",
+        "string",
+        "null"
+      ],
+      "description": "Structured output yielded by this step (e.g. LLM thought text, tool calls list, HTTP observation result, synthesized findings)."
+    },
+    "token_usage": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "prompt_tokens",
+        "completion_tokens",
+        "total_tokens"
+      ],
+      "properties": {
+        "prompt_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of tokens in the prompt/input for this step."
+        },
+        "completion_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of tokens in the completion/response for this step."
+        },
+        "total_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total tokens consumed in this step (prompt_tokens + completion_tokens)."
+        }
+      }
+    },
+    "error": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "error_type",
+        "message"
+      ],
+      "properties": {
+        "error_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "stack_trace": {
+          "type": "string"
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model",
+        "agent_mode",
+        "prompt_version"
+      ],
+      "properties": {
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "agent_mode": {
+          "enum": [
+            "react",
+            "static"
+          ]
+        },
+        "prompt_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "temperature": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 2.0
+        },
+        "max_steps": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "tool_name": {
+          "type": "string"
+        },
+        "target_endpoint": {
+          "type": "string"
+        },
+        "fingerprints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "prompt_injection_detected": {
+          "type": "boolean",
+          "default": false
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

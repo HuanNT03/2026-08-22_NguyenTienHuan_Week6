@@ -197,3 +197,87 @@ def test_agent_runner_summary_schema_missing_tokens_rejected() -> None:
     del summary["token_usage"]
     errors = list(validator.iter_errors(summary))
     assert len(errors) > 0
+
+
+def _valid_trace_entry(run_type: str = "llm") -> dict[str, Any]:
+    return {
+        "schema_version": "1.0.0",
+        "trace_id": f"trc_{'a' * 32}",
+        "run_id": f"run_{'b' * 32}",
+        "parent_run_id": f"run_{'c' * 32}",
+        "group_id": "grp_sqli_login",
+        "step_index": 1,
+        "run_type": run_type,
+        "name": "qwen-plus",
+        "start_time": "2026-08-22T10:00:00Z",
+        "end_time": "2026-08-22T10:00:02Z",
+        "duration_ms": 2150.5,
+        "status": "success",
+        "inputs": {
+            "messages": [
+                {"role": "system", "content": "You are Sentinel Security Agent."},
+                {"role": "user", "content": "Analyze SQL Injection group."},
+            ]
+        },
+        "outputs": {
+            "thought": "Cần tra cứu tri thức bảo mật về CWE-89 và kiểm tra route /rest/user/login.",
+            "tool_calls": [
+                {
+                    "name": "search_knowledge_base",
+                    "arguments": {"query": "CWE-89 SQL Injection", "mode": "hybrid"},
+                }
+            ],
+        },
+        "token_usage": {
+            "prompt_tokens": 1250,
+            "completion_tokens": 120,
+            "total_tokens": 1370,
+        },
+        "error": None,
+        "metadata": {
+            "model": "qwen-plus",
+            "agent_mode": "react",
+            "prompt_version": "system_v2",
+            "temperature": 0.2,
+            "max_steps": 5,
+            "tags": ["sqli", "react_loop"],
+        },
+    }
+
+
+def _get_trace_log_validator() -> Draft202012Validator:
+    log_schema_path = ROOT / "schemas/agent_runner_log.schema.json"
+    schema = json.loads(log_schema_path.read_text(encoding="utf-8"))
+    Draft202012Validator.check_schema(schema)
+    return Draft202012Validator(schema)
+
+
+@pytest.mark.parametrize(
+    "run_type",
+    ["chain", "llm", "tool", "retriever", "guardrail", "hitl"],
+)
+def test_agent_runner_log_schema_valid_spans(run_type: str) -> None:
+    validator = _get_trace_log_validator()
+    trace = _valid_trace_entry(run_type=run_type)
+    errors = list(validator.iter_errors(trace))
+    assert errors == []
+
+
+@pytest.mark.parametrize(
+    ("field", "invalid_value"),
+    [
+        ("schema_version", "2.0.0"),
+        ("trace_id", "invalid_trace"),
+        ("run_id", "invalid_run"),
+        ("group_id", "invalid-group"),
+        ("run_type", "unsupported_type"),
+        ("status", "unknown_status"),
+        ("duration_ms", -10),
+    ],
+)
+def test_agent_runner_log_schema_invalid_fields_rejected(field: str, invalid_value: Any) -> None:
+    validator = _get_trace_log_validator()
+    trace = _valid_trace_entry()
+    trace[field] = invalid_value
+    errors = list(validator.iter_errors(trace))
+    assert len(errors) > 0
