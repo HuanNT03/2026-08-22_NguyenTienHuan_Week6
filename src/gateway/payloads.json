@@ -34,7 +34,7 @@
     "'",
     "' OR '1'='1",
     "admin' --",
-    "' UNION SELECT id, email, password FROM Users--"
+    "' UNION SELECT 1, 2, 3--"
   ],
   "cross_site_scripting_probes": [
     "<script>alert('Sentinel')</script>",
