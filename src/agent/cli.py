@@ -126,10 +126,16 @@ def analyze_command(
     )
 
     try:
-        summary = run_analysis(findings_path=findings, config=config)
+        summary = run_analysis(findings_path=findings, config=config, log_file=log_file)
         console.print("[bold green]Analysis Complete![/bold green]")
         console.print(f"Total findings analyzed: [green]{summary['total_input_findings']}[/green]")
         console.print(f"Total report entries: [green]{summary['total_report_entries']}[/green]")
+        console.print(
+            f"Token Usage: Input [cyan]{summary['token_usage']['prompt_tokens']}[/cyan] | "
+            f"Output [cyan]{summary['token_usage']['completion_tokens']}[/cyan] | "
+            f"Total [cyan]{summary['token_usage']['total_tokens']}[/cyan]"
+        )
+        console.print(f"Execution time: [cyan]{summary['execution_time_seconds']}s[/cyan]")
         console.print(f"Report JSONL saved to: [cyan]{summary['report_file']}[/cyan]")
         console.print("Coverage status: [bold green]100% Complete[/bold green]")
     except Exception as err:

@@ -235,6 +235,11 @@ def sanitize_llm_entry_dict(
             ep = str(ptr.get("endpoint", ""))
             if m not in ("GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS") or not ep.startswith("/"):
                 item["proposed_test_request"] = None
+            else:
+                raw_st = str(ptr.get("status", "not_sent")).lower()
+                if raw_st not in ("not_sent", "sent", "rejected", "timeout_rejected"):
+                    raw_st = "not_sent"
+                ptr["status"] = raw_st
         else:
             item["proposed_test_request"] = None
 

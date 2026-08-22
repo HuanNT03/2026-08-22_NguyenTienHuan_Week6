@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from src.agent.models import AnalysisGroup
-from src.agent.prompt_builder import build_react_user_prompt, compress_finding
+from src.agent.prompt_builder import build_react_user_prompt
 
 SYSTEM_V2_PATH = Path(__file__).resolve().parent.parent.parent / "src" / "agent" / "prompts" / "system_v2.md"
 

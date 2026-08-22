@@ -195,7 +195,8 @@
             "endpoint",
             "headers",
             "payload",
-            "rationale"
+            "rationale",
+            "status"
           ],
           "properties": {
             "method": {
@@ -213,6 +214,16 @@
             "rationale": {
               "type": "string",
               "minLength": 1
+            },
+            "status": {
+              "enum": [
+                "not_sent",
+                "sent",
+                "rejected",
+                "timeout_rejected"
+              ],
+              "default": "not_sent",
+              "description": "Trạng thái gửi probe: not_sent (chưa gửi), sent (đã gửi), rejected (bị từ chối), timeout_rejected (từ chối do timeout 120s)."
             }
           }
         }

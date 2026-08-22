@@ -3,7 +3,6 @@
 import json
 from unittest.mock import MagicMock, patch
 
-import pytest
 from openai import OpenAI
 
 from src.agent.analyzer import analyze_group

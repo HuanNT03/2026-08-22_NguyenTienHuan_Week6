@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sentinel.local/schemas/agent-runner-summary/1.0.0/schema.json",
+  "title": "Project Sentinel Security Analysis Agent Runner Summary Metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "analyzed_at",
+    "input_file",
+    "report_file",
+    "log_file",
+    "total_input_findings",
+    "total_report_entries",
+    "total_analysis_groups",
+    "coverage",
+    "entries_by_status",
+    "entries_by_correlation_type",
+    "token_usage",
+    "execution_time_seconds",
+    "config"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "analyzed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp of analysis completion."
+    },
+    "input_file": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Path to input normalized unified findings JSONL file."
+    },
+    "report_file": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Path to output security analysis report JSONL file."
+    },
+    "log_file": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Path to agent runner execution log file."
+    },
+    "total_input_findings": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of findings ingested from unified findings."
+    },
+    "total_report_entries": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of report entries generated (must equal total_input_findings for 100% coverage)."
+    },
+    "total_analysis_groups": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of analysis groups processed by the agent."
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "is_complete",
+        "total_expected",
+        "total_analyzed",
+        "missing_fingerprints"
+      ],
+      "properties": {
+        "is_complete": {
+          "type": "boolean",
+          "description": "True if all input findings are covered in report."
+        },
+        "total_expected": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total_analyzed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_fingerprints": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of fingerprints missing from output."
+        }
+      }
+    },
+    "entries_by_status": {
+      "type": "object",
+      "description": "Count of report entries grouped by analysis_status (success, error).",
+      "additionalProperties": { "type": "integer" }
+    },
+    "entries_by_correlation_type": {
+      "type": "object",
+      "description": "Count of report entries grouped by correlation_type.",
+      "additionalProperties": { "type": "integer" }
+    },
+    "token_usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "prompt_tokens",
+        "completion_tokens",
+        "total_tokens"
+      ],
+      "properties": {
+        "prompt_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total input tokens consumed across all LLM calls."
+        },
+        "completion_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total output completion tokens generated across all LLM calls."
+        },
+        "total_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total tokens consumed (prompt_tokens + completion_tokens)."
+        }
+      }
+    },
+    "execution_time_seconds": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Total pipeline execution duration in seconds."
+    },
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "agent_mode",
+        "model",
+        "base_url",
+        "temperature",
+        "max_retries",
+        "max_react_steps",
+        "prompt_version"
+      ],
+      "properties": {
+        "agent_mode": {
+          "enum": ["react", "static"],
+          "description": "Agent reasoning engine mode."
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "description": "LLM model identifier used for analysis."
+        },
+        "base_url": {
+          "type": ["string", "null"],
+          "description": "API Base URL endpoint for LLM provider."
+        },
+        "temperature": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 2.0
+        },
+        "max_retries": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_react_steps": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "prompt_version": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

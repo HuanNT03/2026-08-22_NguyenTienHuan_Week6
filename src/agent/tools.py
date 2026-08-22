@@ -248,8 +248,8 @@ class ToolDispatcher:
                     "status": "error",
                     "message": f"Unknown tool '{tool_name}'. Available tools: {[t['function']['name'] for t in AGENT_TOOLS]}",
                 }
-        except Exception as err:  # noqa: BLE001
-            logger.error("Tool execution failed for %r: %s", tool_name, err, exc_info=True)
+        except Exception as err:
+            logger.exception("Tool execution failed for %r", tool_name)
             return {
                 "status": "error",
                 "message": f"Lỗi khi thực thi công cụ '{tool_name}': {err}",
@@ -335,7 +335,7 @@ class ToolDispatcher:
             return {"status": "error", "message": f"Lỗi đọc catalog payloads.json: {err}"}
 
         if category not in catalog:
-            valid_cats = [k for k in catalog.keys() if k != "description"]
+            valid_cats = [k for k in catalog if k != "description"]
             return {
                 "status": "error",
                 "message": f"Category '{category}' không hợp lệ. Các category được phép: {valid_cats}",

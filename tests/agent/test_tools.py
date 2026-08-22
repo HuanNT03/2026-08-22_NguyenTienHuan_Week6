@@ -1,9 +1,6 @@
 """Unit tests for Project Sentinel ReAct Agent Tool Registry and Dispatcher."""
 
-import json
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from src.agent.tools import (
     AGENT_TOOLS,

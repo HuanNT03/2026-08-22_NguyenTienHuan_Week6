@@ -2,6 +2,7 @@
 
 import json
 import logging
+import time
 from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
@@ -28,10 +29,12 @@ def verify_coverage(
 
     missing = sorted(input_fps - covered_fps)
     return {
+        "is_complete": len(missing) == 0,
+        "total_expected": len(input_fps),
+        "total_analyzed": len(covered_fps),
+        "missing_fingerprints": missing,
         "total_input": len(input_fps),
         "total_covered": len(covered_fps),
-        "missing_fingerprints": missing,
-        "is_complete": len(missing) == 0,
     }
 
 
@@ -41,6 +44,7 @@ def run_analysis(
     config: AgentConfig | None = None,
     client: OpenAI | None = None,
     kb_service: KnowledgeSearchService | None = None,
+    log_file: Path | str | None = None,
 ) -> dict[str, Any]:
     """Execute full 3-phase Security Analysis Agent pipeline.
 
@@ -48,6 +52,7 @@ def run_analysis(
     Phase 2: Agentic loop & KB retrieval
     Phase 3: Post-processing, 100% coverage verification, & report output
     """
+    start_time = time.time()
     cfg = config or AgentConfig()
     target_out_dir = output_dir or cfg.output_dir
     target_out_dir.mkdir(parents=True, exist_ok=True)
@@ -66,6 +71,9 @@ def run_analysis(
         kb_service = KnowledgeSearchService()
 
     all_entries: list[ReportEntry] = []
+    total_prompt_tokens = 0
+    total_completion_tokens = 0
+
     for idx, group in enumerate(groups, start=1):
         logger.info(
             "[%d/%d] Analyzing group %s (%d findings, correlation: %s)",
@@ -100,18 +108,32 @@ def run_analysis(
     # Generate summary metadata
     status_counts = Counter(e.analysis_status for e in all_entries)
     corr_counts = Counter(e.correlation_type for e in all_entries)
+    execution_duration = round(time.time() - start_time, 2)
+    default_log_file = log_file or str(Path("logs/agent-runner.log"))
 
     summary_metadata = {
         "schema_version": "1.0.0",
         "analyzed_at": datetime.now(UTC).isoformat(),
         "input_file": str(findings_path),
         "report_file": str(report_file_path),
+        "log_file": str(default_log_file),
         "total_input_findings": len(findings),
         "total_report_entries": len(all_entries),
         "total_analysis_groups": len(groups),
-        "coverage": coverage,
+        "coverage": {
+            "is_complete": coverage["is_complete"],
+            "total_expected": coverage["total_expected"],
+            "total_analyzed": coverage["total_analyzed"],
+            "missing_fingerprints": coverage["missing_fingerprints"],
+        },
         "entries_by_status": dict(status_counts),
         "entries_by_correlation_type": dict(corr_counts),
+        "token_usage": {
+            "prompt_tokens": total_prompt_tokens,
+            "completion_tokens": total_completion_tokens,
+            "total_tokens": total_prompt_tokens + total_completion_tokens,
+        },
+        "execution_time_seconds": execution_duration,
         "config": {
             "agent_mode": cfg.agent_mode,
             "model": cfg.model,

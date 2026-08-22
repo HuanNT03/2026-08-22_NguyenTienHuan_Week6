@@ -21,13 +21,22 @@ class ConfidenceAssessment(BaseModel):
 
 
 class ProposedTestRequest(BaseModel):
-    """Data-only proposed security verification request (not executed in Week 3)."""
+    """Data-only proposed security verification request with execution tracking status."""
 
     method: str = Field(pattern=r"^[A-Z]+$")
     endpoint: str = Field(pattern=r"^/")
     headers: dict[str, str] = Field(default_factory=dict)
     payload: Any = None
     rationale: str = Field(min_length=1)
+    status: Literal["not_sent", "sent", "rejected", "timeout_rejected"] = "not_sent"
+
+
+class TokenUsage(BaseModel):
+    """Token consumption metrics for LLM prompt and completion."""
+
+    prompt_tokens: int = Field(ge=0, default=0)
+    completion_tokens: int = Field(ge=0, default=0)
+    total_tokens: int = Field(ge=0, default=0)
 
 
 class KnowledgeReference(BaseModel):

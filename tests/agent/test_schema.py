@@ -46,6 +46,7 @@ def _valid_report_entry() -> dict[str, Any]:
             "headers": {"Content-Type": "application/json"},
             "payload": {"email": "admin' --", "password": "123"},
             "rationale": "Kiểm tra SQL Injection bằng payload bypass auth.",
+            "status": "not_sent",
         },
         "knowledge_references": [
             {
@@ -64,8 +65,51 @@ def _valid_report_entry() -> dict[str, Any]:
     }
 
 
+def _valid_summary_metadata() -> dict[str, Any]:
+    return {
+        "schema_version": "1.0.0",
+        "analyzed_at": "2026-08-22T10:00:00Z",
+        "input_file": "reports/normalized/unified-findings-test.jsonl",
+        "report_file": "reports/analyzed/security-analysis-report-test.jsonl",
+        "log_file": "logs/agent-runner.log",
+        "total_input_findings": 5,
+        "total_report_entries": 5,
+        "total_analysis_groups": 2,
+        "coverage": {
+            "is_complete": True,
+            "total_expected": 5,
+            "total_analyzed": 5,
+            "missing_fingerprints": [],
+        },
+        "entries_by_status": {"success": 5},
+        "entries_by_correlation_type": {"sast_only": 3, "sast_dast_confirmed": 2},
+        "token_usage": {
+            "prompt_tokens": 1250,
+            "completion_tokens": 450,
+            "total_tokens": 1700,
+        },
+        "execution_time_seconds": 3.45,
+        "config": {
+            "agent_mode": "react",
+            "model": "qwen-plus",
+            "base_url": None,
+            "temperature": 0.2,
+            "max_retries": 3,
+            "max_react_steps": 5,
+            "prompt_version": "system_v2",
+        },
+    }
+
+
 def _get_validator() -> Draft202012Validator:
     schema = json.loads(REPORT_SCHEMA_PATH.read_text(encoding="utf-8"))
+    Draft202012Validator.check_schema(schema)
+    return Draft202012Validator(schema)
+
+
+def _get_summary_validator() -> Draft202012Validator:
+    summary_schema_path = ROOT / "schemas/agent_runner_summary.schema.json"
+    schema = json.loads(summary_schema_path.read_text(encoding="utf-8"))
     Draft202012Validator.check_schema(schema)
     return Draft202012Validator(schema)
 
@@ -75,6 +119,28 @@ def test_valid_report_entry_passes_schema() -> None:
     entry = _valid_report_entry()
     errors = list(validator.iter_errors(entry))
     assert errors == []
+
+
+@pytest.mark.parametrize(
+    "status_val",
+    ["not_sent", "sent", "rejected", "timeout_rejected"],
+)
+def test_proposed_test_request_status_enums(status_val: str) -> None:
+    validator = _get_validator()
+    entry = _valid_report_entry()
+    assert entry["proposed_test_request"] is not None
+    entry["proposed_test_request"]["status"] = status_val
+    errors = list(validator.iter_errors(entry))
+    assert errors == []
+
+
+def test_proposed_test_request_invalid_status_rejected() -> None:
+    validator = _get_validator()
+    entry = _valid_report_entry()
+    assert entry["proposed_test_request"] is not None
+    entry["proposed_test_request"]["status"] = "unknown_status"
+    errors = list(validator.iter_errors(entry))
+    assert len(errors) > 0
 
 
 @pytest.mark.parametrize(
@@ -116,3 +182,18 @@ def test_metadata_prompt_injection_detected_field() -> None:
 
     entry["metadata"]["prompt_injection_detected"] = "not_a_bool"
     assert len(list(validator.iter_errors(entry))) > 0
+
+
+def test_agent_runner_summary_schema_valid() -> None:
+    validator = _get_summary_validator()
+    summary = _valid_summary_metadata()
+    errors = list(validator.iter_errors(summary))
+    assert errors == []
+
+
+def test_agent_runner_summary_schema_missing_tokens_rejected() -> None:
+    validator = _get_summary_validator()
+    summary = _valid_summary_metadata()
+    del summary["token_usage"]
+    errors = list(validator.iter_errors(summary))
+    assert len(errors) > 0
