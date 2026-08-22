@@ -19,7 +19,7 @@ from typing import Any
 from src.guardrails.injection import detect_prompt_injection
 from src.guardrails.redactor import mask_sensitive_data
 
-DEFAULT_LOG_FILE = Path("reports/logs/gateway-network-audit.jsonl")
+DEFAULT_LOG_FILE = Path("logs/gateway-network-audit.jsonl")
 
 VALID_APPROVAL_STATUSES = {
     "APPROVED",
@@ -163,7 +163,7 @@ def log_audit_event(
         request_headers: Outbound request headers.
         response_headers: Inbound response headers.
         response_body_snippet: Snippet of response body.
-        log_file: Optional custom destination file path. Defaults to reports/logs/gateway-network-audit.jsonl.
+        log_file: Optional custom destination file path. Defaults to logs/gateway-network-audit.jsonl.
         timestamp: Optional ISO-8601 timestamp string.
 
     Returns:

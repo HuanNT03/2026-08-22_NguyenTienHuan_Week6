@@ -45,7 +45,7 @@ flowchart TD
     end
 
     subgraph AuditAndReturn [5. Kiểm Toán & Nạp Kết Quả]
-        AuditLogger["📝 Ghi 1 Bản Ghi Audit Log JSONL Duy Nhất<br/>(reports/logs/gateway-network-audit.jsonl)"]
+        AuditLogger["📝 Ghi 1 Bản Ghi Audit Log JSONL Duy Nhất<br/>(logs/gateway-network-audit.jsonl)"]
         ReturnSafe["Trả Về Payload An Toàn<br/>Cho AI Prompt / Terminal CLI"]
     end
 
@@ -133,7 +133,7 @@ Module `src/gateway/hitl.py` thực hiện đánh giá rủi ro động trước
 
 ## 6. Cơ Chế Ghi Nhật Ký Kiểm Toán (Audit Logger)
 
-Mỗi request (dù thành công, bị từ chối bởi HITL, hay bị chặn bởi chính sách method) đều kích hoạt **1 bản ghi JSONL duy nhất** vào tệp `reports/logs/gateway-network-audit.jsonl`:
+Mỗi request (dù thành công, bị từ chối bởi HITL, hay bị chặn bởi chính sách method) đều kích hoạt **1 bản ghi JSONL duy nhất** vào tệp `logs/gateway-network-audit.jsonl`:
 
 - **Tuân thủ Schema**: Ràng buộc theo `schemas/gateway_audit.schema.json`.
 - **Cấu trúc trường bắt buộc**:

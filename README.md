@@ -379,7 +379,7 @@ Module `src/gateway/safe_requester.py` cung cấp công cụ gửi HTTP Request 
 - **Zero-Trust Secret Injection**: Tự động tiêm `x-api-key: <AGENT_API_KEY>` từ biến môi trường; tuyệt đối không lưu secret vào code hay file log.
 - **Chốt chặn Phê duyệt HITL**: Đánh giá rủi ro (`LOW`, `MEDIUM`, `HIGH`) và yêu cầu người dùng xác nhận (`y/N`) với cơ chế Timeout 120s (Default to Reject).
 - **Phòng thủ & Khử khuẩn 2 chiều**: Cắt cụt response tại 2KB, lọc sạch PII/Secrets, quét phát hiện Indirect Prompt Injection và bọc trong thẻ an toàn `<untrusted_http_response>`.
-- **Kiểm toán Toàn diện**: Ghi 1 bản ghi JSONL hợp lệ theo `schemas/gateway_audit.schema.json` vào `reports/logs/gateway-network-audit.jsonl`.
+- **Kiểm toán Toàn diện**: Ghi 1 bản ghi JSONL hợp lệ theo `schemas/gateway_audit.schema.json` vào `logs/gateway-network-audit.jsonl`.
 
 #### Bảng tham số dòng lệnh CLI (`make test-request`):
 | Tham Số | Ý Nghĩa / Định Dạng | Mặc Định | Ví Dụ |

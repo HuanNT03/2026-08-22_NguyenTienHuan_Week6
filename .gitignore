@@ -32,10 +32,6 @@ __pycache__/
 /reports/analyzed/*
 !/reports/analyzed/.gitkeep
 
-# Generated gateway audit logs.
-/reports/logs/*
-!/reports/logs/.gitkeep
-
 # Implemention Plans
 /plans
 
