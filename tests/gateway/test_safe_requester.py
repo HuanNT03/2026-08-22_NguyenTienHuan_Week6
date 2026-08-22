@@ -354,16 +354,24 @@ def test_fact_check_put_product_reviews_endpoint(tmp_path: Path) -> None:
         assert "success" in res["body"]
 
 
-def test_cli_main_entrypoint(monkeypatch, capsys) -> None:
+def test_cli_main_entrypoint(monkeypatch, capsys, tmp_path: Path) -> None:
     """Verify CLI main entrypoint executes properly with argparse options."""
     mock_resp = MagicMock()
     mock_resp.status_code = 200
-    mock_resp.headers = {"Content-Type": "application/json"}
+    mock_resp.headers = {
+        "Content-Type": "application/json; charset=utf-8",
+        "Server": "Kong/3.6.1",
+        "Via": "kong/3.6.1",
+        "X-Kong-Proxy-Latency": "1",
+        "X-RateLimit-Remaining-Minute": "19",
+    }
     mock_resp.iter_content.return_value = [b'{"ok": true}']
 
     with patch("requests.Session.request", return_value=mock_resp), \
+         patch("src.gateway.safe_requester.log_audit_event") as mock_log, \
          patch("sys.argv", ["safe_requester", "--url", "/api/Products", "--method", "GET", "--auto-approve"]):
         main()
         captured = capsys.readouterr()
         assert '"status_code": 200' in captured.out
         assert '"endpoint": "/api/Products"' in captured.out
+        assert mock_log.called
