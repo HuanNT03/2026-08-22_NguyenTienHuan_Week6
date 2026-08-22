@@ -356,19 +356,49 @@ Lệnh `make normalize` chuẩn hóa các raw report từ scanner thành định
 
 ---
 
-### 4. Phân tích Chuyên sâu với AI Security Agent
+### 4. Phân tích Chuyên sâu với AI Security Agent (ReAct & Tool Calling)
 
-AI Security Analysis Agent thực hiện phân tích tự động theo quy trình 3 giai đoạn:
-1. **Pre-Grouping & Correlation Engine**:
-   - Gom nhóm lỗ hổng theo `group_key` chuẩn hóa từ scanner.
-   - Quét quan hệ tương quan cross-tool **SAST ↔ DAST** dựa trên CWE Intersection, Title Similarity và Parameter-to-DataFlow Matching. Đánh dấu `correlation_type = "sast_dast_suspected"`.
-2. **Agentic Analysis Loop & Knowledge Retrieval**:
-   - Tự động truy hồi tri thức bảo mật từ SQLite Knowledge Base theo từng CWE ID và từ khóa lỗ hổng.
-   - Lọc che dữ liệu nhạy cảm (Email, Phone, JWT Tokens, Passwords) trước khi đưa vào LLM prompt.
-   - Gọi LLM qua OpenAI-compatible API với System Prompt versioned tại `src/agent/prompts/system_v1.md`.
-3. **Post-Processing & Coverage Verification**:
-   - Đảm bảo 100% fingerprints đầu vào đều có kết quả phân tích (hoặc fallback an toàn).
+AI Security Analysis Agent thế hệ mới (Tuần 6) vận hành theo mô hình tác nhân tự trị **ReAct (Reasoning + Acting)** kết hợp Native Tool Calling và Active Verification:
+
+1. **Pha 1: Pre-Grouping & Correlation Engine**:
+   - Gom nhóm findings theo `group_key` chuẩn hóa từ scanner.
+   - Quét quan hệ tương quan chéo **SAST ↔ DAST** dựa trên CWE Intersection, Title Similarity và Parameter-to-DataFlow Matching. Đánh dấu `correlation_type = "sast_dast_suspected"`.
+
+2. **Pha 2: ReAct Verification Loop & Native Tool Calling**:
+   - Áp dụng chu trình suy luận **Thought $\rightarrow$ Action $\rightarrow$ Observation $\rightarrow$ Synthesis** (tối đa `max_steps = 5`).
+   - Tự động gọi 4 công cụ bảo mật khi cần:
+     - `search_knowledge_base`: Tra cứu tri thức chuẩn hóa (FTS5 + Qdrant).
+     - `get_knowledge_document`: Đọc chi tiết tài liệu theo `doc_id`.
+     - `lookup_safe_payloads`: Lấy mẫu probe payload an toàn từ `payloads.json`.
+     - `send_safe_request`: Gửi HTTP probe kiểm thử qua Kong API Gateway để phân biệt True Positive vs False Positive.
+   - Bảo vệ an toàn với **Dual-Layer Guardrails**: Che giấu PII (`mask_sensitive_data`), bọc phản hồi mạng trong thẻ `<untrusted_http_response>` để ngăn chặn Indirect Prompt Injection, và kích hoạt `Repetitive Action Guard`.
+
+3. **Pha 3: Post-Processing & Coverage Verification**:
+   - Bảo đảm **100% Finding Coverage Guarantee**: Mọi finding đầu vào bắt buộc có đúng 1 bản ghi `ReportEntry` đầu ra hợp lệ theo `schemas/security_analysis_report.schema.json`.
    - Xuất báo cáo JSONL tại `reports/analyzed/security-analysis-report-YYYYMMDDTHHMMSSZ.jsonl` và summary tại `reports/analyzed/analysis-summary-YYYYMMDDTHHMMSSZ.json`.
+
+#### 🚀 Hướng dẫn Chạy qua Makefile:
+
+```bash
+# 1. Chạy ReAct Agent mới (MẶC ĐỊNH - Có Tool Calling & Safe Probing qua Gateway):
+make agent-analyze FINDINGS=reports/normalized/unified-findings-20260822T000000Z.jsonl
+
+# 2. Chạy Legacy Agent cũ (Chế độ Static 1-Pass RAG phục vụ đối soát Benchmark / Offline):
+make agent-analyze FINDINGS=reports/normalized/unified-findings-20260822T000000Z.jsonl MODE=static
+
+# 3. Tùy chỉnh số bước ReAct tối đa và Model LLM:
+make agent-analyze FINDINGS=reports/normalized/unified-findings-20260822T000000Z.jsonl MODE=react MAX_STEPS=3 MODEL=qwen-plus
+```
+
+#### 🐍 Hướng dẫn Chạy qua Python CLI:
+
+```bash
+# Chạy ReAct Agent:
+python -m src.agent.cli analyze --findings reports/normalized/unified-findings-xxx.jsonl --mode react --max-steps 5
+
+# Chạy Static Legacy Agent:
+python -m src.agent.cli analyze --findings reports/normalized/unified-findings-xxx.jsonl --mode static
+```
 
 ---
 
