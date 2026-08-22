@@ -32,9 +32,10 @@ def create_fallback_error_entry(
 ) -> ReportEntry:
     """Create a structured fallback error ReportEntry when LLM analysis fails after max retries."""
     fp = finding["fingerprint"]
-    fnd_id = finding["finding_id"]
-    tool_name = finding.get("tool", {}).get("name", "unknown")
-    scan_type = finding.get("tool", {}).get("scan_type", "SAST")
+    fnd_id = finding.get("finding_id", "fnd_00000000000000000000000000000000")
+    tool_raw = finding.get("tool")
+    tool_name = tool_raw.get("name", "unknown") if isinstance(tool_raw, dict) else (str(tool_raw) if tool_raw else "unknown")
+    scan_type = tool_raw.get("scan_type", "SAST") if isinstance(tool_raw, dict) else str(finding.get("scan_type", "SAST"))
     cwes = finding.get("cwe_ids") or []
     primary_cwe = cwes[0] if cwes else None
     owasp = (finding.get("owasp_categories") or [None])[0]
@@ -48,6 +49,9 @@ def create_fallback_error_entry(
         loc_summary = f"{loc.get('path', 'unknown')} dòng {loc.get('start_line', 1)}"
     else:
         loc_summary = f"{loc.get('endpoint', '/')} param={loc.get('parameter')}"
+
+    orig_sev = finding.get("severity")
+    orig_sev_str = orig_sev.get("level", "unknown") if isinstance(orig_sev, dict) else (str(orig_sev) if orig_sev else "unknown")
 
     return ReportEntry(
         schema_version="1.1.0",
@@ -64,10 +68,8 @@ def create_fallback_error_entry(
         owasp_category=owasp if owasp and owasp.startswith("OWASP-A") else None,
         location_summary=loc_summary,
         severity=SeverityAssessment(
-            agent_assessment=finding.get("severity", "unknown")
-            if finding.get("severity") in ("info", "low", "medium", "high", "critical")
-            else "unknown",
-            original_scanner=finding.get("severity"),
+            agent_assessment=orig_sev_str if orig_sev_str in ("info", "low", "medium", "high", "critical") else "unknown",
+            original_scanner=orig_sev_str,
             rationale=f"Lỗi khi gọi mô hình phân tích LLM: {error_msg}",
         ),
         confidence=ConfidenceAssessment(
