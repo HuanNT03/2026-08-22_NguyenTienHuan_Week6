@@ -257,3 +257,14 @@ ui-down: ## Stop the Sentinel Web UI container.
 ui-logs: ## Follow Sentinel Web UI logs.
 	docker compose logs --follow sentinel-ui
 
+.PHONY: mock-server-up test-mock-guardrails test-live-mock-probe
+
+mock-server-up: ## Start the Vulnerable Mock Server on port 3000 (PORT=3000).
+	@$(VENV_PYTHON) api-server/mock_server.py --port $(or $(PORT),3000)
+
+test-mock-guardrails: ## Run end-to-end empirical tests with Vulnerable Mock Server.
+	@$(VENV_PYTHON) -m pytest tests/guardrails/test_vulnerable_mock_guardrails.py -v
+
+test-live-mock-probe: ## Run the interactive 4-stage Live Mock Probe and Guardrails verification.
+	@$(VENV_PYTHON) scripts/live_mock_probe_demo.py
+
