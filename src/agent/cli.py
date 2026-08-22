@@ -1,5 +1,4 @@
-"""Typer command-line adapter for Project Sentinel Security Analysis Agent."""
-
+import logging
 from pathlib import Path
 from typing import Annotated
 
@@ -15,6 +14,22 @@ app = typer.Typer(
 )
 console = Console()
 error_console = Console(stderr=True)
+
+
+def setup_logging(verbose: bool = False, log_file: Path | None = None) -> None:
+    """Configure structured logging to console and logs/agent-runner.log."""
+    level = logging.DEBUG if verbose else logging.INFO
+    log_format = "%(asctime)s [%(levelname)s] [%(name)s] %(message)s"
+
+    handlers: list[logging.Handler] = [logging.StreamHandler()]
+
+    target_log_file = log_file or (Path(__file__).resolve().parents[2] / "logs" / "agent-runner.log")
+    target_log_file.parent.mkdir(parents=True, exist_ok=True)
+    file_handler = logging.FileHandler(target_log_file, encoding="utf-8")
+    file_handler.setFormatter(logging.Formatter(log_format))
+    handlers.append(file_handler)
+
+    logging.basicConfig(level=level, format=log_format, handlers=handlers, force=True)
 
 
 @app.callback()
@@ -73,8 +88,25 @@ def analyze_command(
             help="Maximum ReAct steps permitted per group (default: 5).",
         ),
     ] = 5,
+    verbose: Annotated[
+        bool,
+        typer.Option(
+            "--verbose",
+            "-v",
+            help="Enable verbose debug logging.",
+        ),
+    ] = False,
+    log_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--log-file",
+            help="Custom path to log file (default: logs/agent-runner.log).",
+        ),
+    ] = None,
 ) -> None:
     """Execute full 3-phase Security Analysis Agent pipeline."""
+    setup_logging(verbose=verbose, log_file=log_file)
+
     config = AgentConfig()
     if model:
         config.model = model
