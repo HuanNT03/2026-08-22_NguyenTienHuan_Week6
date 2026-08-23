@@ -1,30 +1,23 @@
-# Project Sentinel — Automated DevSecOps & AI-Powered Security Analysis Platform
+# Project Sentinel — Automated DevSecOps & ReAct AI Security Operations Platform
 
-Project Sentinel là nền tảng DevSecOps tự động hóa toàn diện, cung cấp môi trường phân tích bảo mật có thể tái lập trên ứng dụng mục tiêu OWASP Juice Shop `v20.1.1`. Hệ thống tích hợp quét mã nguồn tĩnh (SAST), quét lỗ hổng động (DAST), chuẩn hóa kết quả sang Unified Findings, công cụ truy hồi tri thức bảo mật đa phương thức (Hybrid Search), và **Security Analysis Agent** chạy mô hình ngôn ngữ lớn (LLM) để phân tích, tương quan (correlation) và đề xuất giải pháp vá lỗi tự động.
+Project Sentinel là nền tảng DevSecOps tự động hóa toàn diện, cung cấp môi trường phân tích bảo mật có thể tái lập trên ứng dụng mục tiêu được cấp phép (OWASP Juice Shop `v20.1.1` & Vulnerable Mock Server). Hệ thống tích hợp quét mã nguồn tĩnh (SAST), quét lỗ hổng động (DAST), chuẩn hóa kết quả sang Unified Findings JSONL, truy hồi tri thức bảo mật đa phương thức (Hybrid Search FTS5 + Qdrant), và **ReAct Security Analysis Agent** với khả năng tự trị gọi công cụ kiểm chứng lỗ hổng qua **API Gateway**, bảo vệ bởi **Dual-Layer Guardrails** (khử khuẩn PII/Secrets, ngăn chặn Prompt Injection) và chốt chặn phê duyệt của con người (**Human-in-the-Loop**).
 
 ---
 
 ## 📑 Mục lục
 
-- [Tổng quan Kiến trúc](#tổng-quan-kiến-trúc)
-- [Yêu cầu hệ thống](#yêu-cầu-hệ-thống)
-- [Cài đặt & Khởi tạo Nhanh (Quickstart)](#cài-đặt--khởi-tạo-nhanh-quickstart)
-- [Cấu hình Biến Môi Trường (.env)](#cấu-hình-biến-môi-trường-env)
-- [Hướng dẫn Sử dụng Hệ thống Tìm kiếm Tri thức Bảo mật](#hướng-dẫn-sử-dụng-hệ-thống-tìm-kiếm-tri-thức-bảo-mật)
-  - [1. Tìm kiếm trên Giao diện Web (Streamlit UI)](#1-tìm-kiếm-trên-giao-diện-web-streamlit-ui)
-  - [2. Tìm kiếm qua Dòng lệnh CLI (Makefile & Python CLI)](#2-tìm-kiếm-qua-dòng-lệnh-cli-makefile--python-cli)
-  - [3. Tích hợp trực tiếp trong Python Code](#3-tích-hợp-trực-tiếp-trong-python-code)
-- [Quy trình Quét & Phân tích Bảo mật Đầu-Cuối (End-to-End Workflow)](#quy-trình-quét--phân-tích-bảo-mật-đầu-cuối-end-to-end-workflow)
-  - [1. Quét SAST (Semgrep & CodeQL)](#1-quét-sast-semgrep--codeql)
-  - [2. Quét DAST (OWASP ZAP & sqlmap)](#2-quét-dast-owasp-zap--sqlmap)
-  - [3. Chuẩn hóa Scanner Reports sang Unified Findings](#3-chuẩn-hóa-scanner-reports-sang-unified-findings)
-  - [4. Phân tích Chuyên sâu với AI Security Agent](#4-phân-tích-chuyên-sâu-với-ai-security-agent)
-  - [5. Kiểm thử An toàn qua API Gateway (Safe Requester & HITL)](#5-kiểm-thử-an-toàn-qua-api-gateway-safe-requester--hitl)
-- [Kiểm thử & Đảm bảo Chất lượng](#kiểm-thử--đảm-bảo-chất-lượng)
+- [Tổng quan Kiến trúc](#-tổng-quan-kiến-trúc)
+- [Yêu cầu Hệ thống](#-yêu-cầu-hệ-thống)
+- [Cài đặt & Khởi tạo Nhanh (Quickstart)](#-cài-đặt--khởi-tạo-nhanh-quickstart)
+- [Cấu hình Biến Môi Trường (.env)](#-cấu-hình-biến-môi-trường-env)
+- [Hướng dẫn Vận hành Full Luồng (End-to-End Workflow)](#-hướng-dẫn-vận-hành-full-luồng-end-to-end-workflow)
+  - [Lựa chọn 1: Vận hành qua Giao diện Web (Streamlit Bento Dashboard)](#lựa-chọn-1-vận-hành-qua-giao-diện-web-streamlit-bento-dashboard)
+  - [Lựa chọn 2: Vận hành qua Dòng lệnh CLI (Makefile Commands)](#lựa-chọn-2-vận-hành-qua-dòng-lệnh-cli-makefile-commands)
+- [Kiểm thử & Đảm bảo Chất lượng](#-kiểm-thử--đảm-bảo-chất-lượng)
 - [Gitleaks Git hooks](#gitleaks-git-hooks)
-- [CI/CD GitHub Actions](#cicd-github-actions)
-- [Dọn dẹp Môi trường (Cleanup)](#dọn-dẹp-môi-trường-cleanup)
-- [Xử lý Sự cố Thường gặp (Troubleshooting)](#xử-lý-sự-cố-thường-gặp-troubleshooting)
+- [CI/CD GitHub Actions](#-cicd-github-actions)
+- [Dọn dẹp Môi trường (Cleanup)](#-dọn-dẹp-môi-trường-cleanup)
+- [Xử lý Sự cố Thường gặp (Troubleshooting)](#-xử-lý-sự-cố-thường-gặp-troubleshooting)
 
 ---
 
@@ -32,65 +25,66 @@ Project Sentinel là nền tảng DevSecOps tự động hóa toàn diện, cung
 
 ```mermaid
 flowchart TD
-    subgraph Target["Target Environment"]
+    subgraph TargetEnv ["1. Target Environment"]
         JuiceShop["OWASP Juice Shop (v20.1.1)"]
+        MockServer["Vulnerable Mock Server (:3000)"]
     end
 
-    subgraph Scanners["Security Scanners"]
-        Semgrep["Semgrep SAST (JavaScript/NodeJS)"]
-        CodeQL["CodeQL SAST (Deep Taint Analysis)"]
-        ZAP["OWASP ZAP DAST (Baseline & Full Scan)"]
-        SQLMap["sqlmap DAST (Bounded Active Injection)"]
+    subgraph Scanners ["2. Multi-Engine Scanners"]
+        Semgrep["Semgrep SAST (NodeJS/JS)"]
+        CodeQL["CodeQL SAST (Taint Analysis)"]
+        ZAP["OWASP ZAP DAST (Baseline & Full)"]
+        SQLMap["sqlmap DAST (Targeted SQLi)"]
     end
 
-    subgraph Pipeline["Data Normalization & Standardization"]
-        Reports["Raw Reports (JSON/SARIF)"]
+    subgraph Pipeline ["3. Normalization & Knowledge Base"]
         Normalizer["Unified Findings Normalizer"]
-        UnifiedJSONL["Unified Findings JSONL\n(schemas/unified_findings.schema.json)"]
+        UnifiedJSONL["Unified Findings JSONL"]
+        KBEngine["Hybrid Knowledge Engine (SQLite FTS5 + Qdrant Vector)"]
     end
 
-    subgraph Knowledge["Security Knowledge Engine"]
-        RawKB["Raw Sources (CWE, ASVS, OWASP, Cheatsheets, Rules)"]
-        Chunker["Section-Aware Parent-Child Chunker"]
-        FTS5["SQLite FTS5 (BM25 Keyword Search)"]
-        Qdrant["Qdrant Vector Store (FastEmbed / Cloud Embedding)"]
-        HybridEngine["Two-Stage Hybrid Search (RRF + MMR Fusion)"]
+    subgraph ReActAgent ["4. ReAct AI Security Agent"]
+        AgentCore["ReAct Reasoning Loop (Thought -> Action -> Observation)"]
+        Correlator["SAST <-> DAST Correlator"]
+        Tools["Tool Dispatcher (search_kb, lookup_payloads, send_safe_request)"]
     end
 
-    subgraph AIAgent["AI Security Analysis Agent"]
-        Grouper["Hybrid Correlator & SAST-DAST Grouper"]
-        Redactor["PII & Secret Redaction Filter"]
-        LLM["LLM Analysis Engine (Qwen / OpenAI)"]
+    subgraph SafeGateway ["5. Safe API Gateway & Guardrails"]
+        KongGateway["Kong API Gateway (:3000)"]
+        HITL["Human-in-the-Loop (120s Fail-Safe Queue)"]
+        Guardrails["Dual-Layer Guardrails (PII Masking + Untrusted Response Wrap)"]
+    end
+
+    subgraph Output ["6. Deliverables & Interfaces"]
         ReportJSONL["Security Analysis Report JSONL"]
+        WebUI["Bento Box Web Dashboard (:8501)"]
     end
 
-    subgraph Interfaces["User Interfaces"]
-        WebUI["Sentinel Web Dashboard (Streamlit)"]
-        CLI["Makefile & CLI Commands"]
-    end
-
-    JuiceShop --> Scanners
-    Scanners --> Reports --> Normalizer --> UnifiedJSONL
-    RawKB --> Chunker
-    Chunker --> FTS5 & Qdrant --> HybridEngine
-    UnifiedJSONL & HybridEngine --> Grouper --> Redactor --> LLM --> ReportJSONL
-    ReportJSONL & HybridEngine & UnifiedJSONL --> WebUI & CLI
+    TargetEnv --> Scanners
+    Scanners --> Normalizer --> UnifiedJSONL
+    UnifiedJSONL & KBEngine --> AgentCore
+    AgentCore --> Correlator
+    AgentCore --> Tools
+    Tools --> SafeGateway
+    SafeGateway --> TargetEnv
+    SafeGateway --> Guardrails --> AgentCore
+    AgentCore --> ReportJSONL --> WebUI
 ```
 
 ---
 
-## 💻 Yêu cầu hệ thống
+## 💻 Yêu cầu Hệ thống
 
 - **Hệ điều hành**: Linux x86_64, macOS (Docker Desktop), hoặc Windows WSL2 (Docker Desktop).
-- **Công cụ cơ sở**: Git, Bash, GNU Make, Docker Engine/Desktop, Docker Compose v2, `curl`, `jq`.
+- **Công cụ cơ sở**: Git, GNU Make, Bash, Docker & Docker Compose v2, `curl`, `jq`.
 - **Python**: Python 3.11 hoặc 3.12 (khuyến nghị dùng virtualenv `.venv`).
-- **Gitleaks**: `v8.30.1+` (khuyến nghị cho secret-scanning pre-commit hooks).
+- **Gitleaks**: `v8.30.1+` (bảo vệ secret scanning qua pre-commit / pre-push hooks).
 
-### ⚙️ Cấu hình phần cứng khuyến nghị:
-| Mức cấu hình | RAM | CPU Cores | Ổ cứng khả dụng | Ghi chú |
+### ⚙️ Cấu hình phần cứng:
+| Mức cấu hình | RAM | CPU Cores | Ổ cứng khả dụng | Khả năng đáp ứng |
 | :--- | :--- | :--- | :--- | :--- |
-| **Tối thiểu (Minimum)** | 8 GB (Cấp 6GB cho Docker) | 4 cores | 15 GB SSD | Đủ chạy Web UI, Target App, Semgrep, ZAP Baseline |
-| **Khuyến nghị (Recommended)** | 16 GB (Cấp 12GB cho Docker) | 6 – 8 cores | 30 GB SSD | Chạy mượt mà CodeQL Database build & ZAP Full Scan Spider |
+| **Tối thiểu (Minimum)** | 8 GB (Cấp 6GB cho Docker) | 4 cores | 15 GB SSD | Web UI, Target App, Semgrep SAST, ZAP Baseline |
+| **Khuyến nghị (Recommended)** | 16 GB (Cấp 12GB cho Docker) | 6 – 8 cores | 30 GB SSD | CodeQL Database Build, ZAP Full Scan Spider, ReAct Multi-turn Probing |
 
 ---
 
@@ -99,33 +93,24 @@ flowchart TD
 Chỉ với 5 bước đơn giản để thiết lập toàn bộ môi trường từ đầu:
 
 ```bash
-# 1. Kiểm tra môi trường host
+# 1. Kiểm tra môi trường host và Docker daemon
 make doctor
 
 # 2. Khởi tạo môi trường ảo Python & cài đặt dependencies
 make install
 source .venv/bin/activate
 
-# 3. Tạo file cấu hình môi trường
+# 3. Tạo file cấu hình môi trường từ mẫu
 cp .env.example .env
-# Chỉnh sửa API Key hoặc provider trong file .env (xem mục Cấu hình bên dưới)
+# Chỉnh sửa API Key hoặc Model trong file .env (xem mục Cấu hình bên dưới)
 
-# 4. Tải và khởi chạy Target App (OWASP Juice Shop)
+# 4. Tải và khởi tạo ứng dụng mục tiêu (OWASP Juice Shop)
 make setup-target
 make target-build
-make target-up
-make target-wait
 
 # 5. Xây dựng Kho Tri thức Bảo mật (SQLite FTS5 & Vector Store)
 make kb-build
 ```
-
-### Khởi chạy Giao diện Web App (Dashboard):
-```bash
-make ui-build
-make ui
-```
-Mở trình duyệt tại: **`http://localhost:8501`** để trải nghiệm giao diện trực quan.
 
 ---
 
@@ -134,318 +119,161 @@ Mở trình duyệt tại: **`http://localhost:8501`** để trải nghiệm gia
 Tập tin `.env` quản lý các API Key và cấu hình hoạt động:
 
 ```env
-# 1. Target App & Scanner Configuration
+# 1. Cấu hình Ứng dụng Mục tiêu & Scanner
 JUICE_SHOP_PORT=3000
 SEMGREP_APP_TOKEN=your-semgrep-token-here
 
-# 2. Security Analysis Agent (LLM) Configuration
+# 2. Cấu hình AI Security Analysis Agent (LLM)
 LLM_API_KEY=your-llm-api-key-here
 LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 LLM_MODEL=qwen-plus
 LLM_TEMPERATURE=0.1
 LLM_MAX_RETRIES=2
 
-# 3. Embedding Provider Configuration (cho Semantic & Hybrid Search)
-# Các provider hỗ trợ: 'fastembed' (Offline ONNX), 'dashscope' (Alibaba), 'openai', 'mock'
+# 3. Cấu hình Embedding Provider (Truy hồi Ngữ nghĩa)
+# Hỗ trợ: 'fastembed' (100% Offline ONNX - Mặc định), 'dashscope', 'openai', 'mock'
 EMBEDDING_PROVIDER=fastembed
-
-# Cấu hình Offline Semantic Search (Mặc định - Miễn phí, 100% Offline, không cần API Key):
 EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
 EMBEDDING_DIMENSION=384
 
-# Cấu hình khi dùng Cloud API Alibaba DashScope:
-# EMBEDDING_PROVIDER=dashscope
-# EMBEDDING_API_KEY=sk-...
-# EMBEDDING_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
-# EMBEDDING_MODEL=text-embedding-v4
-# EMBEDDING_DIMENSION=1024
-
-# Cấu hình khi dùng Cloud API OpenAI:
-# EMBEDDING_PROVIDER=openai
-# EMBEDDING_API_KEY=sk-...
-# EMBEDDING_MODEL=text-embedding-3-small
-# EMBEDDING_DIMENSION=1536
+# 4. Cấu hình API Gateway & Human-In-The-Loop
+GATEWAY_HOST=http://localhost:3000
+GATEWAY_AGENT_API_KEY=sentinel-agent-safe-key-prod-2026
+HITL_TIMEOUT_SECONDS=120
 ```
 
 ---
 
-## 🔍 Hướng dẫn Sử dụng Hệ thống Tìm kiếm Tri thức Bảo mật
+## 🛡️ Hướng dẫn Vận hành Full Luồng (End-to-End Workflow)
 
-Sentinel xây dựng kho tri thức **1.851 tài liệu bảo mật chuẩn hóa** (CWE, OWASP Top 10, ASVS, Cheatsheets, Scanner Rules, Vulnerability Examples) được chia nhỏ thành **4.630 Child Vectors** theo cấu trúc Heading H2/H3.
-
-Hệ thống hỗ trợ 3 chế độ tìm kiếm:
-1. **`hybrid` (Mặc định - Khuyên dùng)**: Kết hợp Sparse BM25 (FTS5) và Dense Vector (Qdrant) qua giải thuật Reciprocal Rank Fusion (RRF) và lọc trùng lặp Maximal Marginal Relevance (MMR).
-2. **`keyword`**: Tìm kiếm từ khóa chính xác qua SQLite FTS5 (tối ưu tra cứu mã định danh `CWE-89`, `A01:2025`, `IDOR`).
-3. **`semantic`**: Tìm kiếm ngữ nghĩa qua Vector Embedding (tối ưu hiểu câu hỏi tự nhiên và mô tả kỹ thuật).
+Hệ thống hỗ trợ 2 phương thức vận hành song song và đồng bộ 100%:
 
 ---
 
-### 1. Tìm kiếm trên Giao diện Web (Streamlit UI)
+### Lựa chọn 1: Vận hành qua Giao diện Web (Streamlit Bento Dashboard)
 
-1. Khởi động Web UI: `make ui` $\rightarrow$ Mở `http://localhost:8501`.
-2. Chuyển sang trang **📚 Knowledge Base**:
-   - **Hộp tìm kiếm (Search Query)**: Nhập từ khóa, mã CWE hoặc câu hỏi tự nhiên (ví dụ: `how to prevent broken access control`, `CWE-89`, `XSS and CSRF`).
-   - **Chế độ tìm kiếm (Search Mode)**: Chọn `hybrid`, `keyword` hoặc `semantic`.
-   - **Bộ lọc loại tài liệu (Document Type Filter)**: Thu hẹp phạm vi theo `cwe`, `owasp_category`, `cheatsheet`, `vulnerability_example`, `asvs_requirement`, `scanner_rule`.
-   - **Số lượng kết quả (Top K)**: Điều chỉnh từ 1 đến 50 kết quả.
-3. **Trực quan hóa kết quả**:
-   - Thẻ kết quả hiển thị Thứ hạng (Rank), Điểm số tương đồng, Mã định danh và Trích đoạn Section trúng đích (`matched_snippet`).
-   - Nhấp vào từng kết quả để mở rộng xem toàn văn tài liệu gốc, hướng dẫn khắc phục và kịch bản khai thác an toàn.
+Khởi động giao diện Web Dashboard Bento Box:
+```bash
+make ui-build    # Build container UI
+make ui          # Khởi động UI tại http://localhost:8501
+```
+
+Truy cập **`http://localhost:8501`** để thao tác trên **6 Bento Tabs**:
+
+1. **Tab 1: Quét Bảo Mật (Security Scanning)**: Chọn 1 trong 8 công cụ quét (Semgrep, CodeQL, ZAP Baseline/Admin/Full, sqlmap), bấm *Khởi Chạy Quét* để theo dõi live log stream và kiểm tra trạng thái Target.
+2. **Tab 2: Quản Lý Dữ Liệu (Data Management)**: Lựa chọn tệp raw report với cơ chế *Chọn tất cả / Từng tệp*, tải lên tệp mới, bấm *Chuẩn Hóa Báo Cáo* sang Unified Findings JSONL và xem trước nội dung.
+3. **Tab 3: Tra Cứu Tri Thức (Knowledge Retrieval)**: Tìm kiếm Hybrid / Keyword / Semantic trên 442+ Canonical Docs (CWE, OWASP Top 10, ASVS), lọc theo loại tài liệu và Top-K.
+4. **Tab 4: Kiểm Thử Gateway (Active Gateway Testing)**: Safe Requester Console, nhập endpoint, phương thức (`GET`/`PUT`/`OPTIONS`), tùy biến headers, rate limit burst, gửi probe và xem phản hồi đã qua khử khuẩn.
+5. **Tab 5: Báo Cáo & Phân Tích (AI Security Agent)**: Chọn findings đầu vào, cấu hình LLM Model, chế độ `react`/`static`, bấm *Khởi Chạy Phân Tích* để xem Executive Threat & Guardrails KPI Grid và Bảng Phân Tích Lỗ Hổng Theo Nhóm.
+6. **Tab 6: Giám Sát & Logs (Monitoring & Observability)**: Theo dõi trực tiếp Live Gateway Network Audit Logs (`logs/gateway-network-audit.jsonl`) và Agent Execution Logs (`logs/agent-runner.log`).
+- **Sidebar: Hàng Đợi Phê Duyệt (HITL Approval Queue)**: Theo dõi và duyệt/từ chối các request kiểm thử rủi ro trong thời gian thực với bộ đếm ngược 120s Fail-Safe.
 
 ---
 
-### 2. Tìm kiếm qua Dòng lệnh CLI (Makefile & Python CLI)
+### Lựa chọn 2: Vận hành qua Dòng lệnh CLI (Makefile Commands)
 
-#### A. Tìm kiếm Hybrid (RRF + MMR - Mặc định):
-```bash
-make kb-search QUERY="SQL Injection"
-make kb-search QUERY="how to prevent broken access control" TOP_K=5
-make kb-search QUERY="parameterized queries" MODE=hybrid
-```
+Mọi tính năng trên giao diện UI đều có lệnh `make` tương ứng trực tiếp:
 
-#### B. Tìm kiếm Từ khóa Thông minh (Keyword / BM25 Search):
-Hỗ trợ liên từ tiếng Việt (`và`, `hoặc`, `hay`, dấu phẩy) và tiếng Anh (`and`, `or`, `with`):
-```bash
-make kb-search-keyword QUERY="CWE-89"
-make kb-search QUERY="cwe 89 và owasp a05:2025" MODE=keyword
-make kb-search QUERY="XSS, CSRF, IDOR" MODE=keyword
-```
+#### 1. Quét SAST & DAST (Tương đương Tab 1)
 
-#### C. Tìm kiếm Ngữ nghĩa (Dense Vector Search):
-```bash
-make kb-search-semantic QUERY="leaking database error messages to users"
-make kb-search QUERY="unauthorized user access to another account orders" MODE=semantic TOP_K=5
-```
+##### A. Quét SAST (Semgrep & CodeQL)
+- **Semgrep SAST**: `make sast-semgrep` (quét rulesets NodeJS/JS với token `SEMGREP_APP_TOKEN`). Output: `reports/raw/semgrep.json`.
+- **CodeQL SAST**: `make sast-codeql` (quét deep taint analysis, thêm 2 dòng ngữ cảnh mã nguồn bằng `--sarif-add-snippets`). Output: `reports/raw/codeql.sarif`.
+- **Quét SAST liên hoàn**: `make sast`.
 
-#### D. Lọc theo Loại Tài liệu (`DOC_TYPE`):
-```bash
-make kb-search QUERY="IDOR" DOC_TYPE=cwe
-make kb-search QUERY="JWT signing" DOC_TYPE=vulnerability_example
-make kb-search QUERY="Session Management" DOC_TYPE=asvs_requirement
-make kb-search QUERY="Cross-Site Scripting" DOC_TYPE=cheatsheet
-```
-
-Các giá trị `DOC_TYPE` hợp lệ:
-- `cwe`: Danh mục điểm yếu bảo mật chuẩn MITRE CWE.
-- `owasp_category`: Danh mục rủi ro OWASP Top 10 (2017, 2021, 2025).
-- `cheatsheet`: Tài liệu hướng dẫn phòng chống chuyên sâu OWASP Cheatsheets.
-- `asvs_requirement`: Yêu cầu kiểm chuẩn bảo mật ứng dụng OWASP ASVS v5.0.
-- `vulnerability_example`: Ví dụ code mẫu kèm mã sửa lỗi an toàn (Safe vs Vulnerable).
-- `scanner_rule`: Quy tắc phân tích của Semgrep và cảnh báo ZAP.
-
-#### E. Tra cứu Chi tiết & Thống kê Kho Tri thức:
-```bash
-make kb-inspect DOC_ID=cwe-89     # Xem toàn văn chi tiết 1 tài liệu
-make kb-stats                     # Xem thống kê số lượng tài liệu theo từng loại
-make kb-validate                  # Kiểm tra tính toàn vẹn của dữ liệu và SQLite FTS5
-make kb-rebuild                   # Xóa và xây dựng lại toàn bộ DB & Vector Index
-```
-
-#### F. Xuất Kết quả dạng JSON cho Scripts & CI/CD:
-```bash
-.venv/bin/python -m src.retrieval.cli search "SQL Injection" --mode hybrid --top-k 5 --json
-.venv/bin/python -m src.retrieval.cli search "CWE-89" --mode keyword --json
-```
-
----
-
-### 3. Tích hợp trực tiếp trong Python Code
-
-Bạn có thể dễ dàng nhúng `KnowledgeSearchService` vào bất kỳ module Python hoặc Agent nào:
-
-```python
-from src.retrieval.service import KnowledgeSearchService
-
-service = KnowledgeSearchService()
-
-# 1. Tìm kiếm Hybrid 2 giai đoạn (RRF + MMR)
-results = service.search(query="SQL Injection attack scenarios", mode="hybrid", top_k=5)
-
-# 2. Tìm kiếm Từ khóa FTS5 BM25
-results = service.search(query="CWE-89", mode="keyword", top_k=5)
-
-# 3. Tìm kiếm Ngữ nghĩa Dense Vector
-results = service.search(
-    query="attacker bypasses authentication via missing middleware",
-    mode="semantic",
-    top_k=5,
-)
-
-for res in results:
-    print(f"[{res.doc_type}] {res.doc_id}: {res.title} (Score: {res.score:.4f})")
-    print(f"  Snippet: {res.snippet[:150]}...")
-    # res.content chứa 100% full content của Parent Document để LLM phân tích
-```
-
----
-
-## 🛡️ Quy trình Quét & Phân tích Bảo mật Đầu-Cuối (End-to-End Workflow)
-
-Toàn bộ quy trình quét, chuẩn hóa và phân tích có thể chạy tự động qua CLI:
-
-```bash
-# BƯỚC 1: Quét SAST và DAST
-make sast              # Chạy Semgrep và CodeQL phân tích mã nguồn
-make dast              # Chạy OWASP ZAP Baseline DAST
-
-# BƯỚC 2: Kiểm tra và Chuẩn hóa Scanner Reports
-make validate-reports  # Xác thực định dạng raw reports trong reports/raw/
-make normalize         # Chuẩn hóa sang reports/normalized/unified-findings-*.jsonl
-
-# BƯỚC 3: Kích hoạt AI Security Analysis Agent
-make agent-analyze FINDINGS=reports/normalized/unified-findings-YYYYMMDDTHHMMSSZ.jsonl
-```
-
----
-
-### 1. Quét SAST (Semgrep & CodeQL)
-
-#### A. Semgrep SAST
-- **Lệnh**: `make sast-semgrep` (chạy riêng) hoặc `make sast` (chạy Semgrep rồi CodeQL).
-- **Cấu hình**: Image `semgrep/semgrep:1.171.0`, rulesets `p/owasp-top-ten`, `p/javascript`, `p/nodejs`, `p/expressjs`.
-- **Scope**: Cho phép theo `configs/semgrep/includes.txt` và loại trừ theo `configs/semgrep/.semgrepignore`. Loại bỏ `node_modules/`, test, CI và static codefixes.
-- **Yêu cầu**: Biến môi trường `SEMGREP_APP_TOKEN` (export trong shell hoặc đặt trong `.env`). Output: `reports/raw/semgrep.json`.
-
-#### B. CodeQL SAST
-- **Lệnh**: `make sast-codeql`.
-- **Image & Build**: Build từ `ubuntu:24.04` và CodeQL bundle dựa trên `CODEQL_VERSION` trong `configs/tool-versions.env`.
-- **Phân tích & Snippets**: Chạy suite `javascript-security-extended.qls`. Truyền `--sarif-add-snippets` để đưa 2 dòng ngữ cảnh mã nguồn vào raw SARIF.
-- **Output**: `reports/raw/codeql.sarif`. Database tạm trong container tự xóa sau khi hoàn tất.
-
----
-
-### 2. Quét DAST (OWASP ZAP & sqlmap)
+##### B. Quét DAST (OWASP ZAP & sqlmap)
 
 ### Chạy ZAP Baseline local (passive)
-Baseline thực hiện spider và passive scan, không chạy active scan:
-- **Image & Target**: Image `ghcr.io/zaproxy/zaproxy:2.17.0`, quét target cố định `http://juice-shop:3000` trong network `sentinel-security`.
-- **Lệnh Quét & Authentication**:
-  - Mặc định (`make dast`): Quét Authenticated bằng tài khoản User (`user@juice-sh.op`).
-  - Quét riêng Admin (`make dast-zap-admin`): Quét Authenticated bằng tài khoản Admin (`admin@juice-sh.op`).
-- **Automation Plans**: Đặt tại `configs/zap/` (`baseline.yaml` cho User; `baseline-admin.yaml` cho Admin).
-- **Strict Scope Guardrail**: Đặt `scopeCheck: Strict` cho Client Spider để ngăn browser điều hướng ra bên ngoài target (ví dụ URI `https://github.com/juice-shop/juice-shop`).
-- **Artifacts**: Xuất 4 file: `zap.json`, `zap.meta.json`, `zap-endpoints.txt` (endpoint inventory) và `zap-site-tree.yaml` (ZAP site tree).
+- **Lệnh**: `make dast` (User) hoặc `make dast-zap-admin` (Admin).
+- **Automation Plans**: Đặt tại `configs/zap/` (`baseline.yaml` và `baseline-admin.yaml`).
+- **Strict Scope Guardrail**: Cấu hình `scopeCheck: Strict` cho Client Spider để ngăn browser điều hướng ra bên ngoài target (ví dụ URI `https://github.com/juice-shop/juice-shop`).
+- **Artifacts**: Xuất `reports/raw/zap.json`, `zap.meta.json`, `zap-endpoints.txt` (endpoint inventory) và `zap-site-tree.yaml` (ZAP site tree).
 
 ### Chạy ZAP Full Scan local (active)
-ZAP Full Scan kích hoạt active scanner để phát hiện chuyên sâu các lỗ hổng Injection, XSS, CSRF:
 - **Lệnh**: `make dast-zap-fullscan` (User) hoặc `make dast-zap-fullscan-admin` (Admin).
-- **Automation Plans**: Đặt tại `configs/zap/` (`full.yaml` cho User; `full-admin.yaml` cho Admin).
+- **Automation Plans**: Đặt tại `configs/zap/` (`full.yaml` và `full-admin.yaml`).
 - **Artifacts & Log**: Xuất `reports/raw/zap.json`, `zap.meta.json`, `zap-endpoints.txt`, `zap-site-tree.yaml` và log `logs/zap-fullscan-runner.log`.
 
-#### sqlmap DAST (Bounded Active Scan)
-- **Lệnh**: `make dast-sqlmap`.
-- **Scope**: Chỉ kiểm thử tham số `q` tại `GET /rest/products/search?q=apple` bằng image `sentinel/sqlmap:1.10.7`.
-- **Output**: `reports/raw/sqlmap.json` và log `logs/sqlmap-runner.log`.
+##### C. sqlmap DAST (Targeted SQL Injection)
+- **Lệnh**: `make dast-sqlmap` (kiểm thử tham số `q` tại `/rest/products/search`). Output: `reports/raw/sqlmap.json`.
+- **Quét toàn bộ SAST & DAST liên hoàn**: `make sast && make dast`.
 
 ---
 
-### 3. Chuẩn hóa Scanner Reports sang Unified Findings
-
-Lệnh `make normalize` chuẩn hóa các raw report từ scanner thành định dạng thống nhất tại `reports/normalized/unified-findings-YYYYMMDDTHHMMSSZ.jsonl` và `normalization-summary.json`.
-
-#### Các cặp Report & Metadata bắt buộc (`reports/raw/`):
-| Scanner | Raw Finding Report | Sidecar Metadata |
-| --- | --- | --- |
-| Semgrep | `semgrep.json` | `semgrep.meta.json` |
-| ZAP | `zap.json` | `zap.meta.json` |
-| CodeQL | `codeql.sarif` | `codeql.meta.json` |
-
-#### Quy tắc xử lý:
-- **Lọc Out-of-Scope**: ZAP normalizer chỉ giữ lại các finding có HTTP origin trùng khớp chính xác với `target.base_url`. Số instance ngoài scope bị bỏ được ghi vào `out_of_scope_instances_filtered` trong summary.
-- **Validation & Partial Failure**: `make validate-reports` kiểm tra các file rỗng/thiếu/malformed trước khi scan. Khi normalize, nếu thiếu input scanner sẽ có status `skipped` (`missing_input`), scanner hỏng có status `failed`. Chỉ cần ít nhất 1 cặp scanner hợp lệ, output normalized vẫn được tạo.
-
----
-
-### 4. Phân tích Chuyên sâu với AI Security Agent (ReAct & Tool Calling)
-
-AI Security Analysis Agent thế hệ mới (Tuần 6) vận hành theo mô hình tác nhân tự trị **ReAct (Reasoning + Acting)** kết hợp Native Tool Calling và Active Verification:
-
-1. **Pha 1: Pre-Grouping & Correlation Engine**:
-   - Gom nhóm findings theo `group_key` chuẩn hóa từ scanner.
-   - Quét quan hệ tương quan chéo **SAST ↔ DAST** dựa trên CWE Intersection, Title Similarity và Parameter-to-DataFlow Matching. Đánh dấu `correlation_type = "sast_dast_suspected"`.
-
-2. **Pha 2: ReAct Verification Loop & Native Tool Calling**:
-   - Áp dụng chu trình suy luận **Thought $\rightarrow$ Action $\rightarrow$ Observation $\rightarrow$ Synthesis** (tối đa `max_steps = 5`).
-   - Tự động gọi 4 công cụ bảo mật khi cần:
-     - `search_knowledge_base`: Tra cứu tri thức chuẩn hóa (FTS5 + Qdrant).
-     - `get_knowledge_document`: Đọc chi tiết tài liệu theo `doc_id`.
-     - `lookup_safe_payloads`: Lấy mẫu probe payload an toàn từ `payloads.json`.
-     - `send_safe_request`: Gửi HTTP probe kiểm thử qua Kong API Gateway để phân biệt True Positive vs False Positive.
-   - Bảo vệ an toàn với **Dual-Layer Guardrails**: Che giấu PII (`mask_sensitive_data`), bọc phản hồi mạng trong thẻ `<untrusted_http_response>` để ngăn chặn Indirect Prompt Injection, và kích hoạt `Repetitive Action Guard`.
-
-3. **Pha 3: Post-Processing & Coverage Verification**:
-   - Bảo đảm **100% Finding Coverage Guarantee**: Mọi finding đầu vào bắt buộc có đúng 1 bản ghi `ReportEntry` đầu ra hợp lệ theo `schemas/security_analysis_report.schema.json`.
-   - Xuất báo cáo JSONL tại `reports/analyzed/security-analysis-report-YYYYMMDDTHHMMSSZ.jsonl` và summary tại `reports/analyzed/analysis-summary-YYYYMMDDTHHMMSSZ.json`.
-
-#### 🚀 Hướng dẫn Chạy qua Makefile:
-
+#### 2. Chuẩn hóa Scanner Reports sang Unified Findings (Tương đương Tab 2)
 ```bash
-# 1. Chạy ReAct Agent mới (MẶC ĐỊNH - Có Tool Calling & Safe Probing qua Gateway):
-make agent-analyze FINDINGS=reports/normalized/unified-findings-20260822T000000Z.jsonl
+# Xác thực tính hợp lệ của các file raw reports trong reports/raw/
+make validate-reports
 
-# 2. Chạy Legacy Agent cũ (Chế độ Static 1-Pass RAG phục vụ đối soát Benchmark / Offline):
-make agent-analyze FINDINGS=reports/normalized/unified-findings-20260822T000000Z.jsonl MODE=static
-
-# 3. Tùy chỉnh số bước ReAct tối đa và Model LLM:
-make agent-analyze FINDINGS=reports/normalized/unified-findings-20260822T000000Z.jsonl MODE=react MAX_STEPS=3 MODEL=qwen-plus
+# Chuẩn hóa toàn bộ sang reports/normalized/unified-findings-YYYYMMDDTHHMMSSZ.jsonl
+make normalize
 ```
+*Lưu ý: Normalizer chỉ giữ lại các finding có origin trùng khớp chính xác với target scope. Số instance ngoài scope bị loại bỏ được ghi nhận tại `out_of_scope_instances_filtered` trong normalization summary.*
 
-#### 🐍 Hướng dẫn Chạy qua Python CLI:
+---
 
+#### 3. Tra cứu Tri thức Bảo mật (Tương đương Tab 3)
 ```bash
-# Chạy ReAct Agent:
-python -m src.agent.cli analyze --findings reports/normalized/unified-findings-xxx.jsonl --mode react --max-steps 5
+# Tìm kiếm Hybrid (RRF + MMR - Mặc định)
+make kb-search QUERY="SQL Injection" TOP_K=5
 
-# Chạy Static Legacy Agent:
-python -m src.agent.cli analyze --findings reports/normalized/unified-findings-xxx.jsonl --mode static
+# Tìm kiếm Từ khóa FTS5 BM25 (Hỗ trợ mã định danh và từ khóa tiếng Việt)
+make kb-search-keyword QUERY="CWE-89"
+make kb-search-keyword QUERY="XSS và CSRF"
+
+# Tìm kiếm Ngữ nghĩa Vector
+make kb-search-semantic QUERY="bypassing authentication via missing jwt validation"
+
+# Tra cứu chi tiết toàn văn 1 tài liệu theo mã
+make kb-inspect DOC_ID=cwe-89
+
+# Xem thống kê số lượng tài liệu theo danh mục
+make kb-stats
 ```
 
 ---
 
-### 5. Kiểm thử An toàn qua API Gateway (Safe Requester & HITL)
-
-Module `src/gateway/safe_requester.py` cung cấp công cụ gửi HTTP Request thăm dò an toàn dành cho AI Agent và chuyên viên DevSecOps:
-- **Chính sách Phương thức Nghiêm ngặt**: Chỉ chấp nhận `GET`, `PUT`, và `OPTIONS`. Chặn mọi phương thức khác (`POST`, `DELETE`, `PATCH`) với mã `405 Method Not Allowed`.
-- **Zero-Trust Secret Injection**: Tự động tiêm `x-api-key: <AGENT_API_KEY>` từ biến môi trường; tuyệt đối không lưu secret vào code hay file log.
-- **Chốt chặn Phê duyệt HITL**: Đánh giá rủi ro (`LOW`, `MEDIUM`, `HIGH`) và yêu cầu người dùng xác nhận (`y/N`) với cơ chế Timeout 120s (Default to Reject).
-- **Phòng thủ & Khử khuẩn 2 chiều**: Cắt cụt response tại 2KB, lọc sạch PII/Secrets, quét phát hiện Indirect Prompt Injection và bọc trong thẻ an toàn `<untrusted_http_response>`.
-- **Kiểm toán Toàn diện**: Ghi 1 bản ghi JSONL hợp lệ theo `schemas/gateway_audit.schema.json` vào `logs/gateway-network-audit.jsonl`.
-
-#### Bảng tham số dòng lệnh CLI (`make test-request`):
-| Tham Số | Ý Nghĩa / Định Dạng | Mặc Định | Ví Dụ |
-| :--- | :--- | :--- | :--- |
-| `--url`, `-u` | Đường dẫn endpoint hoặc URL đầy đủ | **Bắt buộc** | `--url /rest/products/search?q=apple` |
-| `--method`, `-m` | Phương thức HTTP (`GET`, `PUT`, `OPTIONS`) | `GET` | `--method OPTIONS` hoặc `-m PUT` |
-| `--payload-category`, `-c` | Nhóm payload an toàn từ `payloads.json` | `None` | `--payload-category special_chars` |
-| `--payload-value`, `-v` | Giá trị payload cụ thể tùy chỉnh | `None` | `--payload-value "' OR 1=1--"` |
-| `--count`, `-n` | Số lượng request gửi liên tiếp (Burst Mode) | `1` | `--count 25` (Kiểm thử Rate Limit 429) |
-| `--interval`, `-i` | Khoảng nghỉ giữa các request burst (giây) | `0.05` | `--interval 0.1` |
-| `--oversized` | Tự động sinh buffer 1.5MB để probe Gateway | `False` | `--oversized` (Kiểm thử Payload 413) |
-| `--auto-approve` | Tự động duyệt qua chốt chặn HITL (CI/Automation) | `False` | `--auto-approve` |
-| `--gateway-host` | Base URL của Kong Gateway | `http://localhost:3000` | `--gateway-host http://localhost:3000` |
-
-#### Các ví dụ thực thi thực tế:
+#### 4. Kiểm thử An toàn qua API Gateway (Tương đương Tab 4)
 ```bash
-# 1. Khởi động Kong Gateway và Juice Shop
+# Khởi động Kong Gateway và Target App cùng lúc (:3000)
 make gateway-up
 
-# 2. Thăm dò tìm kiếm sản phẩm cơ bản (GET - LOW risk)
+# Gửi request thăm dò an toàn (GET - rủi ro thấp)
 make test-request ARGS="--url /rest/products/search?q=apple"
 
-# 3. Kiểm tra CORS Preflight và HTTP Methods (OPTIONS)
+# Kiểm tra CORS & Phương thức cho phép (OPTIONS)
 make test-request ARGS="--url /api/Products --method OPTIONS"
 
-# 4. Kiểm tra giới hạn tần suất (Burst Rate Limit 429)
-make test-request ARGS="--url /api/Products --method GET --count 25"
-
-# 5. Kiểm tra Gateway chặn Payload ngoại cỡ (413 Request Entity Too Large)
-make test-request ARGS="--url /api/Products --method GET --oversized"
-
-# 6. Gửi đánh giá sản phẩm (PUT review - kích hoạt HITL 120s)
+# Gửi request PUT (Kích hoạt chốt chặn phê duyệt HITL 120s)
 make test-request ARGS="--url /rest/products/1/reviews --method PUT --payload-category special_chars"
 
-# 7. Kiểm tra Tool chặn phương thức cấm (405 Method Not Allowed)
-make test-request ARGS="--url /api/Users --method POST"
+# Kiểm tra Gateway chặn Rate Limit (Burst 25 requests -> HTTP 429)
+make test-request ARGS="--url /api/Products --method GET --count 25"
+
+# Kiểm tra Gateway chặn Payload ngoại cỡ (1.5MB Buffer -> HTTP 413)
+make test-request ARGS="--url /api/Products --method GET --oversized"
+```
+
+---
+
+#### 5. Phân tích Chuyên sâu với ReAct AI Agent (Tương đương Tab 5)
+```bash
+# 1. Chạy ReAct Agent (MẶC ĐỊNH - Tự động gọi Tool tra cứu KB và Probe Gateway):
+make agent-analyze FINDINGS=reports/normalized/unified-findings-20260822T000000Z.jsonl
+
+# 2. Tùy chỉnh số bước suy luận tối đa và Model LLM:
+make agent-analyze FINDINGS=reports/normalized/unified-findings-20260822T000000Z.jsonl MODE=react MAX_STEPS=5 MODEL=qwen-plus
+
+# 3. Chạy chế độ Static 1-Pass RAG (Baseline đối soát benchmark):
+make agent-analyze FINDINGS=reports/normalized/unified-findings-20260822T000000Z.jsonl MODE=static
+```
+
+---
+
+#### 6. Chạy Demo Tự Động 4 Giai Đoạn (Live Mock Probe Demo)
+```bash
+# Chạy kịch bản thực nghiệm đối soát Guardrails và ReAct Agent với Vulnerable Mock Server
+make test-live-mock-probe
 ```
 
 ---
@@ -455,20 +283,21 @@ make test-request ARGS="--url /api/Users --method POST"
 Chạy toàn bộ các bộ kiểm thử tự động của dự án:
 
 ```bash
-make quality       # Kiểm tra toàn diện: linter Ruff, shell scripts, compose config và toàn bộ test suites
-make test          # Chạy unit & integration tests cho normalizers và platform
-make kb-test       # Chạy tests cho Knowledge Base, SQLite FTS5, FastEmbed và Hybrid Search
-make agent-test    # Chạy test suite cho Security Analysis Agent
-make gateway-test  # Chạy test suite cho Kong Gateway, Safe Requester, HITL và Audit Logger
+make quality              # Kiểm tra toàn diện: Ruff linter, shell syntax, compose config và schema contracts
+make test                 # Chạy unit & integration tests cho normalizers và platform (125 tests)
+make kb-test              # Chạy tests cho Knowledge Base, SQLite FTS5, FastEmbed và Hybrid Search (137 tests)
+make gateway-test         # Chạy tests cho Kong Gateway, Safe Requester, HITL và Audit Logger (37 tests)
+make agent-test           # Chạy test suite cho ReAct Security Analysis Agent & Tools (73 tests)
+make test-mock-guardrails # Chạy test thực nghiệm bảo vệ Guardrails trên Vulnerable Mock Server
 ```
 
 ---
 
 ## Gitleaks Git hooks
 
-Repository cung cấp hai native Git hooks:
-- `.githooks/pre-commit` quét chính xác nội dung đang được stage;
-- `.githooks/pre-push` quét các commit sắp được đẩy lên remote. Với branch hoặc tag mới, hook quét toàn bộ lịch sử có thể truy cập từ ref đó.
+Repository cung cấp hai native Git hooks để quét secret:
+- `.githooks/pre-commit`: Quét chính xác nội dung đang được stage;
+- `.githooks/pre-push`: Quét các commit sắp được đẩy lên remote. Với branch hoặc tag mới, hook quét toàn bộ lịch sử có thể truy cập từ ref đó.
 
 Hooks yêu cầu Gitleaks `v8.30.1` trở lên. Kiểm tra phiên bản đang có:
 ```bash
@@ -494,7 +323,7 @@ Mỗi workflow run xuất bản các artifacts:
 - `semgrep-raw-<run_id>`
 - `codeql-raw-<run_id>`
 - `zap-raw-<run_id>`
-- `zap-fullscan-raw-<run_id>` (từ manual workflow)
+- `zap-fullscan-raw-<run_id>`
 - `normalized-findings-<run_id>`
 - `dast-logs-<run_id>`
 
@@ -502,27 +331,32 @@ Mỗi workflow run xuất bản các artifacts:
 
 ## 🧹 Dọn dẹp Môi trường (Cleanup)
 
-- **Dọn dẹp Báo cáo Đã sinh ra**:
-  ```bash
-  make clean-reports   # Xóa reports/raw/ và reports/normalized/ (giữ lại .gitkeep)
-  ```
-- **Dọn dẹp Container & Dữ liệu Tạm của Target App**:
-  ```bash
-  make clean           # Dừng container, xóa Docker volumes và dọn dẹp clone Juice Shop
-  ```
-- **Dừng toàn bộ hệ thống Sentinel**:
-  ```bash
-  make down            # Dừng toàn bộ Docker containers (gồm cả Web UI Dashboard)
-  ```
+```bash
+# Xóa các báo cáo tạm trong reports/raw/ và reports/normalized/
+make clean-reports
+
+# Dừng Kong Gateway và Juice Shop target
+make gateway-down
+
+# Dừng riêng Web UI Dashboard
+make ui-down
+
+# Dừng toàn bộ containers và mạng Docker của Sentinel
+make down
+
+# Xóa container, Docker volumes và thư mục target clone
+make clean
+```
 
 ---
 
 ## ❓ Xử lý Sự cố Thường gặp (Troubleshooting)
 
 | Vấn đề | Nguyên nhân | Cách khắc phục |
-|---|---|---|
-| **Port 3000 bị bận** | Ứng dụng khác đang dùng port 3000 | Đổi `JUICE_SHOP_PORT=3001` trong `.env`, sau đó chạy `make target-up`. |
-| **`ModuleNotFoundError: No module named '_sqlite3'`** | Python trên host thiếu header SQLite khi build | Chạy `make install` để hệ thống tự động kiểm tra và chuyển sang runtime Python có sẵn SQLite FTS5. |
+| :--- | :--- | :--- |
+| **Port 3000 bị chiếm dụng** | Ứng dụng khác đang chạy trên port 3000 | Đổi `JUICE_SHOP_PORT=3001` trong `.env`, sau đó chạy `make target-up` hoặc `make gateway-up`. |
+| **`ModuleNotFoundError: No module named '_sqlite3'`** | Python thiếu header SQLite khi biên dịch | Chạy `make install` để hệ thống tự kiểm tra và cấu hình môi trường ảo Python có sẵn SQLite FTS5. |
 | **Lệch số chiều Vector (`shapes not aligned`)** | Dimension giữa model và Qdrant collection không khớp | Kiểm tra `EMBEDDING_PROVIDER` trong `.env` (`384` cho FastEmbed, `1024` cho DashScope, `1536` cho OpenAI) rồi chạy `make kb-rebuild`. |
 | **Semgrep báo thiếu token** | Chưa cấu hình token xác thực | Thêm `SEMGREP_APP_TOKEN` hợp lệ vào `.env` trước khi chạy `make sast-semgrep`. |
 | **CodeQL báo `out of Java heap`** | Docker Daemon thiếu RAM | Tăng bộ nhớ Docker Engine/Desktop lên ít nhất 4 GB (khuyến nghị 8–12 GB). |
+| **HITL Request bị Timeout sau 120s** | Không có tương tác Approve/Reject kịp thời | Đây là cơ chế Fail-Safe mặc định (tự động từ chối request rủi ro). Bấm gửi lại hoặc thêm flag `--auto-approve` khi chạy CI tự động. |
