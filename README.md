@@ -150,29 +150,77 @@ Hệ thống hỗ trợ 2 phương thức vận hành song song và đồng bộ
 
 ---
 
-### Lựa chọn 1: Vận hành qua Giao diện Web (Streamlit Bento Dashboard)
+### 📋 Xem Danh Sách Lệnh và Tham Số (Make Help)
+
+Để xem toàn bộ danh mục các lệnh `make`, kèm giải thích chi tiết các tham số đầu vào và giá trị mặc định, hãy chạy:
+
+```bash
+make help
+```
+
+---
+
+### Lựa chọn 1: Vận hành Full Luồng qua Giao diện Web (Streamlit Bento Dashboard)
 
 Khởi động giao diện Web Dashboard Bento Box:
 ```bash
-make ui-build    # Build container UI
-make ui          # Khởi động UI tại http://localhost:8501
+make ui-build    # Build container UI (chạy 1 lần đầu)
+make ui          # Khởi động UI chạy nền tại http://localhost:8501
 ```
 
-Truy cập **`http://localhost:8501`** để thao tác trên **6 Bento Tabs**:
+Truy cập **`http://localhost:8501`** trên trình duyệt để vận hành full luồng 6 bước:
 
-1. **Tab 1: Quét Bảo Mật (Security Scanning)**: Chọn 1 trong 8 công cụ quét (Semgrep, CodeQL, ZAP Baseline/Admin/Full, sqlmap), bấm *Khởi Chạy Quét* để theo dõi live log stream và kiểm tra trạng thái Target.
-2. **Tab 2: Quản Lý Dữ Liệu (Data Management)**: Lựa chọn tệp raw report với cơ chế *Chọn tất cả / Từng tệp*, tải lên tệp mới, bấm *Chuẩn Hóa Báo Cáo* sang Unified Findings JSONL và xem trước nội dung.
-3. **Tab 3: Tra Cứu Tri Thức (Knowledge Retrieval)**: Tìm kiếm Hybrid / Keyword / Semantic trên 442+ Canonical Docs (CWE, OWASP Top 10, ASVS), lọc theo loại tài liệu và Top-K.
-4. **Tab 4: Kiểm Thử Gateway (Active Gateway Testing)**: Safe Requester Console, nhập endpoint, phương thức (`GET`/`PUT`/`OPTIONS`), tùy biến headers, rate limit burst, gửi probe và xem phản hồi đã qua khử khuẩn.
-5. **Tab 5: Báo Cáo & Phân Tích (AI Security Agent)**: Chọn findings đầu vào, cấu hình LLM Model, chế độ `react`/`static`, bấm *Khởi Chạy Phân Tích* để xem Executive Threat & Guardrails KPI Grid và Bảng Phân Tích Lỗ Hổng Theo Nhóm.
-6. **Tab 6: Giám Sát & Logs (Monitoring & Observability)**: Theo dõi trực tiếp Live Gateway Network Audit Logs (`logs/gateway-network-audit.jsonl`) và Agent Execution Logs (`logs/agent-runner.log`).
-- **Sidebar: Hàng Đợi Phê Duyệt (HITL Approval Queue)**: Theo dõi và duyệt/từ chối các request kiểm thử rủi ro trong thời gian thực với bộ đếm ngược 120s Fail-Safe.
+#### 🔹 Bước 1: Quét Lỗ Hổng Bảo Mật (Tab 1 — Quét Bảo Mật)
+1. Kiểm tra thẻ **Trạng Thái Ứng Dụng Mục Tiêu**: Đảm bảo hiển thị `Target Online (HTTP 200)`.
+2. Chọn công cụ quét trong danh sách thả xuống:
+   - **SAST**: `Semgrep SAST` hoặc `CodeQL SAST`.
+   - **DAST**: `ZAP Baseline Scan` (User), `ZAP Full Scan`, `ZAP Admin Scan`, hoặc `sqlmap DAST`.
+3. Bấm **Khởi Chạy Quét (Run Scanner)**: Theo dõi tiến trình quét và live log stream trực tiếp trên giao diện. File báo cáo thô sẽ được lưu tự động vào thư mục `reports/raw/` (ví dụ: `reports/raw/zap.json`).
+
+#### 🔹 Bước 2: Quản Lý & Chuẩn Hóa Dữ Liệu (Tab 2 — Quản Lý Dữ Liệu)
+1. Danh sách các file raw scanner report đã quét sẽ hiển thị tại bảng danh mục.
+2. Tích chọn các tệp muốn đưa vào phân tích (ví dụ: tích chọn chỉ `zap.json` hoặc tích `Chọn tất cả các file raw`).
+3. Bấm **Chuẩn Hóa Báo Cáo (Run Normalizer)**:
+   - Hệ thống tiến hành mapping dữ liệu, loại bỏ trùng lặp và sinh tệp `reports/normalized/unified-findings-YYYYMMDDTHHMMSSZ.jsonl` tuân thủ 100% JSON Schema v2.0.0.
+   - Kết quả tóm tắt quá trình chuẩn hóa (số lượng findings theo từng công cụ, fingerprint collisions) được hiển thị trực quan.
+
+#### 🔹 Bước 3: Tra Cứu Tri Thức Bảo Mật (Tab 3 — Tra Cứu Tri Thức)
+1. Nhập từ khóa hoặc mã định danh bảo mật tại ô tìm kiếm (Ví dụ: `CWE-89`, `SQL Injection`, hoặc `chống rò rỉ dữ liệu nhạy cảm`).
+2. Lựa chọn chế độ tìm kiếm:
+   - **Hybrid Search (Mặc định)**: Kết hợp RRF + MMR giữa FTS5 và Dense Vector (tối ưu nhất).
+   - **Sparse BM25 Keyword**: Tìm kiếm chính xác từ khóa và mã định danh trên SQLite FTS5.
+   - **Dense Vector Semantic**: Tìm kiếm theo ngữ nghĩa và bối cảnh tự nhiên.
+3. Bấm **Tra Cứu Tri Thức**: Xem các Bento Card chứa nội dung chi tiết của tài liệu canonical, mã mẫu phòng thủ, và yêu cầu xác thực OWASP ASVS.
+
+#### 🔹 Bước 4: Kiểm Thử An Toàn Qua Gateway (Tab 4 — Kiểm Thử Gateway)
+1. Nhập endpoint cần kiểm thử vào ô `Endpoint` (Ví dụ: `/rest/products/search?q=apple` hoặc `/api/vulnerable/env-config`).
+2. Chọn phương thức HTTP tuân thủ chính sách nghiêm ngặt (`GET`, `OPTIONS`, `PUT`).
+3. Chọn nhóm payload mẫu an toàn từ danh mục `payloads.json` hoặc nhập custom payload / headers.
+4. Bấm **Gửi Request Kiểm Thử (Send Safe Request)**:
+   - Request được gửi qua Kong API Gateway với tự động tiêm `x-api-key`.
+   - Nếu là request có rủi ro (phương thức `PUT` hoặc `Burst Rate Limit`), yêu cầu sẽ được chuyển vào **Hàng Đợi Phê Duyệt (HITL Queue)** ở Sidebar với đếm ngược 120s Fail-Safe.
+   - Phản hồi nhận về được khử khuẩn 100% dữ liệu nhạy cảm (PII, Password, Token) và bọc trong thẻ XML `<untrusted_http_response>` bảo vệ chống Prompt Injection.
+
+#### 🔹 Bước 5: Phân Tích & Báo Cáo AI Agent (Tab 5 — Báo Cáo & Phân Tích)
+1. Chọn tệp `Unified Findings JSONL` đã chuẩn hóa ở Bước 2 tại mục danh sách đầu vào.
+2. Cấu hình tham số tác nhân:
+   - **Chế độ Agent**: Chọn `ReAct Agent (Tự động gọi Tool + Safe Probe)` (Mặc định).
+   - **Mô hình LLM**: Chọn mô hình hoạt động (ví dụ: `my-combo`, `qwen-plus`, hoặc `ag/gemini-3-flash`).
+   - **Số bước ReAct tối đa**: Đặt từ 3 – 5 bước suy luận.
+3. Bấm **Khởi Chạy Phân Tích (Run Agent Analysis)**:
+   - ReAct Agent tự động phân nhóm findings (`AnalysisGroup`), tra cứu tri thức bảo mật, gửi probe kiểm chứng qua Gateway và đối soát tương quan SAST <-> DAST.
+   - Kết quả xuất ra file `reports/analyzed/security-analysis-report-YYYYMMDDTHHMMSSZ.jsonl` đảm bảo 100% Finding Coverage.
+   - Giao diện hiển thị Executive KPI Grid, ma trận phân loại mối đe dọa và bảng phân tích chi tiết từng nhóm lỗ hổng.
+
+#### 🔹 Bước 6: Giám Sát & Nhật Ký Kiểm Toán (Tab 6 — Giám Sát & Logs)
+1. Theo dõi bảng **Live Gateway Network Audit Logs** (`logs/gateway-network-audit.jsonl`): Giám sát mọi request probe đã gửi, mã phản hồi HTTP, trạng thái duyệt HITL và độ trễ mạng.
+2. Theo dõi **Agent Execution Logs** (`logs/agent-runner.log`): Giám sát chi tiết chu trình suy luận đa bước của ReAct Agent.
 
 ---
 
 ### Lựa chọn 2: Vận hành qua Dòng lệnh CLI (Makefile Commands)
 
-Mọi tính năng trên giao diện UI đều có lệnh `make` tương ứng trực tiếp:
+Mọi tính năng trên giao diện UI đều có lệnh `make` tương ứng trực tiếp (chạy `make help` để xem hướng dẫn đầy đủ):
 
 #### 1. Quét SAST & DAST (Tương đương Tab 1)
 
