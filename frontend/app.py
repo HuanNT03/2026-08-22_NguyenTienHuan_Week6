@@ -2,6 +2,7 @@
 
 Triển khai giao diện Bento Box 6 Tabs hoàn chỉnh tích hợp Material Symbols Outlined,
 HITL Approval Queue Sidebar, Safe Requester, Knowledge Retrieval, và ReAct AI Agent.
+Chuẩn hóa 100% không sử dụng ký tự emoji (Unicode Emojis).
 """
 
 from __future__ import annotations
@@ -10,7 +11,6 @@ import json
 import os
 import sys
 import time
-import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -22,7 +22,6 @@ if str(ROOT_DIR) not in sys.path:
 import streamlit as st
 
 from frontend.components.bento import (
-    format_material_icon,
     inject_bento_css,
     render_bento_header,
     render_guardrails_kpi_grid,
@@ -42,7 +41,7 @@ from src.app.normalizer_bridge import (
     load_unified_findings,
     save_uploaded_report,
 )
-from src.app.retrieval_bridge import inspect_knowledge_document, search_knowledge_base
+from src.app.retrieval_bridge import search_knowledge_base
 from src.app.scan_runner import (
     check_target_health,
     run_scanner_stream,
@@ -50,10 +49,10 @@ from src.app.scan_runner import (
 )
 from src.gateway.safe_requester import send_safe_request
 
-# Streamlit Page Setup
+# Streamlit Page Setup - No Unicode Emojis
 st.set_page_config(
     page_title="Project Sentinel - DevSecOps & AI Security Dashboard",
-    page_icon="🛡️",
+    page_icon=None,
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -68,17 +67,17 @@ render_hitl_sidebar(hitl_mgr)
 # Brand Header
 st.markdown(
     """
-    <div style="background: linear-gradient(135deg, rgba(30, 30, 46, 0.95) 0%, rgba(24, 24, 37, 0.95) 100%); padding: 18px 24px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.08); margin-bottom: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.36);">
+    <div style="background: linear-gradient(135deg, rgba(17, 25, 39, 0.95) 0%, rgba(11, 19, 38, 0.95) 100%); padding: 18px 24px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.08); margin-bottom: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.36);">
         <div style="display: flex; align-items: center; justify-content: space-between;">
             <div style="display: flex; align-items: center; gap: 14px;">
-                <div style="background: rgba(77, 142, 255, 0.15); border: 1px solid rgba(77, 142, 255, 0.3); border-radius: 12px; padding: 8px 12px; display: flex; align-items: center;">
-                    <span class="material-symbols-outlined" style="font-size: 32px; color: #4D8EFF;">security</span>
+                <div style="background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 12px; padding: 8px 12px; display: flex; align-items: center;">
+                    <span class="material-symbols-outlined" style="font-size: 32px; color: #3B82F6;">security</span>
                 </div>
                 <div>
-                    <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #cdd6f4; letter-spacing: -0.02em;">
+                    <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: #cdd6f4; letter-spacing: -0.02em;">
                         PROJECT SENTINEL
                     </h1>
-                    <p style="margin: 2px 0 0 0; color: #a6adc8; font-size: 13px;">
+                    <p style="margin: 2px 0 0 0; color: #94a3b8; font-size: 13px;">
                         DevSecOps Automated Pipeline & ReAct AI Security Operations — Target: OWASP Juice Shop v20.1.1
                     </p>
                 </div>
@@ -95,12 +94,12 @@ st.markdown(
 
 # 6 Navigation Tabs
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-    " Quét Bảo Mật",
-    " Quản Lý Dữ Liệu",
-    " Tra Cứu Tri Thức",
-    " Kiểm Thử Gateway",
-    " Báo Cáo & Phân Tích",
-    " Giám Sát & Logs",
+    "Quét Bảo Mật",
+    "Quản Lý Dữ Liệu",
+    "Tra Cứu Tri Thức",
+    "Kiểm Thử Gateway",
+    "Báo Cáo & Phân Tích",
+    "Giám Sát & Logs",
 ])
 
 
@@ -130,21 +129,45 @@ with tab1:
         selected_scanner_label = st.selectbox("Công cụ quét:", list(scanner_options.keys()), index=0)
         selected_scanner_key = scanner_options[selected_scanner_label]
 
-        btn_run_scan = st.button("🚀 Bắt Đầu Quét (Run Scanner)", type="primary", use_container_width=True)
+        btn_run_scan = st.button("Khởi Chạy Quét (Run Scanner)", type="primary", use_container_width=True)
 
     with col_t2:
         st.markdown("#### 2. Trạng Thái Target App:")
         if is_alive:
-            st.success(f"🟢 **Online** (HTTP {http_code}) tại `{target_url}`")
+            st.markdown(
+                f"""
+                <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 12px; margin-bottom: 10px;">
+                    <div style="display: flex; align-items: center; gap: 8px; color: #10b981; font-weight: 700; font-size: 14px;">
+                        <span class="material-symbols-outlined" style="font-size: 20px;">check_circle</span> Target Online (HTTP {http_code})
+                    </div>
+                    <div style="color: #94a3b8; font-size: 12px; margin-top: 4px; font-family: monospace;">
+                        {target_url}
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
         else:
-            st.error(f"🔴 **Offline** — Không phản hồi tại `{target_url}`")
+            st.markdown(
+                f"""
+                <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 10px; padding: 12px; margin-bottom: 10px;">
+                    <div style="display: flex; align-items: center; gap: 8px; color: #ef4444; font-weight: 700; font-size: 14px;">
+                        <span class="material-symbols-outlined" style="font-size: 20px;">error</span> Target Offline
+                    </div>
+                    <div style="color: #94a3b8; font-size: 12px; margin-top: 4px; font-family: monospace;">
+                        {target_url}
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
         col_ref, col_start = st.columns(2)
         with col_ref:
-            if st.button("🔄 Refresh Status", use_container_width=True):
+            if st.button("Làm mới Trạng thái", use_container_width=True):
                 st.rerun()
         with col_start:
-            if st.button("▶️ Start Target", use_container_width=True):
+            if st.button("Khởi động Target", use_container_width=True):
                 with st.spinner("Đang khởi động Target App..."):
                     for _, _, _ in run_target_command_stream("up"):
                         pass
@@ -152,7 +175,7 @@ with tab1:
 
     # Realtime Console Output
     if btn_run_scan:
-        st.markdown("#### 📋 Real-Time Scanner Console Log:")
+        st.markdown("#### Nhật ký Thực thi Thời gian thực:")
         log_placeholder = st.empty()
         full_log_text = ""
         with st.spinner(f"Đang thực thi {selected_scanner_label}..."):
@@ -164,11 +187,11 @@ with tab1:
                     render_realtime_log_box(preview, max_height="130px")
 
             if "Exit code 0" in full_log_text or is_done:
-                st.success(f"✅ Quét thành công bằng {selected_scanner_label}!")
+                st.success(f"Quét hoàn tất thành công bằng {selected_scanner_label}!")
             else:
-                st.warning("⚠️ Tiến trình quét hoàn tất (vui lòng kiểm tra log chi tiết).")
+                st.warning("Tiến trình quét đã kết thúc. Vui lòng xem log chi tiết bên dưới.")
 
-            with st.expander("📄 Xem toàn bộ Log chi tiết", expanded=False):
+            with st.expander("Xem toàn bộ Log chi tiết", expanded=False):
                 st.code(full_log_text, language="bash")
 
 
@@ -186,47 +209,53 @@ with tab2:
 
         selected_raw_files: list[str] = []
         if not raw_files:
-            st.info("Chưa có file raw scanner report nào trong `reports/raw/`.")
+            st.info("Chưa có file raw scanner report nào trong thư mục reports/raw/.")
         else:
             select_all = st.checkbox("Chọn tất cả các file raw", value=True)
-            for f in raw_files:
-                fname = Path(f).name
+            for rf in raw_files:
+                fname = rf["name"]
+                fpath = rf["path"]
+                fsize = rf.get("size", 0)
                 checked = select_all
-                if st.checkbox(f"📄 {fname}", value=checked, key=f"chk_{fname}"):
-                    selected_raw_files.append(f)
+                if st.checkbox(f"{fname} ({fsize} bytes)", value=checked, key=f"chk_{fname}"):
+                    selected_raw_files.append(fpath)
 
-        if st.button("⚡ Chuẩn Hóa Báo Cáo (Run Normalizer)", type="primary", use_container_width=True):
+        if st.button("Chuẩn Hóa Báo Cáo (Run Normalizer)", type="primary", use_container_width=True):
             if not selected_raw_files:
                 st.warning("Vui lòng tích chọn ít nhất 1 tệp raw report.")
             else:
                 with st.spinner("Đang chuẩn hóa Unified Findings..."):
-                    success, msg = execute_normalization()
+                    success, summary_data = execute_normalization()
                     if success:
-                        st.success("✅ " + msg)
+                        st.success("Chuẩn hóa thành công! Đã tạo Unified Findings.")
                         st.rerun()
                     else:
-                        st.error("❌ " + msg)
+                        st.error(f"Lỗi khi chuẩn hóa: {summary_data.get('error', 'Xem logs chi tiết')}")
 
         st.divider()
         st.markdown("#### 2. Tải Lên Raw Report Mới:")
         uploaded_raw = st.file_uploader("Upload semgrep.json, codeql.sarif, zap.json, sqlmap.json", type=["json", "sarif"])
         if uploaded_raw and st.button("Lưu Raw Report"):
             saved = save_uploaded_report(uploaded_raw.name, uploaded_raw.getvalue())
-            st.success(f"Đã lưu tệp vào `{saved}`")
+            st.success(f"Đã lưu tệp vào {saved}")
             st.rerun()
 
     with col_norm:
         st.markdown("#### 3. Danh Sách Unified Findings Hiện Có:")
         norm_files = list_normalized_files()
         if not norm_files:
-            st.info("Chưa có tệp Unified Findings nào trong `reports/normalized/`.")
+            st.info("Chưa có tệp Unified Findings nào trong reports/normalized/.")
         else:
             for nf in norm_files[:5]:
                 p = Path(nf)
-                count, preview = load_unified_findings(nf)
-                with st.expander(f"📦 {p.name} ({count} findings)", expanded=False):
-                    st.caption(f"Đường dẫn: `{nf}`")
-                    st.json(preview[:3] if preview else [])
+                try:
+                    findings_list = load_unified_findings(nf)
+                    count = len(findings_list)
+                    with st.expander(f"{p.name} ({count} findings)", expanded=False):
+                        st.caption(f"Đường dẫn: {nf}")
+                        st.json(findings_list[:3] if findings_list else [])
+                except Exception as exc:  # noqa: BLE001
+                    st.caption(f"Không thể đọc {p.name}: {exc}")
 
 
 # ==============================================================================
@@ -243,11 +272,11 @@ with tab3:
 
     col_f1, col_f2 = st.columns([1, 1])
     with col_f1:
-        doc_type_filter = st.selectbox("Lọc theo loại tài liệu:", ["Tất cả", "cwe", "owasp", "asvs", "cheatsheet", "rule"], index=0)
+        doc_type_filter = st.selectbox("Lọc theo loại tài liệu:", ["Tất cả", "cwe", "owasp_category", "asvs_requirement", "cheatsheet", "detection_rule"], index=0)
     with col_f2:
         top_k = st.slider("Số lượng kết quả (Top-K):", min_value=1, max_value=10, value=4)
 
-    if st.button("🔍 Tra Cứu Tri Thức", type="primary"):
+    if st.button("Tra Cứu Tri Thức", type="primary"):
         with st.spinner("Đang tìm kiếm trong Knowledge Base..."):
             dtype = None if doc_type_filter == "Tất cả" else doc_type_filter
             results = search_knowledge_base(query=kb_query, mode=kb_mode, top_k=top_k, doc_type=dtype)
@@ -269,7 +298,7 @@ with tab3:
                                 <div style="color: #a6adc8; font-size: 13px; margin-bottom: 6px;">
                                     <b>Doc ID:</b> <code>{r.get('doc_id')}</code>
                                 </div>
-                                <div style="color: #cdd6f4; font-size: 13px; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 8px;">
+                                <div style="color: #cdd6f4; font-size: 13px; background: rgba(0,0,0,0.25); padding: 8px 12px; border-radius: 8px; line-height: 1.5;">
                                     {r.get('snippet', r.get('summary', ''))}
                                 </div>
                             </div>
@@ -312,7 +341,7 @@ with tab4:
         with col_b2:
             oversized_payload = st.toggle("1.5MB Oversized Payload (413 Test)", value=False)
 
-        btn_send_probe = st.button("📡 Gửi Probe An Toàn (Send Safe Request)", type="primary", use_container_width=True)
+        btn_send_probe = st.button("Gửi Probe An Toàn (Send Safe Request)", type="primary", use_container_width=True)
 
     with col_req2:
         st.markdown("#### 2. Live Response Inspector & Guardrails:")
@@ -388,15 +417,15 @@ with tab5:
                 direct_path.parent.mkdir(parents=True, exist_ok=True)
                 direct_path.write_bytes(uploaded_findings_direct.getvalue())
                 selected_findings_file = str(direct_path)
-                st.success(f"Đã nạp tệp: `{uploaded_findings_direct.name}`")
+                st.success(f"Đã nạp tệp: {uploaded_findings_direct.name}")
 
         with col_exec2:
             model_name = get_configured_model()
             st.markdown(
                 f"""
-                <div style="background: rgba(30, 30, 46, 0.8); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; margin-bottom: 8px;">
-                    <div style="font-size: 11px; color: #a6adc8; text-transform: uppercase;">Mô Hình LLM Cấu Hình</div>
-                    <div style="font-size: 15px; font-weight: 700; color: #4D8EFF;">{model_name}</div>
+                <div style="background: rgba(17, 25, 39, 0.8); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px; margin-bottom: 8px;">
+                    <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Mô Hình LLM Cấu Hình</div>
+                    <div style="font-size: 15px; font-weight: 700; color: #3B82F6;">{model_name}</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -405,7 +434,7 @@ with tab5:
 
         with col_exec3:
             max_steps_sel = st.slider("Max ReAct Steps:", min_value=1, max_value=10, value=5)
-            btn_run_agent = st.button("🧠 Khởi Chạy Phân Tích (Run Agent)", type="primary", use_container_width=True)
+            btn_run_agent = st.button("Khởi Chạy Phân Tích (Run Agent)", type="primary", use_container_width=True)
 
     # Trigger Agent Analysis
     if btn_run_agent:
@@ -421,17 +450,17 @@ with tab5:
                     max_react_steps=max_steps_sel,
                 )
                 if success:
-                    st.success(f"✅ Phân tích hoàn tất trong {time.time() - start_agent_t:.2f}s!")
+                    st.success(f"Phân tích hoàn tất trong {time.time() - start_agent_t:.2f}s!")
                     st.rerun()
                 else:
-                    st.error(f"❌ Lỗi khi chạy Agent: {res_summary.get('error')}")
+                    st.error(f"Lỗi khi chạy Agent: {res_summary.get('error')}")
 
     st.divider()
 
     # Section 2: Load and Display Latest Report
     available_reports = list_analyzed_reports()
     if not available_reports:
-        st.info("Chưa có báo cáo phân tích nào trong `reports/analyzed/`. Hãy khởi chạy Agent ở trên.")
+        st.info("Chưa có báo cáo phân tích nào trong reports/analyzed/. Hãy khởi chạy Agent ở trên.")
     else:
         active_report_path = st.selectbox("Chọn báo cáo phân tích để xem:", available_reports, index=0)
         report_entries = load_analysis_report(active_report_path)
@@ -464,7 +493,7 @@ with tab5:
             )
 
             # Section 3: Unified Grouped Analysis Table
-            st.markdown(f"### 📋 Bảng Tổng Hợp Phân Tích Lỗ Hổng Theo Nhóm ({len(groups_dict)} Nhóm — {total_entries} Findings):")
+            st.markdown(f"### Bảng Tổng Hợp Phân Tích Lỗ Hổng Theo Nhóm ({len(groups_dict)} Nhóm — {total_entries} Findings):")
 
             for grp_id, items in groups_dict.items():
                 first_item = items[0]
@@ -472,11 +501,11 @@ with tab5:
                 primary_cwe = first_item.get("primary_cwe_id") or "N/A"
                 grp_title = first_item.get("title", "Lỗ hổng bảo mật")
 
-                with st.expander(f"🔍 [{grp_id}] {grp_title} ({primary_cwe}) — {len(items)} findings | Tương quan: {corr_type.upper()}", expanded=True):
+                with st.expander(f"[{grp_id}] {grp_title} ({primary_cwe}) — {len(items)} findings | Tương quan: {corr_type.upper()}", expanded=True):
                     # Group Summary Header
                     st.markdown(
                         f"""
-                        <div style="background: rgba(30, 30, 46, 0.7); border-radius: 10px; padding: 12px; margin-bottom: 12px;">
+                        <div style="background: rgba(17, 25, 39, 0.7); border-radius: 10px; padding: 12px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.06);">
                             <div style="display: flex; gap: 8px; margin-bottom: 6px;">
                                 <span class="bento-badge info">CWE: {primary_cwe}</span>
                                 <span class="bento-badge default">Correlation: {corr_type}</span>
@@ -485,7 +514,7 @@ with tab5:
                             <div style="font-size: 13px; color: #cdd6f4;">
                                 <b>Nguyên nhân gốc (Root Cause):</b> {first_item.get('explanation')}
                             </div>
-                            <div style="font-size: 13px; color: #4EDEA3; margin-top: 4px;">
+                            <div style="font-size: 13px; color: #10B981; margin-top: 4px;">
                                 <b>Đề xuất khắc phục (Remediation):</b> {first_item.get('recommended_action')}
                             </div>
                         </div>
@@ -498,14 +527,14 @@ with tab5:
                         st.markdown(f"**Finding #{idx}: `{finding.get('finding_id')}` | Công cụ: `{finding.get('tool')}` ({finding.get('scan_type')})**")
                         c_loc, c_sev, c_ev = st.columns([1, 1, 2])
                         with c_loc:
-                            st.caption(f"📍 **Vị trí:** {finding.get('location_summary')}")
-                            st.caption(f"🔑 **Fingerprint:** `{finding.get('fingerprint')[:20]}...`")
+                            st.caption(f"**Vị trí:** {finding.get('location_summary')}")
+                            st.caption(f"**Fingerprint:** `{finding.get('fingerprint', '')[:20]}...`")
                         with c_sev:
                             sev = finding.get("severity", {})
-                            st.caption(f"⚡ **Severity:** Agent `{sev.get('agent_assessment')}` | Gốc `{sev.get('original_scanner')}`")
-                            st.caption(f"🛡️ **Status:** `{finding.get('analysis_status')}`")
+                            st.caption(f"**Severity:** Agent `{sev.get('agent_assessment')}` | Gốc `{sev.get('original_scanner')}`")
+                            st.caption(f"**Status:** `{finding.get('analysis_status')}`")
                         with c_ev:
-                            st.caption(f"📝 **Bằng chứng:** {finding.get('evidence_summary')}")
+                            st.caption(f"**Bằng chứng:** {finding.get('evidence_summary')}")
 
                         # Proposed Test Request & HITL Dispatch
                         ptr = finding.get("proposed_test_request")
@@ -513,12 +542,12 @@ with tab5:
                             st.markdown(
                                 f"""
                                 <div style="background: rgba(250, 179, 135, 0.1); border-left: 3px solid #fab387; padding: 8px 12px; border-radius: 6px; font-size: 12px; margin: 6px 0;">
-                                    <b>💡 Đề xuất kiểm thử an toàn:</b> <code>{ptr.get('method')} {ptr.get('endpoint')}</code> | <i>{ptr.get('rationale')}</i>
+                                    <b>Đề xuất kiểm thử an toàn:</b> <code>{ptr.get('method')} {ptr.get('endpoint')}</code> | <i>{ptr.get('rationale')}</i>
                                 </div>
                                 """,
                                 unsafe_allow_html=True,
                             )
-                            if st.button(f"➕ Đẩy vào HITL Queue ({finding.get('finding_id')[:8]})", key=f"btn_q_{finding.get('finding_id')}"):
+                            if st.button(f"Đẩy vào HITL Queue ({finding.get('finding_id', '')[:8]})", key=f"btn_q_{finding.get('finding_id')}"):
                                 req_id = hitl_mgr.add_action(
                                     endpoint=ptr.get("endpoint", "/"),
                                     method=ptr.get("method", "GET"),
@@ -555,7 +584,7 @@ with tab6:
                     if line:
                         try:
                             audit_records.append(json.loads(line))
-                        except Exception:  # noqa: BLE001
+                        except Exception:  # noqa: BLE001, S110
                             pass
 
             if not audit_records:
@@ -567,12 +596,12 @@ with tab6:
                     st_badge = "success" if status == 200 else ("high" if status in (405, 429, 413) else "critical")
                     st.markdown(
                         f"""
-                        <div style="background: rgba(30, 30, 46, 0.8); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 10px; margin-bottom: 8px;">
+                        <div style="background: rgba(17, 25, 39, 0.8); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 10px; margin-bottom: 8px;">
                             <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
                                 <span><b>{rec.get('method')}</b> <code>{rec.get('endpoint')}</code></span>
                                 <span class="bento-badge {st_badge}">HTTP {status}</span>
                             </div>
-                            <div style="font-size: 11px; color: #a6adc8;">
+                            <div style="font-size: 11px; color: #94a3b8;">
                                 Latency: <b>{rec.get('duration_ms', 0):.1f}ms</b> | Approval: <b>{rec.get('approval_status')}</b> | PII Redacted: <b>{rec.get('guardrails', {}).get('redaction_count', 0)}</b>
                             </div>
                         </div>

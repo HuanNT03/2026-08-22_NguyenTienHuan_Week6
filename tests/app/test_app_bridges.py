@@ -130,6 +130,14 @@ def test_list_raw_report_files_missing_dir():
     assert files == []
 
 
+def test_list_analyzed_reports(tmp_path: Path):
+    report_file = tmp_path / "security-analysis-report-20260807T120000Z.jsonl"
+    report_file.write_text("{}\n", encoding="utf-8")
+    reports = list_analyzed_reports(analyzed_dir=str(tmp_path))
+    assert len(reports) == 1
+    assert reports[0] == str(report_file)
+
+
 def test_search_knowledge_base_with_mode():
     index_path = Path("knowledge-base/index/knowledge.db")
     if not index_path.exists():
@@ -142,4 +150,5 @@ def test_search_knowledge_base_with_mode():
     # Test hybrid mode (default)
     hy_results = search_knowledge_base("SQL Injection", top_k=2, index_path=index_path, mode="hybrid")
     assert isinstance(hy_results, list)
+
 
