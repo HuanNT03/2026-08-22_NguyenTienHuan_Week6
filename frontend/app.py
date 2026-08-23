@@ -45,7 +45,6 @@ from src.app.retrieval_bridge import search_knowledge_base
 from src.app.scan_runner import (
     check_target_health,
     run_scanner_stream,
-    run_target_command_stream,
 )
 from src.gateway.safe_requester import send_safe_request
 
@@ -162,16 +161,8 @@ with tab1:
                 unsafe_allow_html=True,
             )
 
-        col_ref, col_start = st.columns(2)
-        with col_ref:
-            if st.button("Làm mới Trạng thái", use_container_width=True):
-                st.rerun()
-        with col_start:
-            if st.button("Khởi động Target", use_container_width=True):
-                with st.spinner("Đang khởi động Target App..."):
-                    for _, _, _ in run_target_command_stream("up"):
-                        pass
-                st.rerun()
+        if st.button("Làm mới Trạng thái", use_container_width=True):
+            st.rerun()
 
     # Realtime Console Output
     if btn_run_scan:
