@@ -38,11 +38,10 @@
 ## 5. Hạn Chế & Rủi Ro Còn Tồn Tại (Limitations & Risks)
 - **Phạm vi Scanner**: Chỉ hỗ trợ các ngôn ngữ và ruleset đã cấu hình sẵn trong target container.
 - **Phụ thuộc LLM**: Chi phí token và thời gian phản hồi phụ thuộc vào mô hình LLM bên ngoài (Qwen-Plus / OpenAI-compatible).
-- **Chưa hỗ trợ Dynamic GraphRAG**: Sử dụng cơ chế Hybrid RRF + MMR thay vì đồ thị tri thức quan hệ động phức tạp.
+- **Nguy cơ lộ lọt một phần secret**: Việc cắt response ở mốc 2KB trước khi mask có thể làm lộ một phần chuỗi bí mật nếu điểm cắt rơi giữa JWT/email, đây là đánh đổi giữa chống zip-bomb và độ chính xác của redaction.
 
 ---
 
 ## 6. Định Hướng Phát Triển Tiếp Theo (Future Roadmap)
-1. **Mở rộng Target**: Hỗ trợ quét và phân tích đa target tự động thông qua Kubernetes Operator.
-2. **Self-hosted LLM**: Triển khai inference cục bộ bằng vLLM / Ollama với mô hình chuyên biệt cho Security (Qwen-2.5-Coder / DeepSeek-R1).
-3. **Multi-Agent Collaboration**: Phân tách vai trò thành Tác nhân Tấn công Thử nghiệm (Red Team Agent) và Tác nhân Phòng thủ (Blue Team Agent) giao tiếp qua giao thức MCP/A2A.
+1. **Self-hosted LLM**: Triển khai inference cục bộ bằng vLLM / Ollama với mô hình chuyên biệt cho Security (Qwen-2.5-Coder / DeepSeek-R1).
+2. **Multi-Agent Collaboration**: Phân tách vai trò thành Tác nhân Tấn công Thử nghiệm (Red Team Agent) và Tác nhân Phòng thủ (Blue Team Agent) giao tiếp qua giao thức MCP/A2A.
