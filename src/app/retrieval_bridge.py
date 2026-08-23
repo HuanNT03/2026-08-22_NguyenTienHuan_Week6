@@ -20,18 +20,25 @@ def search_knowledge_base(
     doc_type: str | None = None,
     top_k: int = 5,
     index_path: str | Path | None = None,
+    mode: str = "hybrid",
 ) -> list[dict[str, Any]]:
     """
-    Thực thi tìm kiếm FTS5 trên Knowledge Base.
+    Thực thi tìm kiếm trên Knowledge Base theo chế độ hybrid, keyword hoặc semantic.
 
     Args:
-        query: Từ khóa hoặc identifier cần tìm (vd: 'SQL Injection', 'CWE-89', 'XSS')
-        doc_type: Loại tài liệu lọc (vd: 'cwe', 'owasp_category', 'vulnerability_example')
-        top_k: Số lượng kết quả tối đa (1 đến 50)
-        index_path: Tùy chọn đường dẫn file database SQLite
+        query: Từ khóa hoặc câu hỏi cần tìm (vd: 'SQL Injection', 'CWE-89', 'XSS'). Bắt buộc là chuỗi không rỗng.
+        doc_type: Loại tài liệu cần lọc ('cwe', 'owasp_category', 'asvs_requirement', 'cheatsheet', 'detection_rule').
+        top_k: Số lượng kết quả tối đa cần lấy (1 đến 50, mặc định 5).
+        index_path: Tùy chọn đường dẫn file database SQLite FTS5.
+        mode: Chế độ tìm kiếm ('hybrid', 'keyword', hoặc 'semantic', mặc định 'hybrid').
 
     Returns:
-        list[dict]: Danh sách tài liệu kết quả đã sắp xếp
+        list[dict[str, Any]]: Danh sách các kết quả tìm kiếm đã chuyển thành dictionary, mỗi dict chứa
+        doc_id, doc_type, title, snippet, summary, aliases, identifiers, tags, score. Trả về list rỗng nếu không tìm thấy.
+
+    Raises:
+        FileNotFoundError: Nếu file database Knowledge Base SQLite không tồn tại.
+        RuntimeError: Nếu xảy ra lỗi nội bộ trong quá trình thực thi tìm kiếm.
     """
     if not query or not query.strip():
         return []
@@ -44,9 +51,10 @@ def search_knowledge_base(
 
     # Lọc bỏ doc_type không hợp lệ
     valid_doc_type = doc_type if doc_type in DOCUMENT_TYPES else None
+    search_mode = mode.lower() if mode and mode.lower() in ("hybrid", "keyword", "semantic") else "hybrid"
 
     try:
-        results = service.search(query=query.strip(), top_k=top_k, doc_type=valid_doc_type)
+        results = service.search(query=query.strip(), top_k=top_k, doc_type=valid_doc_type, mode=search_mode)
         return [asdict(res) for res in results]
     except InvalidSearchQueryError:
         return []

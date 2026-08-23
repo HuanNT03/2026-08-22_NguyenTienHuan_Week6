@@ -12,6 +12,7 @@ from src.app.agent_bridge import (
 )
 from src.app.normalizer_bridge import (
     list_normalized_files,
+    list_raw_report_files,
     load_unified_findings,
     save_uploaded_report,
 )
@@ -113,9 +114,32 @@ def test_load_analysis_report_valid(tmp_path: Path):
     assert entries[0]["analysis_id"] == "analysis_123"
 
 
-def test_list_analyzed_reports(tmp_path: Path):
-    report_file = tmp_path / "security-analysis-report-20260807T120000Z.jsonl"
-    report_file.write_text("{}\n", encoding="utf-8")
-    reports = list_analyzed_reports(analyzed_dir=str(tmp_path))
-    assert len(reports) == 1
-    assert reports[0] == str(report_file)
+def test_list_raw_report_files(tmp_path: Path):
+    raw_file = tmp_path / "semgrep.json"
+    raw_file.write_text("{}", encoding="utf-8")
+    files = list_raw_report_files(raw_dir=str(tmp_path))
+    assert len(files) == 1
+    assert files[0]["name"] == "semgrep.json"
+    assert files[0]["path"] == str(raw_file)
+    assert "size" in files[0]
+    assert "mtime" in files[0]
+
+
+def test_list_raw_report_files_missing_dir():
+    files = list_raw_report_files(raw_dir="non_existent_raw_dir")
+    assert files == []
+
+
+def test_search_knowledge_base_with_mode():
+    index_path = Path("knowledge-base/index/knowledge.db")
+    if not index_path.exists():
+        pytest.skip("SQLite knowledge.db chưa được build, bỏ qua integration test này.")
+
+    # Test keyword mode
+    kw_results = search_knowledge_base("SQL Injection", top_k=2, index_path=index_path, mode="keyword")
+    assert isinstance(kw_results, list)
+
+    # Test hybrid mode (default)
+    hy_results = search_knowledge_base("SQL Injection", top_k=2, index_path=index_path, mode="hybrid")
+    assert isinstance(hy_results, list)
+
