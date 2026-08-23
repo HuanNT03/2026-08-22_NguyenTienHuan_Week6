@@ -50,11 +50,6 @@ jobs:
         run: make kb-test
       - name: Lint retrieval code
         run: make kb-lint
-      - name: Verify generated knowledge documents are committed
-        run: |
-          git diff --exit-code -- \
-            knowledge-base/processed/documents.jsonl \
-            knowledge-base/processed/manifest.json
 
   sast:
     needs: quality

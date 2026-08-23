@@ -24,9 +24,11 @@ __pycache__/
 .ruff_cache/
 .venv/
 
-# Generated knowledge-base index.
+# Generated knowledge-base index and processed files.
 /knowledge-base/index/*
 !/knowledge-base/index/.gitkeep
+/knowledge-base/processed/*
+!/knowledge-base/processed/.gitkeep
 
 # Generated security analysis agent reports.
 /reports/analyzed/*
