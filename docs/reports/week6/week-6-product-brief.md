@@ -1,5 +1,4 @@
 # BẢN MÔ TẢ SẢN PHẨM (PRODUCT BRIEF) — PROJECT SENTINEL
-**VinUni x VinSOC Capstone Project — Tuần 6**
 
 ---
 
