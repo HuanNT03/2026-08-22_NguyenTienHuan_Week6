@@ -270,7 +270,7 @@ mock-server-up: ## Khởi động Vulnerable Mock Server. Tham số tùy chọn:
 	@$(VENV_PYTHON) api-server/mock_server.py --port $(or $(PORT),3000)
 
 mock-server-down: ## Dừng toàn bộ tiến trình Vulnerable Mock Server đang chạy ngầm.
-	@pkill -f "api-server/mock_server.py" 2>/dev/null || true
+	@fuser -k 3000/tcp 2>/dev/null || pkill -f "python.*mock_server.py" 2>/dev/null || true
 	@echo "Vulnerable Mock Server stopped."
 
 test-mock-guardrails: ## Chạy bài kiểm thử thực nghiệm E2E Guardrails với Mock Server.
