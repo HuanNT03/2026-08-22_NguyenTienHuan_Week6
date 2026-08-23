@@ -29,6 +29,7 @@ class AgentConfig:
     max_react_steps: int = int(os.getenv("MAX_REACT_STEPS", "5"))
     tool_timeout: float = float(os.getenv("TOOL_TIMEOUT", "7.0"))
     prompt_version: str = "system_v2"
+    auto_approve: bool = os.getenv("AGENT_AUTO_APPROVE", "0") in ("1", "true", "True")
 
     project_root: Path = PROJECT_ROOT
     prompts_dir: Path = PROJECT_ROOT / "src" / "agent" / "prompts"

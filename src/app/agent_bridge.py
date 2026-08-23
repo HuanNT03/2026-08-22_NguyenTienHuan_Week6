@@ -46,6 +46,7 @@ def run_agent_analysis(
     config.agent_mode = "react" if agent_mode.lower() == "react" else "static"
     config.max_react_steps = int(max_react_steps)
     config.output_dir = Path(output_dir)
+    config.auto_approve = True
 
     try:
         summary = run_analysis(findings_path=findings, config=config, log_file=log_file)

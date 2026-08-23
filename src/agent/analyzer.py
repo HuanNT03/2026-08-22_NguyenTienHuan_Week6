@@ -368,7 +368,8 @@ def analyze_group(
 
     # Route to ReAct Analysis Engine (Default for Week 6)
     if cfg.agent_mode == "react":
-        dispatcher = ToolDispatcher(kb_service=kb_service, max_repeat_tool_calls=2)
+        approval_cb = (lambda _: True) if getattr(cfg, "auto_approve", False) else getattr(cfg, "approval_callback", None)
+        dispatcher = ToolDispatcher(kb_service=kb_service, max_repeat_tool_calls=2, approval_callback=approval_cb)
         engine = ReActAnalysisEngine(client=client, config=cfg, dispatcher=dispatcher)
         system_prompt = (
             cfg.system_prompt_path.read_text(encoding="utf-8")

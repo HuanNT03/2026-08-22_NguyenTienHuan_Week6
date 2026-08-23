@@ -164,7 +164,12 @@ def _resolve_url(url: str, gateway_host: str = DEFAULT_GATEWAY_HOST) -> str:
         return clean_url
     if not clean_url.startswith("/"):
         clean_url = "/" + clean_url
-    return f"{gateway_host.rstrip('/')}{clean_url}"
+
+    host = (gateway_host or DEFAULT_GATEWAY_HOST).rstrip("/")
+    if host in ("http://localhost:3000", "http://127.0.0.1:3000") and Path("/.dockerenv").is_file():
+        host = "http://host.docker.internal:3000"
+
+    return f"{host}{clean_url}"
 
 
 def send_safe_request(
