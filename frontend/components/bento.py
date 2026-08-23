@@ -11,143 +11,32 @@ import streamlit as st
 
 def inject_bento_css() -> None:
     """Inject custom CSS cho giao diện Bento Box Design (Glassmorphism + Dark Mode)."""
-    st.markdown(
-        """
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" />
-        <style>
-        @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
-        @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined');
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700&display=swap');
-
-        /* Root styling & typography */
-        html, body, .stApp {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        }
-
-        h1, h2, h3, h4, .bento-header-title {
-            font-family: 'Outfit', 'Inter', sans-serif !important;
-            letter-spacing: -0.02em;
-        }
-
-        .material-symbols-outlined {
-            font-family: 'Material Symbols Outlined' !important;
-            font-weight: normal;
-            font-style: normal;
-            font-size: 20px;
-            line-height: 1;
-            letter-spacing: normal;
-            text-transform: none;
-            display: inline-block;
-            white-space: nowrap;
-            word-wrap: normal;
-            direction: ltr;
-            vertical-align: middle;
-            -webkit-font-smoothing: antialiased;
-            text-rendering: optimizeLegibility;
-            -moz-osx-font-smoothing: grayscale;
-            font-feature-settings: 'liga';
-        }
-
-        /* Bento Grid Card Base */
-        .bento-card {
-            background: linear-gradient(135deg, rgba(24, 24, 37, 0.95) 0%, rgba(30, 30, 46, 0.85) 100%);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 16px;
-            padding: 18px 22px;
-            margin-bottom: 14px;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.36);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .bento-card:hover {
-            border-color: rgba(77, 142, 255, 0.4);
-            transform: translateY(-2px);
-            box-shadow: 0 12px 40px 0 rgba(77, 142, 255, 0.12);
-        }
-
-        .bento-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, #4D8EFF, #4EDEA3, #cba6f7);
-            opacity: 0.7;
-        }
-
-        /* Bento Metric Elements */
-        .bento-title {
-            color: #a6adc8;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 6px;
-        }
-
-        .bento-value {
-            color: #cdd6f4;
-            font-size: 22px;
-            font-weight: 700;
-            line-height: 1.2;
-            margin-bottom: 4px;
-        }
-
-        .bento-desc {
-            color: #6c7086;
-            font-size: 12px;
-            font-weight: 400;
-        }
-
-        /* Streaming Console Log Box */
-        .bento-terminal-box {
-            background-color: #0b1326;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 10px 14px;
-            font-family: 'Fira Code', 'Roboto Mono', monospace;
-            font-size: 12px;
-            line-height: 1.5;
-            color: #4edea3;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            word-break: break-all;
-            margin-top: 8px;
-            margin-bottom: 12px;
-            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
-        }
-
-        /* Badges */
-        .bento-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 3px 10px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.03em;
-            margin-right: 6px;
-            margin-bottom: 4px;
-        }
-
-        .bento-badge.critical { background: rgba(243, 139, 168, 0.15); color: #f38ba8; border: 1px solid rgba(243, 139, 168, 0.4); }
-        .bento-badge.high { background: rgba(250, 179, 135, 0.15); color: #fab387; border: 1px solid rgba(250, 179, 135, 0.4); }
-        .bento-badge.medium { background: rgba(249, 226, 175, 0.15); color: #f9e2af; border: 1px solid rgba(249, 226, 175, 0.4); }
-        .bento-badge.low { background: rgba(137, 180, 250, 0.15); color: #89b4fa; border: 1px solid rgba(137, 180, 250, 0.4); }
-        .bento-badge.info { background: rgba(148, 226, 213, 0.15); color: #94e2d5; border: 1px solid rgba(148, 226, 213, 0.4); }
-        .bento-badge.success { background: rgba(166, 227, 161, 0.15); color: #a6e3a1; border: 1px solid rgba(166, 227, 161, 0.4); }
-        .bento-badge.default { background: rgba(49, 50, 68, 0.6); color: #cdd6f4; border: 1px solid rgba(205, 214, 244, 0.2); }
-        </style>
-        """,
-        unsafe_allow_html=True,
+    css_content = (
+        '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" />\n'
+        '<style>\n'
+        "@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined');\n"
+        "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700&display=swap');\n"
+        "html, body, .stApp { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }\n"
+        "h1, h2, h3, h4, .bento-header-title { font-family: 'Outfit', 'Inter', sans-serif !important; letter-spacing: -0.02em; }\n"
+        ".material-symbols-outlined { font-family: 'Material Symbols Outlined' !important; font-weight: normal; font-style: normal; font-size: 20px; line-height: 1; letter-spacing: normal; text-transform: none; display: inline-block; white-space: nowrap; word-wrap: normal; direction: ltr; vertical-align: middle; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; -moz-osx-font-smoothing: grayscale; font-feature-settings: 'liga'; }\n"
+        ".bento-card { background: linear-gradient(135deg, rgba(24, 24, 37, 0.95) 0%, rgba(30, 30, 46, 0.85) 100%); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 18px 22px; margin-bottom: 14px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.36); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; }\n"
+        ".bento-card:hover { border-color: rgba(77, 142, 255, 0.4); transform: translateY(-2px); box-shadow: 0 12px 40px 0 rgba(77, 142, 255, 0.12); }\n"
+        ".bento-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, #4D8EFF, #4EDEA3, #cba6f7); opacity: 0.7; }\n"
+        ".bento-title { color: #a6adc8; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }\n"
+        ".bento-value { color: #cdd6f4; font-size: 22px; font-weight: 700; line-height: 1.2; margin-bottom: 4px; }\n"
+        ".bento-desc { color: #6c7086; font-size: 12px; font-weight: 400; }\n"
+        ".bento-terminal-box { background-color: #0b1326; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 10px 14px; font-family: 'Fira Code', 'Roboto Mono', monospace; font-size: 12px; line-height: 1.5; color: #4edea3; overflow-y: auto; white-space: pre-wrap; word-break: break-all; margin-top: 8px; margin-bottom: 12px; box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6); }\n"
+        ".bento-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.03em; margin-right: 6px; margin-bottom: 4px; }\n"
+        ".bento-badge.critical { background: rgba(243, 139, 168, 0.15); color: #f38ba8; border: 1px solid rgba(243, 139, 168, 0.4); }\n"
+        ".bento-badge.high { background: rgba(250, 179, 135, 0.15); color: #fab387; border: 1px solid rgba(250, 179, 135, 0.4); }\n"
+        ".bento-badge.medium { background: rgba(249, 226, 175, 0.15); color: #f9e2af; border: 1px solid rgba(249, 226, 175, 0.4); }\n"
+        ".bento-badge.low { background: rgba(137, 180, 250, 0.15); color: #89b4fa; border: 1px solid rgba(137, 180, 250, 0.4); }\n"
+        ".bento-badge.info { background: rgba(148, 226, 213, 0.15); color: #94e2d5; border: 1px solid rgba(148, 226, 213, 0.4); }\n"
+        ".bento-badge.success { background: rgba(166, 227, 161, 0.15); color: #a6e3a1; border: 1px solid rgba(166, 227, 161, 0.4); }\n"
+        ".bento-badge.default { background: rgba(49, 50, 68, 0.6); color: #cdd6f4; border: 1px solid rgba(205, 214, 244, 0.2); }\n"
+        "</style>"
     )
+    st.markdown(css_content, unsafe_allow_html=True)
 
 
 def format_material_icon(icon_name: str, size: int = 20, color: str | None = None) -> str:

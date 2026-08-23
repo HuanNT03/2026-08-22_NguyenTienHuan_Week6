@@ -1,6 +1,5 @@
 # BÁO CÁO TỔNG KẾT BÀN GIAO CUỐI KỲ (WEEK 6 FINAL CAPSTONE SUMMARY)
 **Project Sentinel: Automated DevSecOps & ReAct AI Security Operations Platform**
-*Đơn vị thực hiện: VinUni x VinSOC*
 
 ---
 

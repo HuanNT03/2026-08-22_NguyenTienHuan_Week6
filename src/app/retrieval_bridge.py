@@ -15,6 +15,16 @@ def get_supported_doc_types() -> list[str]:
     return list(DOCUMENT_TYPES)
 
 
+_SERVICE_CACHE: dict[str, KnowledgeSearchService] = {}
+
+
+def _get_service(db_path: Path) -> KnowledgeSearchService:
+    resolved_path = str(db_path.resolve())
+    if resolved_path not in _SERVICE_CACHE:
+        _SERVICE_CACHE[resolved_path] = KnowledgeSearchService(index_path=db_path)
+    return _SERVICE_CACHE[resolved_path]
+
+
 def search_knowledge_base(
     query: str,
     doc_type: str | None = None,
@@ -47,7 +57,7 @@ def search_knowledge_base(
     if not db_path.exists():
         raise FileNotFoundError(f"Database Knowledge Base không tồn tại tại: {db_path}. Vui lòng chạy 'make kb-build'.")
 
-    service = KnowledgeSearchService(index_path=db_path)
+    service = _get_service(db_path)
 
     # Lọc bỏ doc_type không hợp lệ
     valid_doc_type = doc_type if doc_type in DOCUMENT_TYPES else None

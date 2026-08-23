@@ -16,6 +16,8 @@ _PROVIDER_DEFAULTS = {
     "mock": ("mock-gaussian", 1536),
 }
 
+_FASTEMBED_CACHE: dict[str, Any] = {}
+
 
 class EmbeddingClient:
     """Client for generating dense text embeddings with cloud providers, FastEmbed ONNX, or offline mock."""
@@ -101,11 +103,12 @@ class EmbeddingClient:
 
     def _embed_fastembed(self, texts: list[str]) -> list[list[float]]:
         """Generate normalized embeddings using local FastEmbed ONNX runtime."""
-        if self._fastembed_instance is None:
+        if self.model not in _FASTEMBED_CACHE:
             from fastembed import TextEmbedding
 
-            self._fastembed_instance = TextEmbedding(model_name=self.model)
+            _FASTEMBED_CACHE[self.model] = TextEmbedding(model_name=self.model)
 
+        self._fastembed_instance = _FASTEMBED_CACHE[self.model]
         embeddings_generator = self._fastembed_instance.embed(texts)
         return [vec.tolist() for vec in embeddings_generator]
 

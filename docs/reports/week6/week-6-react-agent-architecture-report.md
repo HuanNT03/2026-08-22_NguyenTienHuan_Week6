@@ -1,8 +1,8 @@
-# BÁO CÁO KỸ THUẬT: KIẾN TRÚC VÀ LUỒNG VẬN HÀNH CỦA REACT SECURITY ANALYSIS AGENT (WEEK 6)
+# BÁO CÁO KỸ THUẬT: KIẾN TRÚC VÀ LUỒNG VẬN HÀNH CỦA REACT SECURITY ANALYSIS AGENT
 
 ## 📌 TỔNG QUAN HỆ THỐNG
 
-Báo cáo này tài liệu hóa chi tiết kiến trúc, luồng hoạt động, cơ chế suy luận và các biện pháp bảo vệ an toàn của **ReAct Security Analysis Agent** (Tác nhân AI Phân tích & Xác thực An ninh Ứng dụng) được phát triển trong khuôn khổ **Milestone 4 (Tuần 6)** của dự án **Project Sentinel (VinUni x VinSOC)**.
+Báo cáo này tài liệu hóa chi tiết kiến trúc, luồng hoạt động, cơ chế suy luận và các biện pháp bảo vệ an toàn của **ReAct Security Analysis Agent** (Tác nhân AI Phân tích & Xác thực An ninh Ứng dụng) được phát triển trong dự án **Project Sentinel**.
 
 Hệ thống đã nâng cấp toàn diện từ mô hình thụ động (**Static Context-Only RAG** ở Tuần 3) sang mô hình tác nhân tự trị **ReAct (Reasoning + Acting)** thế hệ mới, cho phép Agent:
 1. Tự động suy luận nhu cầu thông tin và chủ động gọi các công cụ ngoại vi (**Native OpenAI Tool Calling**).
@@ -199,31 +199,3 @@ Theo yêu cầu đồ án Tuần 6:
 
 ---
 
-## 🧪 KẾT QUẢ KIỂM THỬ VÀ ĐỘ TIN CẬY HỆ THỐNG
-
-Toàn bộ hệ thống sau khi triển khai Milestone 4 đã vượt qua kiểm thử toàn diện:
-
-```text
-============================== test session starts ==============================
-Platform: Linux | Python: 3.12.3 | Pytest: 8.4.2
-
-tests/agent/test_tools.py          ....................  [ 8 Passed ]
-tests/agent/test_prompts.py        ....................  [ 2 Passed ]
-tests/agent/test_react_engine.py   ....................  [ 4 Passed ]
-tests/agent/test_analyzer.py       ....................  [ 2 Passed ]
-tests/agent/test_correlator.py     ....................  [ 5 Passed ]
-tests/agent/test_grouper.py        ....................  [ 1 Passed ]
-tests/agent/test_orchestrator.py   ....................  [ 2 Passed ]
-tests/agent/test_redaction.py      ....................  [ 4 Passed ]
-tests/agent/test_schema.py         ....................  [ 14 Passed ]
-tests/agent/test_edge_cases.py     ....................  [ 7 Passed ]
-
-Toàn bộ Test Suite Dự Án Sentinel (Agent + Gateway + Guardrails + Retrieval + Normalizers):
-============================= 376 passed in 46.05s =============================
-```
-
----
-
-## 🎯 TỔNG KẾT
-
-Việc hoàn thành **Milestone 4** đánh dấu bước chuyển mình quan trọng của Project Sentinel từ một công cụ phân tích tĩnh đơn thuần thành một **Hệ thống Tác nhân An ninh Tự trị (Agentic Security Posture Management)**. Hệ thống đã sẵn sàng cho **Milestone 5 (Bento Dashboard 5 Tabs & HITL Queue)** và **Milestone 6 (Vulnerable Mock Target Server & Benchmark Evaluation)**.
