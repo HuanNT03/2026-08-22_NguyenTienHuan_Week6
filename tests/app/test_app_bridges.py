@@ -11,6 +11,7 @@ from src.app.agent_bridge import (
     load_analysis_report,
 )
 from src.app.normalizer_bridge import (
+    execute_normalization,
     list_normalized_files,
     list_raw_report_files,
     load_unified_findings,
@@ -150,5 +151,36 @@ def test_search_knowledge_base_with_mode():
     # Test hybrid mode (default)
     hy_results = search_knowledge_base("SQL Injection", top_k=2, index_path=index_path, mode="hybrid")
     assert isinstance(hy_results, list)
+
+
+def test_list_raw_report_files_filters_out_meta_and_non_reports(tmp_path: Path):
+    # Tạo các file report hợp lệ
+    (tmp_path / "semgrep.json").write_text("{}", encoding="utf-8")
+    (tmp_path / "codeql.sarif").write_text("{}", encoding="utf-8")
+    # Tạo các file sidecar / metadata cần bị lọc bỏ
+    (tmp_path / "semgrep.meta.json").write_text("{}", encoding="utf-8")
+    (tmp_path / "zap-endpoints.txt").write_text("http://localhost", encoding="utf-8")
+    (tmp_path / "zap-site-tree.yaml").write_text("site: test", encoding="utf-8")
+    (tmp_path / ".gitkeep").write_text("", encoding="utf-8")
+
+    files = list_raw_report_files(raw_dir=str(tmp_path))
+    names = [f["name"] for f in files]
+
+    assert len(files) == 2
+    assert "semgrep.json" in names
+    assert "codeql.sarif" in names
+    assert "semgrep.meta.json" not in names
+    assert "zap-endpoints.txt" not in names
+    assert "zap-site-tree.yaml" not in names
+
+
+def test_execute_normalization_invalid_selected_tools(tmp_path: Path):
+    success, summary = execute_normalization(
+        selected_files=["reports/raw/unknown_scanner.txt"],
+        raw_dir=str(tmp_path),
+        output_dir=str(tmp_path / "normalized"),
+    )
+    assert success is False
+    assert "Không có tệp scanner hợp lệ nào" in summary.get("error", "")
 
 

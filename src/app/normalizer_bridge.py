@@ -5,19 +5,19 @@ import os
 from pathlib import Path
 from typing import Any
 
-from src.normalizers.cli import main as normalizer_cli_main
-
 
 def execute_normalization(
+    selected_files: list[str] | None = None,
     raw_dir: str = "reports/raw",
     output_dir: str = "reports/normalized",
     source_root: str = "target-app/juice-shop",
     schema_path: str = "schemas/unified_findings.schema.json",
 ) -> tuple[bool, dict[str, Any]]:
     """
-    Kích hoạt chuẩn hóa tất cả các raw scanner reports trong raw_dir sang Unified Findings.
+    Kích hoạt chuẩn hóa các raw scanner reports được chọn (hoặc tất cả nếu None) sang Unified Findings.
 
     Args:
+        selected_files: Danh sách đường dẫn file raw được chọn để chuẩn hóa (hoặc None/rỗng để chuẩn hóa tất cả)
         raw_dir: Thư mục chứa raw reports (mặc định 'reports/raw')
         output_dir: Thư mục chứa file jsonl normalized (mặc định 'reports/normalized')
         source_root: Thư mục gốc target application
@@ -26,22 +26,59 @@ def execute_normalization(
     Returns:
         tuple[bool, dict]: (Thành công hay không, Thông tin tóm tắt kết quả / summary dict)
     """
-    args = [
-        "normalize-all",
-        "--raw-dir",
-        raw_dir,
-        "--output-dir",
-        output_dir,
-        "--source-root",
-        source_root,
-        "--schema",
-        schema_path,
-    ]
-    exit_code = normalizer_cli_main(args)
+    from src.normalizers.cli import (
+        META_NAMES,
+        REPORT_NAMES,
+        TOOLS,
+        _run,
+        utc_now,
+    )
 
-    # Tìm file normalization summary mới nhất trong output_dir
-    output_path = Path(output_dir)
-    summary_files = list(output_path.glob("normalization-summary-*.json")) if output_path.exists() else []
+    raw_path = Path(raw_dir)
+    out_path = Path(output_dir)
+    out_path.mkdir(parents=True, exist_ok=True)
+
+    if selected_files is not None and len(selected_files) > 0:
+        selected_tools_list: list[str] = []
+        tool_paths: dict[str, tuple[Path, Path]] = {}
+
+        for tool in TOOLS:
+            matching_files = [f for f in selected_files if tool in Path(f).name.lower()]
+            if matching_files:
+                selected_tools_list.append(tool)
+                report_file = Path(matching_files[0])
+                meta_candidate = report_file.with_name(f"{tool}.meta.json")
+                if not meta_candidate.exists():
+                    meta_candidate = raw_path / f"{tool}.meta.json"
+                tool_paths[tool] = (report_file, meta_candidate)
+            else:
+                tool_paths[tool] = (raw_path / REPORT_NAMES[tool], raw_path / META_NAMES[tool])
+
+        selected_tools = tuple(selected_tools_list)
+        if not selected_tools:
+            return False, {"error": "Không có tệp scanner hợp lệ nào (semgrep, zap, codeql) được chọn để chuẩn hóa."}
+
+        exit_code = _run(
+            selected=selected_tools,
+            paths=tool_paths,
+            output_dir=out_path,
+            summary_path=None,
+            schema_path=Path(schema_path),
+            source_root=Path(source_root),
+            clock=utc_now,
+        )
+    else:
+        exit_code = _run(
+            selected=TOOLS,
+            paths={tool: (raw_path / REPORT_NAMES[tool], raw_path / META_NAMES[tool]) for tool in TOOLS},
+            output_dir=out_path,
+            summary_path=None,
+            schema_path=Path(schema_path),
+            source_root=Path(source_root),
+            clock=utc_now,
+        )
+
+    summary_files = list(out_path.glob("normalization-summary-*.json")) if out_path.exists() else []
     summary_data: dict[str, Any] = {"exit_code": exit_code}
 
     if summary_files:
@@ -83,12 +120,25 @@ def save_uploaded_report(file_name: str, file_bytes: bytes, raw_dir: str = "repo
 
 
 def list_raw_report_files(raw_dir: str = "reports/raw") -> list[dict[str, Any]]:
-    """Trả về danh sách chi tiết các file raw report trong raw_dir."""
+    """
+    Trả về danh sách chi tiết các file raw scanner report trong raw_dir.
+
+    Lọc bỏ các file metadata (*.meta.json), file cấu hình hoặc file không phải báo cáo quét.
+    """
     target_dir = Path(raw_dir)
     if not target_dir.exists():
         return []
 
-    files = [f for f in target_dir.glob("*") if f.is_file() and not f.name.startswith(".")]
+    valid_extensions = {".json", ".sarif", ".xml"}
+    files = [
+        f
+        for f in target_dir.glob("*")
+        if f.is_file()
+        and not f.name.startswith(".")
+        and f.suffix.lower() in valid_extensions
+        and not f.name.endswith(".meta.json")
+        and not f.name.endswith(".meta.yaml")
+    ]
     files.sort(key=os.path.getmtime, reverse=True)
 
     results = []

@@ -202,23 +202,50 @@ with tab2:
         if not raw_files:
             st.info("Chưa có file raw scanner report nào trong thư mục reports/raw/.")
         else:
-            select_all = st.checkbox("Chọn tất cả các file raw", value=True)
+            # Khởi tạo trạng thái checkbox trong session_state
+            if "select_all_raw_reports" not in st.session_state:
+                st.session_state["select_all_raw_reports"] = True
+                for rf in raw_files:
+                    st.session_state[f"chk_raw_{rf['name']}"] = True
+
+            def toggle_select_all_raw() -> None:
+                new_state = st.session_state.get("select_all_raw_reports", True)
+                for rf in raw_files:
+                    st.session_state[f"chk_raw_{rf['name']}"] = new_state
+
+            def toggle_individual_raw() -> None:
+                all_checked = all(st.session_state.get(f"chk_raw_{rf['name']}", False) for rf in raw_files)
+                st.session_state["select_all_raw_reports"] = all_checked
+
+            st.checkbox(
+                "Chọn tất cả các file raw",
+                key="select_all_raw_reports",
+                on_change=toggle_select_all_raw,
+            )
+
             for rf in raw_files:
                 fname = rf["name"]
                 fpath = rf["path"]
                 fsize = rf.get("size", 0)
-                checked = select_all
-                if st.checkbox(f"{fname} ({fsize} bytes)", value=checked, key=f"chk_{fname}"):
+                if f"chk_raw_{fname}" not in st.session_state:
+                    st.session_state[f"chk_raw_{fname}"] = st.session_state.get("select_all_raw_reports", True)
+
+                is_checked = st.checkbox(
+                    f"{fname} ({fsize:,} bytes)",
+                    key=f"chk_raw_{fname}",
+                    on_change=toggle_individual_raw,
+                )
+                if is_checked:
                     selected_raw_files.append(fpath)
 
         if st.button("Chuẩn Hóa Báo Cáo (Run Normalizer)", type="primary", use_container_width=True):
             if not selected_raw_files:
                 st.warning("Vui lòng tích chọn ít nhất 1 tệp raw report.")
             else:
-                with st.spinner("Đang chuẩn hóa Unified Findings..."):
-                    success, summary_data = execute_normalization()
+                with st.spinner(f"Đang chuẩn hóa {len(selected_raw_files)} tệp đã chọn..."):
+                    success, summary_data = execute_normalization(selected_files=selected_raw_files)
                     if success:
-                        st.success("Chuẩn hóa thành công! Đã tạo Unified Findings.")
+                        st.success(f"Chuẩn hóa thành công! Đã tạo Unified Findings từ {len(selected_raw_files)} tệp được chọn.")
                         st.rerun()
                     else:
                         st.error(f"Lỗi khi chuẩn hóa: {summary_data.get('error', 'Xem logs chi tiết')}")
