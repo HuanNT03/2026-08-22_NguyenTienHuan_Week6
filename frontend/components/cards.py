@@ -1,14 +1,10 @@
-"""Component renderers và UI cards cho Streamlit Dashboard (Bento Box Enhanced)."""
+"""Component renderers và UI cards cho Streamlit Dashboard (Bento Box + Shadcn UI)."""
+
+from __future__ import annotations
 
 import streamlit as st
 
-try:
-    import streamlit_shadcn_ui as ui
-    SHADCN_AVAILABLE = True
-except ImportError:
-    SHADCN_AVAILABLE = False
-
-from frontend.components.bento import render_bento_card, render_bento_header
+from frontend.components.bento import format_material_icon, render_bento_card, render_bento_header
 
 
 def render_metric_card(
@@ -16,37 +12,27 @@ def render_metric_card(
     content: str,
     description: str = "",
     key: str | None = None,
-    icon: str = "📊",
+    icon: str = "analytics",
     badge_text: str | None = None,
     badge_variant: str = "info",
 ) -> None:
-    """Render Metric Card bằng Bento Card styling hoặc fallback shadcn-ui."""
-    if SHADCN_AVAILABLE and hasattr(ui, "metric_card") and not badge_text:
-        ui.metric_card(label=title, value=content, description=description, key=key)
-    else:
-        render_bento_card(
-            title=title,
-            value=content,
-            description=description,
-            icon=icon,
-            badge_text=badge_text,
-            badge_variant=badge_variant,
-        )
+    """Render Metric Card bằng Bento Card styling chuẩn Shadcn UI."""
+    render_bento_card(
+        title=title,
+        value=content,
+        description=description,
+        icon=icon,
+        badge_text=badge_text,
+        badge_variant=badge_variant,
+    )
 
 
-def render_badge(text: str, variant: str = "default") -> None:
+def render_badge(text: str, variant: str = "default", icon: str | None = None) -> None:
     """
     Render Badge chuẩn Bento / Shadcn style cho Severity / Tool / Status.
     Variants: 'critical', 'high', 'medium', 'low', 'info', 'default', 'success'
     """
     v_clean = variant.lower()
-    if SHADCN_AVAILABLE and hasattr(ui, "badge"):
-        try:
-            ui.badge(text=text, variant=v_clean)
-            return
-        except Exception:  # noqa: S110, BLE001
-            pass
-
     colors = {
         "critical": ("#f38ba8", "rgba(243, 139, 168, 0.15)", "rgba(243, 139, 168, 0.4)"),
         "high": ("#fab387", "rgba(250, 179, 135, 0.15)", "rgba(250, 179, 135, 0.4)"),
@@ -57,13 +43,14 @@ def render_badge(text: str, variant: str = "default") -> None:
         "default": ("#cdd6f4", "rgba(49, 50, 68, 0.6)", "rgba(205, 214, 244, 0.2)"),
     }
     fg, bg, border = colors.get(v_clean, colors["default"])
+    icon_html = f"{format_material_icon(icon, size=13)} " if icon else ""
 
     st.markdown(
-        f'<span style="background-color: {bg}; color: {fg}; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; border: 1px solid {border}; display: inline-block; margin-right: 6px; margin-bottom: 4px; letter-spacing: 0.03em;">{text}</span>',
+        f'<span style="background-color: {bg}; color: {fg}; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; border: 1px solid {border}; display: inline-flex; align-items: center; gap: 4px; margin-right: 6px; margin-bottom: 4px; letter-spacing: 0.03em;">{icon_html}{text}</span>',
         unsafe_allow_html=True,
     )
 
 
-def render_section_header(title: str, subtitle: str = "", icon: str = "🛡️") -> None:
-    """Render Section Header chuẩn UI Bento Box."""
+def render_section_header(title: str, subtitle: str = "", icon: str = "security") -> None:
+    """Render Section Header chuẩn UI Bento Box với Material Symbol."""
     render_bento_header(title=title, subtitle=subtitle, icon=icon)

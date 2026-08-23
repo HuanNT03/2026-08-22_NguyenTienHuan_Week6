@@ -1,4 +1,8 @@
-"""HITL Approval Queue State Manager & Interactive Sidebar Component."""
+"""HITL Approval Queue State Manager & Interactive Sidebar Component.
+
+Quản lý hàng đợi phê duyệt Human-In-The-Loop cho Project Sentinel Streamlit Dashboard.
+Chuẩn hóa 100% bằng Google Material Symbols Outlined, loại bỏ hoàn toàn ký tự emoji.
+"""
 
 from __future__ import annotations
 
@@ -11,7 +15,23 @@ import streamlit as st
 
 @dataclass
 class HITLAction:
-    """Represents a security probe action pending or resolved through HITL gate."""
+    """Đại diện cho một hành động kiểm thử bảo mật đang chờ hoặc đã được xử lý qua chốt chặn HITL.
+
+    Attributes:
+        action_id: Mã định danh hành động (vd: 'REQ-01').
+        endpoint: Endpoint HTTP kiểm thử (vd: '/rest/products/search?q=apple').
+        method: Phương thức HTTP ('GET', 'PUT', 'OPTIONS').
+        payload: Dữ liệu payload gửi kèm (nếu có).
+        headers: Các HTTP header tùy chỉnh.
+        risk_level: Mức độ rủi ro ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL').
+        rationale: Lý do thực hiện kiểm thử.
+        created_at: Thời điểm tạo yêu cầu (timestamp unix epoch).
+        timeout_seconds: Thời gian chờ tối đa bằng giây (mặc định 120s).
+        status: Trạng thái hiện tại ('PENDING', 'APPROVED', 'REJECTED', 'TIMED_OUT').
+        resolved_by: Tên người/hệ thống đã đưa ra quyết định duyệt/từ chối.
+        resolved_at: Thời điểm xử lý quyết định.
+        rejection_reason: Lý do từ chối nếu bị hủy.
+    """
 
     action_id: str
     endpoint: str
@@ -29,22 +49,22 @@ class HITLAction:
 
     @property
     def remaining_seconds(self) -> int:
-        """Calculate remaining countdown seconds before 120s timeout."""
+        """Tính toán số giây còn lại trước khi hết hạn 120s timeout."""
         elapsed = time.time() - self.created_at
         rem = int(self.timeout_seconds - elapsed)
         return max(0, rem)
 
     @property
     def is_expired(self) -> bool:
-        """True if countdown timer reached zero."""
+        """Trả về True nếu bộ đếm ngược đã về 0."""
         return self.remaining_seconds <= 0
 
 
 class HITLQueueManager:
-    """Manages the in-memory lifecycle of HITL actions for Streamlit session."""
+    """Quản lý vòng đời trong bộ nhớ của các hành động HITL trong Streamlit session."""
 
     def __init__(self) -> None:
-        """Initialize empty action registry and counter."""
+        """Khởi tạo danh sách rỗng các action và bộ đếm tuần tự."""
         self.actions: dict[str, HITLAction] = {}
         self._seq: int = 1
 
@@ -58,7 +78,20 @@ class HITLQueueManager:
         rationale: str = "",
         timeout_seconds: int = 120,
     ) -> str:
-        """Add a new action to the pending queue and return generated action_id."""
+        """Thêm một hành động mới vào hàng đợi chờ duyệt và trả về mã action_id được sinh ra.
+
+        Args:
+            endpoint: Endpoint HTTP cần thăm dò.
+            method: Phương thức HTTP.
+            payload: Payload dữ liệu gửi kèm nếu có.
+            headers: Headers HTTP bổ sung.
+            risk_level: Mức độ rủi ro đánh giá ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL').
+            rationale: Lý do và căn cứ kiểm thử an ninh.
+            timeout_seconds: Thời gian hết hạn (mặc định 120s).
+
+        Returns:
+            str: Mã định danh hành động (vd: 'REQ-01', 'REQ-02').
+        """
         action_id = f"REQ-{self._seq:02d}"
         self._seq += 1
         action = HITLAction(
@@ -75,7 +108,15 @@ class HITLQueueManager:
         return action_id
 
     def approve_action(self, action_id: str, operator: str = "security_operator") -> bool:
-        """Mark an action as APPROVED."""
+        """Đánh dấu hành động là APPROVED (Phê duyệt).
+
+        Args:
+            action_id: Mã hành động cần duyệt.
+            operator: Tên định danh chuyên viên phê duyệt.
+
+        Returns:
+            bool: True nếu chuyển trạng thái thành công, False nếu mã không tồn tại hoặc không ở trạng thái PENDING.
+        """
         if action_id not in self.actions:
             return False
         action = self.actions[action_id]
@@ -86,8 +127,22 @@ class HITLQueueManager:
         action.resolved_at = time.time()
         return True
 
-    def reject_action(self, action_id: str, reason: str = "Rejected by operator", operator: str = "security_operator") -> bool:
-        """Mark an action as REJECTED."""
+    def reject_action(
+        self,
+        action_id: str,
+        reason: str = "Rejected by operator",
+        operator: str = "security_operator",
+    ) -> bool:
+        """Đánh dấu hành động là REJECTED (Từ chối).
+
+        Args:
+            action_id: Mã hành động cần từ chối.
+            reason: Lý do từ chối.
+            operator: Tên định danh chuyên viên từ chối.
+
+        Returns:
+            bool: True nếu chuyển trạng thái thành công, False nếu mã không tồn tại hoặc không ở trạng thái PENDING.
+        """
         if action_id not in self.actions:
             return False
         action = self.actions[action_id]
@@ -100,7 +155,11 @@ class HITLQueueManager:
         return True
 
     def check_timeouts(self) -> list[str]:
-        """Check all pending actions and automatically transition expired ones to TIMED_OUT."""
+        """Quét và tự động chuyển các hành động quá hạn 120s sang trạng thái TIMED_OUT.
+
+        Returns:
+            list[str]: Danh sách các action_id vừa bị chuyển sang TIMED_OUT.
+        """
         timed_out: list[str] = []
         for action_id, action in self.actions.items():
             if action.status == "PENDING" and action.is_expired:
@@ -112,22 +171,26 @@ class HITLQueueManager:
 
     @property
     def pending_actions(self) -> list[HITLAction]:
-        """Return list of currently pending actions."""
+        """Trả về danh sách các hành động đang ở trạng thái PENDING."""
         self.check_timeouts()
         return [a for a in self.actions.values() if a.status == "PENDING"]
 
     @property
     def approved_actions(self) -> list[HITLAction]:
-        """Return list of approved actions."""
+        """Trả về danh sách các hành động đã được APPROVED."""
         return [a for a in self.actions.values() if a.status == "APPROVED"]
 
     @property
     def rejected_actions(self) -> list[HITLAction]:
-        """Return list of rejected or timed out actions."""
+        """Trả về danh sách các hành động bị REJECTED hoặc TIMED_OUT."""
         return [a for a in self.actions.values() if a.status in ("REJECTED", "TIMED_OUT")]
 
     def get_counts(self) -> dict[str, int]:
-        """Return counts of actions grouped by status."""
+        """Trả về thống kê số lượng hành động theo từng nhóm trạng thái.
+
+        Returns:
+            dict[str, int]: Dictionary với các keys 'pending', 'approved', 'rejected', 'total'.
+        """
         self.check_timeouts()
         return {
             "pending": len(self.pending_actions),
@@ -138,15 +201,15 @@ class HITLQueueManager:
 
 
 def get_session_hitl_manager() -> HITLQueueManager:
-    """Retrieve or initialize the HITLQueueManager in Streamlit session state."""
+    """Truy xuất hoặc khởi tạo đối tượng HITLQueueManager trong Streamlit session_state."""
     if "hitl_manager" not in st.session_state:
         mgr = HITLQueueManager()
-        # Pre-populate sample verified items for demonstration
+        # Seed initial demonstrated verified item
         mgr.add_action(
             endpoint="/rest/products/search?q=apple",
             method="GET",
             risk_level="LOW",
-            rationale="Verify SQLi search filter",
+            rationale="Verify SQLi search filter probe",
         )
         mgr.approve_action("REQ-01")
         st.session_state.hitl_manager = mgr
@@ -154,52 +217,65 @@ def get_session_hitl_manager() -> HITLQueueManager:
 
 
 def render_hitl_sidebar(manager: HITLQueueManager | None = None) -> None:
-    """Render the interactive HITL Approval Queue in the Streamlit Sidebar."""
+    """Hiển thị Hàng Đợi Phê Duyệt HITL trên Sidebar Streamlit theo chuẩn Bento Box + Material Symbols."""
     mgr = manager or get_session_hitl_manager()
     counts = mgr.get_counts()
 
     with st.sidebar:
         st.markdown(
             """
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                <span class="material-symbols-outlined" style="font-size: 22px; color: #4D8EFF;">gavel</span>
-                <span style="font-size: 16px; font-weight: 700; color: #cdd6f4; text-transform: uppercase; letter-spacing: 0.05em;">
-                    Hàng Đợi Phê Duyệt HITL
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.08);">
+                <span class="material-symbols-outlined" style="font-size: 22px; color: #3B82F6;">gavel</span>
+                <span style="font-size: 14px; font-weight: 700; color: #cdd6f4; text-transform: uppercase; letter-spacing: 0.05em;">
+                    HÀNG ĐỢI PHÊ DUYỆT (HITL)
                 </span>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-        # Tab/Group 1: Pending Actions
+        # Nhóm 1: Yêu cầu Đang chờ duyệt (Pending Actions)
         pending = mgr.pending_actions
         pending_badge_color = "#fab387" if pending else "#6c7086"
         st.markdown(
             f"""
-            <div style="font-size: 13px; font-weight: 600; color: {pending_badge_color}; margin-top: 8px; margin-bottom: 6px;">
-                ⏳ Đang chờ duyệt ({len(pending)})
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 6px; margin-bottom: 8px;">
+                <span style="font-size: 13px; font-weight: 600; color: {pending_badge_color}; display: flex; align-items: center; gap: 6px;">
+                    <span class="material-symbols-outlined" style="font-size: 16px;">schedule</span> Đang chờ duyệt
+                </span>
+                <span class="bento-badge {'high' if pending else 'default'}">{len(pending)}</span>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
         if not pending:
-            st.caption("Không có yêu cầu nào đang chờ.")
+            st.caption("Không có yêu cầu nào đang chờ xử lý.")
         else:
             for act in pending:
+                risk_variant = {
+                    "LOW": "low",
+                    "MEDIUM": "medium",
+                    "HIGH": "high",
+                    "CRITICAL": "critical",
+                }.get(act.risk_level, "info")
+
                 with st.container():
                     st.markdown(
                         f"""
-                        <div style="background: rgba(30, 30, 46, 0.9); border: 1px solid rgba(250, 179, 135, 0.4); border-radius: 10px; padding: 10px; margin-bottom: 8px;">
-                            <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; color: #fab387;">
-                                <span>#{act.action_id} | {act.method}</span>
-                                <span>⏱️ {act.remaining_seconds}s</span>
+                        <div style="background: rgba(17, 25, 39, 0.95); border: 1px solid rgba(250, 179, 135, 0.35); border-radius: 12px; padding: 12px; margin-bottom: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.3);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <span style="font-size: 12px; font-weight: 700; color: #fab387;">#{act.action_id} | {act.method}</span>
+                                <span class="bento-badge default"><span class="material-symbols-outlined" style="font-size: 12px;">timer</span> {act.remaining_seconds}s</span>
                             </div>
-                            <div style="font-size: 11px; color: #cdd6f4; font-family: monospace; word-break: break-all; margin: 4px 0;">
+                            <div style="font-size: 11px; color: #cdd6f4; font-family: monospace; word-break: break-all; margin-bottom: 6px; background: rgba(0,0,0,0.25); padding: 4px 8px; border-radius: 6px;">
                                 {act.endpoint}
                             </div>
-                            <div style="font-size: 11px; color: #a6adc8;">
-                                Rủi ro: <b>{act.risk_level}</b> | {act.rationale}
+                            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: #a6adc8;">
+                                <span>Rủi ro: <span class="bento-badge {risk_variant}">{act.risk_level}</span></span>
+                            </div>
+                            <div style="font-size: 11px; color: #6c7086; margin-top: 4px;">
+                                {act.rationale}
                             </div>
                         </div>
                         """,
@@ -207,41 +283,41 @@ def render_hitl_sidebar(manager: HITLQueueManager | None = None) -> None:
                     )
                     col_appr, col_rej = st.columns(2)
                     with col_appr:
-                        if st.button("✅ Duyệt", key=f"btn_appr_{act.action_id}", use_container_width=True):
+                        if st.button("Phê duyệt", key=f"btn_appr_{act.action_id}", type="primary", use_container_width=True):
                             mgr.approve_action(act.action_id)
                             st.rerun()
                     with col_rej:
-                        if st.button("❌ Từ chối", key=f"btn_rej_{act.action_id}", use_container_width=True):
+                        if st.button("Từ chối", key=f"btn_rej_{act.action_id}", use_container_width=True):
                             mgr.reject_action(act.action_id)
                             st.rerun()
 
         st.divider()
 
-        # Group 2: Approved History
+        # Nhóm 2: Yêu cầu Đã xác minh (Approved History)
         approved = mgr.approved_actions
-        with st.expander(f"✅ Đã xác minh & Gửi ({len(approved)})", expanded=False):
+        with st.expander(f"Đã xác minh ({len(approved)})", expanded=False):
             if not approved:
-                st.caption("Chưa có request nào đã duyệt.")
+                st.caption("Chưa có request nào được phê duyệt.")
             for act in reversed(approved[-5:]):
                 st.markdown(
                     f"""
-                    <div style="font-size: 11px; color: #a6e3a1; margin-bottom: 6px; font-family: monospace;">
-                        <b>{act.action_id}</b> [{act.method}] {act.endpoint}
+                    <div style="font-size: 11px; color: #a6e3a1; margin-bottom: 6px; font-family: monospace; background: rgba(166, 227, 161, 0.08); padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(166, 227, 161, 0.2);">
+                        <span style="font-weight: 700;">#{act.action_id}</span> [{act.method}] {act.endpoint}
                     </div>
                     """,
                     unsafe_allow_html=True,
                 )
 
-        # Group 3: Rejected / Timed out History
+        # Nhóm 3: Yêu cầu Đã từ chối / Hết giờ (Rejected History)
         rejected = mgr.rejected_actions
-        with st.expander(f"🛑 Đã từ chối / Hết giờ ({len(rejected)})", expanded=False):
+        with st.expander(f"Đã từ chối / Hết giờ ({len(rejected)})", expanded=False):
             if not rejected:
                 st.caption("Chưa có request nào bị từ chối.")
             for act in reversed(rejected[-5:]):
                 st.markdown(
                     f"""
-                    <div style="font-size: 11px; color: #f38ba8; margin-bottom: 6px; font-family: monospace;">
-                        <b>{act.action_id}</b> [{act.status}] {act.endpoint}
+                    <div style="font-size: 11px; color: #f38ba8; margin-bottom: 6px; font-family: monospace; background: rgba(243, 139, 168, 0.08); padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(243, 139, 168, 0.2);">
+                        <span style="font-weight: 700;">#{act.action_id}</span> [{act.status}] {act.endpoint}
                     </div>
                     """,
                     unsafe_allow_html=True,
