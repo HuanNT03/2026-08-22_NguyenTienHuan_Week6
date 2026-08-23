@@ -21,6 +21,7 @@ def run_agent_analysis(
     max_react_steps: int = 5,
     output_dir: str = "reports/analyzed",
     log_file: str | None = None,
+    approval_callback: Any = None,
 ) -> tuple[bool, dict[str, Any]]:
     """
     Kích hoạt Security Analysis Agent chạy phân tích trên tập findings_path.
@@ -32,6 +33,7 @@ def run_agent_analysis(
         max_react_steps: Số bước ReAct tối đa cho mỗi nhóm
         output_dir: Thư mục chứa báo cáo xuất ra
         log_file: Tệp ghi log tùy chọn
+        approval_callback: Hàm callback phê duyệt rủi ro HITL (nếu có)
 
     Returns:
         tuple[bool, dict]: (Thành công hay không, Thông tin tóm tắt kết quả analysis summary)
@@ -46,6 +48,8 @@ def run_agent_analysis(
     config.agent_mode = "react" if agent_mode.lower() == "react" else "static"
     config.max_react_steps = int(max_react_steps)
     config.output_dir = Path(output_dir)
+    if approval_callback is not None:
+        config.approval_callback = approval_callback
 
     target_log_file = log_file or str(Path("logs/agent-runner.log"))
 

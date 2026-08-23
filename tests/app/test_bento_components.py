@@ -111,3 +111,20 @@ def test_hitl_queue_manager_timeout_expiry() -> None:
     assert mgr.actions[action_id].status == "TIMED_OUT"
     assert len(mgr.pending_actions) == 0
     assert len(mgr.rejected_actions) == 1
+
+
+def test_hitl_queue_manager_record_rejected_action() -> None:
+    """Verify directly recording rejected actions from Agent execution."""
+    mgr = HITLQueueManager()
+    action_id = mgr.record_rejected_action(
+        endpoint="/rest/user/login",
+        method="POST",
+        payload={"email": "admin@juice-sh.op"},
+        risk_level="MEDIUM",
+        rationale="Agent ReAct Probe",
+        reason="Chốt chặn HITL: Tự động chặn trong phiên Agent",
+    )
+    assert action_id.startswith("REQ-")
+    assert len(mgr.rejected_actions) == 1
+    assert mgr.actions[action_id].status == "REJECTED"
+    assert mgr.actions[action_id].rejection_reason == "Chốt chặn HITL: Tự động chặn trong phiên Agent"

@@ -154,6 +154,35 @@ class HITLQueueManager:
         action.resolved_at = time.time()
         return True
 
+    def record_rejected_action(
+        self,
+        endpoint: str,
+        method: str,
+        payload: Any = None,
+        headers: dict[str, str] | None = None,
+        risk_level: Literal["LOW", "MEDIUM", "HIGH", "CRITICAL"] = "MEDIUM",
+        rationale: str = "",
+        reason: str = "Tự động chặn bởi chính sách HITL (cần phê duyệt thủ công)",
+    ) -> str:
+        """Ghi nhận một hành động bị chặn trực tiếp từ Agent vào danh sách đã từ chối."""
+        action_id = f"REQ-{self._seq:02d}"
+        self._seq += 1
+        action = HITLAction(
+            action_id=action_id,
+            endpoint=endpoint,
+            method=method.upper(),
+            payload=payload,
+            headers=headers or {},
+            risk_level=risk_level,
+            rationale=rationale,
+            status="REJECTED",
+            resolved_by="hitl_policy_gate",
+            resolved_at=time.time(),
+            rejection_reason=reason,
+        )
+        self.actions[action_id] = action
+        return action_id
+
     def check_timeouts(self) -> list[str]:
         """Quét và tự động chuyển các hành động quá hạn 120s sang trạng thái TIMED_OUT.
 

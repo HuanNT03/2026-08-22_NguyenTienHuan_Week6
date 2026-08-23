@@ -484,11 +484,29 @@ with tab5:
         else:
             with st.spinner(f"AI Security Agent đang phân tích ({agent_mode_sel} mode, max {max_steps_sel} steps)..."):
                 start_agent_t = time.time()
+
+                def ui_agent_hitl_callback(assessment: dict[str, Any]) -> bool:
+                    """Đón bắt các lệnh gọi tool rủi ro cao từ Agent và ghi nhận vào HITL Queue trên Sidebar."""
+                    endpoint = assessment.get("endpoint", "/")
+                    method = assessment.get("method", "GET")
+                    risk_level = assessment.get("risk_level", "MEDIUM")
+                    purpose = assessment.get("purpose", f"Probe kiểm thử {method} vào {endpoint}")
+                    hitl_mgr.record_rejected_action(
+                        endpoint=endpoint,
+                        method=method,
+                        payload=assessment.get("payload"),
+                        risk_level=risk_level,
+                        rationale=f"Agent ReAct Probe: {purpose}",
+                        reason="Chốt chặn HITL: Tự động chặn trong phiên Agent tự động (cần phê duyệt thủ công)",
+                    )
+                    return False
+
                 success, res_summary = run_agent_analysis(
                     findings_path=selected_findings_file,
                     model=model_name,
                     agent_mode=agent_mode_sel,
                     max_react_steps=max_steps_sel,
+                    approval_callback=ui_agent_hitl_callback,
                 )
                 if success:
                     st.success(f"Phân tích hoàn tất trong {time.time() - start_agent_t:.2f}s!")
