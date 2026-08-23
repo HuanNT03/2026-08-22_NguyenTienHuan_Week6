@@ -40,7 +40,7 @@
 - **Phụ thuộc LLM**: Chi phí token và thời gian phản hồi phụ thuộc vào mô hình LLM bên ngoài (Qwen-Plus / OpenAI-compatible).
 - **Nguy cơ lộ lọt một phần secret**: Việc cắt response ở mốc 2KB trước khi mask có thể làm lộ một phần chuỗi bí mật nếu điểm cắt rơi giữa JWT/email, đây là đánh đổi giữa chống zip-bomb và độ chính xác của redaction.
 - **Vẫn chưa có một bản đánh giá cụ thể**: Do chưa có một bộ dataset chuẩn liệt kê các lỗ hổng được tạo trên Juice Shop nên hiện tại dự án mới chỉ tính toán độ chính xác dựa trên 1 phiên bản mock server để kiểm tra.
-- **Phiên bản này mới chỉ nằm ở mức độ phân tích**: Do các công cụ hiện tại vẫn được cấu hình nằm chung 1 network trong docker nên các công cụ quét vẫn chưa .
+- **Phiên bản này mới chỉ nằm ở mức độ phân tích**: Do các công cụ hiện tại vẫn được cấu hình nằm chung 1 network trong docker nên các công cụ quét vẫn chưa được cấu hình để quét sâu hơn vào các mục tiêu khác.
 
 ---
 
