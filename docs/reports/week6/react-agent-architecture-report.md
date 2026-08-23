@@ -94,7 +94,7 @@ sequenceDiagram
             Agent->>Dispatcher: ACTION: send_safe_request(endpoint, method, payload)
             Dispatcher->>Gateway: Gửi request qua Kong Gateway
             
-            opt Request rủi ro (PUT / Burst / Payload lớn)
+            opt Request rủi ro (POST / Burst / Payload lớn)
                 Gateway->>Operator: Yêu cầu Approve / Reject qua CLI / Web UI
                 Operator-->>Gateway: Xác nhận Phê duyệt
             end

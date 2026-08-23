@@ -82,7 +82,7 @@ class HITLQueueManager:
 
         Args:
             endpoint: Endpoint HTTP cần thăm dò.
-            method: Phương thức HTTP.
+            method: Phương thức HTTP ('GET', 'POST', 'OPTIONS').
             payload: Payload dữ liệu gửi kèm nếu có.
             headers: Headers HTTP bổ sung.
             risk_level: Mức độ rủi ro đánh giá ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL').
@@ -137,8 +137,8 @@ class HITLQueueManager:
 
         Args:
             action_id: Mã hành động cần từ chối.
-            reason: Lý do từ chối.
             operator: Tên định danh chuyên viên từ chối.
+            reason: Lý do từ chối.
 
         Returns:
             bool: True nếu chuyển trạng thái thành công, False nếu mã không tồn tại hoặc không ở trạng thái PENDING.
@@ -284,10 +284,24 @@ def render_hitl_sidebar(manager: HITLQueueManager | None = None) -> None:
                     with col_appr:
                         if st.button("Phê duyệt", key=f"btn_appr_{act.action_id}", type="primary", use_container_width=True):
                             mgr.approve_action(act.action_id)
+                            try:
+                                from src.gateway.safe_requester import send_safe_request
+                                probe_res = send_safe_request(
+                                    endpoint=act.endpoint,
+                                    method=act.method,
+                                    payload_value=act.payload,
+                                    headers=act.headers,
+                                    auto_approve=True,
+                                )
+                                st.session_state.last_probe_response = probe_res
+                                st.toast(f"Đã duyệt và gửi thành công #{act.action_id} (HTTP {probe_res.get('status_code')})!")
+                            except Exception as err:
+                                st.toast(f"Lỗi khi gửi request: {err}")
                             st.rerun()
                     with col_rej:
                         if st.button("Từ chối", key=f"btn_rej_{act.action_id}", use_container_width=True):
                             mgr.reject_action(act.action_id)
+                            st.toast(f"Đã từ chối #{act.action_id}")
                             st.rerun()
 
         st.divider()

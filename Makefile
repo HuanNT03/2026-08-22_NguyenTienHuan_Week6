@@ -73,7 +73,7 @@ gateway-logs: ## Follow Kong Gateway container logs.
 gateway-status: ## Show Kong Gateway and Juice Shop service status.
 	docker compose -f docker-compose.yml -f docker-compose.gateway.yml ps kong-gateway juice-shop
 
-test-request: kb-python-check ## Gửi probe HTTP an toàn qua Gateway. Tham số: ARGS="--url <endpoint> [--method GET|PUT|OPTIONS] [--payload-category <cat>] [--payload-value <val>] [--burst <N>] [--oversized] [--auto-approve]"
+test-request: kb-python-check ## Gửi probe HTTP an toàn qua Gateway. Tham số: ARGS="--url <endpoint> [--method GET|POST|OPTIONS] [--payload-category <cat>] [--payload-value <val>] [--burst <N>] [--oversized] [--auto-approve]"
 	@$(VENV_PYTHON) -m src.gateway.safe_requester $(ARGS)
 
 gateway-test: kb-python-check ## Chạy test suite cho API Gateway, Safe Requester và HITL queue.

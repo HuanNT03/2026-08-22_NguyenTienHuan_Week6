@@ -216,11 +216,11 @@ Truy cập **`http://localhost:8501`** trên trình duyệt để vận hành fu
 
 #### 🔹 Bước 4: Kiểm Thử An Toàn Qua Gateway (Tab 4 — Kiểm Thử Gateway)
 1. Nhập endpoint cần kiểm thử vào ô `Endpoint` (Ví dụ: `/rest/products/search?q=apple` hoặc `/api/vulnerable/env-config`).
-2. Chọn phương thức HTTP tuân thủ chính sách nghiêm ngặt (`GET`, `OPTIONS`, `PUT`).
+2. Chọn phương thức HTTP tuân thủ chính sách nghiêm ngặt (`GET`, `POST`, `OPTIONS`).
 3. Chọn nhóm payload mẫu an toàn từ danh mục `payloads.json` hoặc nhập custom payload / headers.
 4. Bấm **Gửi Request Kiểm Thử (Send Safe Request)**:
    - Request được gửi qua Kong API Gateway với tự động tiêm `x-api-key`.
-   - Nếu là request có rủi ro (phương thức `PUT` hoặc `Burst Rate Limit`), yêu cầu sẽ được chuyển vào **Hàng Đợi Phê Duyệt (HITL Queue)** ở Sidebar với đếm ngược 120s Fail-Safe.
+   - Nếu là request có rủi ro (phương thức `POST` hoặc `Burst Rate Limit`), yêu cầu sẽ được chuyển vào **Hàng Đợi Phê Duyệt (HITL Queue)** ở Sidebar với đếm ngược 120s Fail-Safe.
    - Phản hồi nhận về được khử khuẩn 100% dữ liệu nhạy cảm (PII, Password, Token) và bọc trong thẻ XML `<untrusted_http_response>` bảo vệ chống Prompt Injection.
 
 #### 🔹 Bước 5: Phân Tích & Báo Cáo AI Agent (Tab 5 — Báo Cáo & Phân Tích)
@@ -314,8 +314,8 @@ make test-request ARGS="--url /rest/products/search?q=apple"
 # Kiểm tra CORS & Phương thức cho phép (OPTIONS)
 make test-request ARGS="--url /api/Products --method OPTIONS"
 
-# Gửi request PUT (Kích hoạt chốt chặn phê duyệt HITL 120s)
-make test-request ARGS="--url /rest/products/1/reviews --method PUT --payload-category special_chars"
+# Gửi request POST (Kích hoạt chốt chặn phê duyệt HITL 120s)
+make test-request ARGS="--url /rest/products/1/reviews --method POST --payload-category special_chars"
 
 # Kiểm tra Gateway chặn Rate Limit (Burst 25 requests -> HTTP 429)
 make test-request ARGS="--url /api/Products --method GET --count 25"

@@ -103,7 +103,7 @@ AGENT_TOOLS: list[dict[str, Any]] = [
             "name": "send_safe_request",
             "description": (
                 "Gửi HTTP request kiểm thử an toàn qua Kong API Gateway (Port 3000) vào ứng dụng đích để xác minh "
-                "lỗ hổng thời gian thực. Hỗ trợ GET, PUT, OPTIONS. Tự động kích hoạt HITL khi có rủi ro và "
+                "lỗ hổng thời gian thực. Hỗ trợ GET, POST, OPTIONS. Tự động kích hoạt HITL khi có rủi ro và "
                 "tự động khử khuẩn PII & bọc chống Prompt Injection trong thẻ <untrusted_http_response>."
             ),
             "parameters": {
@@ -115,9 +115,9 @@ AGENT_TOOLS: list[dict[str, Any]] = [
                     },
                     "method": {
                         "type": "string",
-                        "enum": ["GET", "PUT", "OPTIONS"],
+                        "enum": ["GET", "POST", "OPTIONS"],
                         "default": "GET",
-                        "description": "Phương thức HTTP được phép theo chính sách an toàn.",
+                        "description": "Phương thức HTTP được phép theo chính sách an toàn (GET, POST, OPTIONS).",
                     },
                     "payload_category": {
                         "type": "string",

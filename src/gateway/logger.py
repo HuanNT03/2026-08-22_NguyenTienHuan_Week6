@@ -45,7 +45,7 @@ def build_audit_record(
 
     Args:
         endpoint: Target HTTP path requested (e.g. '/api/Products').
-        method: HTTP method (e.g. 'GET', 'PUT', 'OPTIONS').
+        method: HTTP method (e.g. 'GET', 'POST', 'OPTIONS').
         status_code: Integer HTTP status code (0 if rejected/unreachable).
         duration_ms: Total roundtrip execution latency in milliseconds.
         approval_status: HITL approval state (APPROVED, AUTO_APPROVED, REJECTED_BY_USER,
@@ -155,7 +155,7 @@ def log_audit_event(
 
     Args:
         endpoint: Target HTTP path requested (e.g. '/api/Products').
-        method: HTTP method (e.g. 'GET', 'PUT', 'OPTIONS').
+        method: HTTP method (e.g. 'GET', 'POST', 'OPTIONS').
         status_code: Integer HTTP status code (0 if connection error or rejected before sending).
         duration_ms: Total latency in milliseconds.
         approval_status: HITL decision (APPROVED, AUTO_APPROVED, REJECTED_BY_USER,

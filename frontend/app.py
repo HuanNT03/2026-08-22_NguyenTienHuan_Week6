@@ -336,7 +336,7 @@ with tab4:
     with col_req1:
         st.markdown("#### 1. Cấu Hình Request Thăm Dò:")
         probe_endpoint = st.text_input("Endpoint / URL cần kiểm thử (bắt đầu bằng '/' hoặc 'http://', 'https://'):", value="/rest/products/search?q=apple", placeholder="/rest/products/search?q=apple, https://httpbin.org/get")
-        probe_method = st.selectbox("Phương thức HTTP (Strict Policy):", ["GET", "PUT", "OPTIONS"], index=0)
+        probe_method = st.selectbox("Phương thức HTTP (Strict Policy):", ["GET", "POST", "OPTIONS"], index=0)
 
         probe_payload_cat = st.selectbox(
             "Danh mục Payload An Toàn (payloads.json):",
@@ -359,6 +359,8 @@ with tab4:
         with col_b2:
             oversized_payload = st.toggle("1.5MB Oversized Payload (413 Test)", value=False)
 
+        require_hitl = st.toggle("Chốt chặn Human-in-the-Loop (Duyệt qua Sidebar)", value=(probe_method == "POST" or burst_count > 20 or oversized_payload))
+
         btn_send_probe = st.button("Gửi Probe An Toàn (Send Safe Request)", type="primary", use_container_width=True)
 
     with col_req2:
@@ -371,19 +373,40 @@ with tab4:
                 except json.JSONDecodeError:
                     st.error("Headers JSON không hợp lệ. Vui lòng kiểm tra lại cú pháp.")
 
-            with st.spinner("Đang gửi request qua Kong Gateway..."):
-                resp = send_safe_request(
+            from src.gateway.hitl import assess_request_risk
+            risk_eval = assess_request_risk(
+                method=probe_method,
+                endpoint=probe_endpoint,
+                payload_category=probe_payload_cat,
+                burst_count=burst_count,
+                oversized_payload=oversized_payload,
+            )
+
+            if require_hitl or risk_eval.get("requires_approval"):
+                resolved_payload = probe_custom_val if probe_custom_val.strip() else resolve_safe_payload(probe_payload_cat)
+                req_id = hitl_mgr.add_action(
                     endpoint=probe_endpoint,
                     method=probe_method,
-                    payload_category=probe_payload_cat,
-                    payload_value=probe_custom_val if probe_custom_val.strip() else None,
-                    burst_count=burst_count,
-                    oversized_payload=oversized_payload,
+                    payload=resolved_payload,
                     headers=custom_headers,
-                    auto_approve=True,
+                    risk_level=risk_eval.get("risk_level", "MEDIUM"),
+                    rationale=risk_eval.get("purpose", f"Probe kiểm thử {probe_method} vào {probe_endpoint}"),
                 )
-
-                st.session_state.last_probe_response = resp
+                st.warning(f"Request [{probe_method}] mức rủi ro [{risk_eval.get('risk_level')}] đã được đưa vào HÀNG ĐỢI PHÊ DUYỆT (HITL) trên Sidebar với mã #{req_id}. Vui lòng nhấn nút 'Phê duyệt' trên Sidebar để gửi đi.")
+                st.rerun()
+            else:
+                with st.spinner("Đang gửi request qua Kong Gateway..."):
+                    resp = send_safe_request(
+                        endpoint=probe_endpoint,
+                        method=probe_method,
+                        payload_category=probe_payload_cat,
+                        payload_value=probe_custom_val if probe_custom_val.strip() else None,
+                        burst_count=burst_count,
+                        oversized_payload=oversized_payload,
+                        headers=custom_headers,
+                        auto_approve=True,
+                    )
+                    st.session_state.last_probe_response = resp
 
         if "last_probe_response" in st.session_state:
             res = st.session_state.last_probe_response

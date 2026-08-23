@@ -29,21 +29,21 @@ def test_tool_schema_structure() -> None:
     assert params["type"] == "object"
     assert "endpoint" in params["properties"]
     assert "method" in params["properties"]
-    assert params["properties"]["method"]["enum"] == ["GET", "PUT", "OPTIONS"]
+    assert params["properties"]["method"]["enum"] == ["GET", "POST", "OPTIONS"]
     assert "endpoint" in params["required"]
 
 
 def test_validate_method() -> None:
     """Verify HTTP method validation strictly conforms to ALLOWED_METHODS."""
     assert validate_method("GET") is True
-    assert validate_method("PUT") is True
+    assert validate_method("POST") is True
     assert validate_method("OPTIONS") is True
     assert validate_method("get") is True
-    assert validate_method("  put  ") is True
+    assert validate_method("  post  ") is True
     assert validate_method("options") is True
 
     # Forbidden methods
-    assert validate_method("POST") is False
+    assert validate_method("PUT") is False
     assert validate_method("DELETE") is False
     assert validate_method("PATCH") is False
     assert validate_method("CONNECT") is False
@@ -81,7 +81,7 @@ def test_resolve_url() -> None:
 def test_send_safe_request_forbidden_method(tmp_path: Path) -> None:
     """Verify that forbidden HTTP methods return 405 without sending network traffic."""
     log_file = tmp_path / "audit.jsonl"
-    for forbidden_method in ["POST", "DELETE", "PATCH", "HEAD"]:
+    for forbidden_method in ["PUT", "DELETE", "PATCH", "HEAD"]:
         res = send_safe_request(
             endpoint="/api/Users",
             method=forbidden_method,
@@ -273,7 +273,7 @@ def test_send_safe_request_hitl_rejection(tmp_path: Path) -> None:
          patch("requests.Session.request") as mock_req:
         res = send_safe_request(
             endpoint="/rest/products/1/reviews",
-            method="PUT",
+            method="POST",
             payload_value={"message": "test", "author": "anonymous"},
             auto_approve=False,
             log_file=log_file,
@@ -328,8 +328,8 @@ def test_send_safe_request_burst_mode(tmp_path: Path) -> None:
     assert "Rate limited (429): 5 reqs" in audit_data["response_body_snippet"]
 
 
-def test_fact_check_put_product_reviews_endpoint(tmp_path: Path) -> None:
-    """Fact-check: Verify PUT /rest/products/:id/reviews behaves as an unauthenticated endpoint.
+def test_fact_check_post_product_reviews_endpoint(tmp_path: Path) -> None:
+    """Fact-check: Verify POST /rest/products/:id/reviews behaves as an unauthenticated endpoint.
 
     OWASP Juice Shop design allows anonymous users to post reviews without Authorization Bearer.
     Mocking the 201 Created server response proves our client handling processes the 201 response.
@@ -343,7 +343,7 @@ def test_fact_check_put_product_reviews_endpoint(tmp_path: Path) -> None:
     with patch("requests.Session.request", return_value=mock_resp):
         res = send_safe_request(
             endpoint="/rest/products/1/reviews",
-            method="PUT",
+            method="POST",
             payload_value={"message": "Great Juice!", "author": "anonymous@juice-sh.op"},
             auto_approve=True,
             log_file=log_file,

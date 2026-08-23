@@ -23,11 +23,11 @@ def test_assess_request_risk_low() -> None:
 
 
 def test_assess_request_risk_medium() -> None:
-    """Verify that PUT methods and security probe payloads are classified as MEDIUM risk."""
-    res_put = assess_request_risk(method="PUT", endpoint="/rest/products/1/reviews")
-    assert res_put["risk_level"] == "MEDIUM"
-    assert res_put["requires_approval"] is True
-    assert any("PUT" in factor for factor in res_put["risk_factors"])
+    """Verify that POST methods and security probe payloads are classified as MEDIUM risk."""
+    res_post = assess_request_risk(method="POST", endpoint="/rest/products/1/reviews")
+    assert res_post["risk_level"] == "MEDIUM"
+    assert res_post["requires_approval"] is True
+    assert any("POST" in factor for factor in res_post["risk_factors"])
 
     res_sqli = assess_request_risk(
         method="GET",
@@ -65,7 +65,7 @@ def test_assess_request_risk_high() -> None:
 
 def test_prompt_cli_approval_auto_approve_flag() -> None:
     """Verify that auto_approve=True approves immediately."""
-    assessment = assess_request_risk(method="PUT", endpoint="/rest/products/1/reviews")
+    assessment = assess_request_risk(method="POST", endpoint="/rest/products/1/reviews")
     assert prompt_cli_approval(assessment, auto_approve=True) is True
 
 
@@ -79,20 +79,20 @@ def test_prompt_cli_approval_ci_mode_env(monkeypatch) -> None:
 def test_prompt_cli_approval_user_yes(monkeypatch) -> None:
     """Verify that user entering 'y' / 'yes' returns True."""
     monkeypatch.setattr("sys.stdin.readline", lambda: "y\n")
-    assessment = assess_request_risk(method="PUT", endpoint="/rest/products/1/reviews")
+    assessment = assess_request_risk(method="POST", endpoint="/rest/products/1/reviews")
     assert prompt_cli_approval(assessment, auto_approve=False) is True
 
 
 def test_prompt_cli_approval_user_no(monkeypatch) -> None:
     """Verify that user entering 'n' / 'no' returns False."""
     monkeypatch.setattr("sys.stdin.readline", lambda: "n\n")
-    assessment = assess_request_risk(method="PUT", endpoint="/rest/products/1/reviews")
+    assessment = assess_request_risk(method="POST", endpoint="/rest/products/1/reviews")
     assert prompt_cli_approval(assessment, auto_approve=False) is False
 
 
 def test_prompt_cli_approval_timeout() -> None:
     """Verify that when select times out, False is returned (Default to Reject)."""
-    assessment = assess_request_risk(method="PUT", endpoint="/rest/products/1/reviews")
+    assessment = assess_request_risk(method="POST", endpoint="/rest/products/1/reviews")
 
     # Mock isatty to True and select.select to return empty list (simulating timeout)
     with patch("sys.stdin.isatty", return_value=True), patch("select.select", return_value=([], [], [])):

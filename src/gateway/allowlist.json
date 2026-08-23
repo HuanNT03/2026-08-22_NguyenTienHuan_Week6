@@ -46,7 +46,7 @@
     {
       "name": "route-product-reviews",
       "paths": ["~/rest/products/\\d+/reviews$"],
-      "methods": ["GET", "PUT", "OPTIONS"],
+      "methods": ["GET", "POST", "OPTIONS"],
       "allow": ["agent", "guest", "user"]
     },
     {

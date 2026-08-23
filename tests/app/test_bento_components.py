@@ -64,10 +64,10 @@ def test_hitl_queue_manager_lifecycle() -> None:
     # 1. Add pending action
     action_id = mgr.add_action(
         endpoint="/rest/products/1/reviews",
-        method="PUT",
+        method="POST",
         payload={"message": "Test review"},
         risk_level="MEDIUM",
-        rationale="Probe PUT mutation on reviews",
+        rationale="Probe POST mutation on reviews",
         timeout_seconds=120,
     )
     assert action_id.startswith("REQ-")

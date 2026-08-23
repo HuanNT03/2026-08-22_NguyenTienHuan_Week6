@@ -4,7 +4,7 @@ Module: src/gateway/safe_requester.py
 Mục đích:
     Cung cấp công cụ gửi HTTP Request an toàn qua Kong API Gateway (Port 3000)
     dành cho AI Security Analysis Agent và người vận hành (CLI / make test-request).
-    - Ràng buộc phương thức nghiêm ngặt: Chỉ chấp nhận GET, PUT, OPTIONS. Chặn mọi method khác (405).
+    - Ràng buộc phương thức nghiêm ngặt: Chỉ chấp nhận GET, POST, OPTIONS. Chặn mọi method khác (405).
     - Tự động tiêm khóa bí mật môi trường AGENT_API_KEY vào header x-api-key (Zero hardcode).
     - Tích hợp chốt chặn HITL (Đánh giá rủi ro, hỏi duyệt với Timeout 120s Fail-Safe).
     - Tự động sinh payload ngoại cỡ 1.5MB an toàn trong bộ nhớ khi oversized_payload=True.
@@ -34,7 +34,7 @@ from src.gateway.logger import log_audit_event
 from src.guardrails.injection import wrap_untrusted_response
 from src.guardrails.redactor import mask_sensitive_data
 
-ALLOWED_METHODS = {"GET", "PUT", "OPTIONS"}
+ALLOWED_METHODS = {"GET", "POST", "OPTIONS"}
 DEFAULT_GATEWAY_HOST = os.getenv("GATEWAY_HOST", "http://localhost:3000")
 DEFAULT_TIMEOUT = 7.0  # 7s (Kong 5s timeout + 2s buffer)
 MAX_RESPONSE_BYTES = 2048  # 2KB
@@ -46,8 +46,8 @@ TOOL_SCHEMA = {
     "name": "send_safe_request",
     "description": (
         "Gửi HTTP request kiểm thử an toàn qua Kong API Gateway (Port 3000). "
-        "Tool hỗ trợ các phương thức GET, PUT, OPTIONS, tự động tiêm x-api-key từ môi trường, "
-        "tự động kích hoạt chốt chặn HITL cho các hành động rủi ro (PUT, Burst mode, Payload lớn), "
+        "Tool hỗ trợ các phương thức GET, POST, OPTIONS, tự động tiêm x-api-key từ môi trường, "
+        "tự động kích hoạt chốt chặn HITL cho các hành động rủi ro (POST, Burst mode, Payload lớn), "
         "và làm sạch (redact) PII/Prompt Injection trước khi trả về cho Agent. "
         "Đầu ra bao gồm: status_code (int), endpoint (str), method (str), headers (dict), "
         "body (chuỗi an toàn đã bọc Guardrails), truncated (bool), và duration_ms (float)."
@@ -57,13 +57,13 @@ TOOL_SCHEMA = {
         "properties": {
             "endpoint": {
                 "type": "string",
-                "description": "Endpoint path cần kiểm thử (Ví dụ: '/rest/products/search?q=apple', '/api/Products', '/rest/products/1/reviews').",
+                "description": "Endpoint path hoặc URL tuyệt đối cần kiểm thử (Ví dụ: '/rest/products/search?q=apple', '/api/Products', 'https://example.com/api').",
             },
             "method": {
                 "type": "string",
-                "enum": ["GET", "PUT", "OPTIONS"],
+                "enum": ["GET", "POST", "OPTIONS"],
                 "default": "GET",
-                "description": "Phương thức HTTP được phép theo chính sách an toàn (GET, PUT, OPTIONS).",
+                "description": "Phương thức HTTP được phép theo chính sách an toàn (GET, POST, OPTIONS).",
             },
             "payload_category": {
                 "type": "string",
@@ -102,7 +102,7 @@ def validate_method(method: str) -> bool:
     """Check if an HTTP method complies with the strict Sentinel Safe Requester policy.
 
     Args:
-        method: HTTP method string (e.g. 'GET', 'PUT', 'OPTIONS').
+        method: HTTP method string (e.g. 'GET', 'POST', 'OPTIONS').
 
     Returns:
         bool: True if method is allowed in ALLOWED_METHODS, False otherwise.
@@ -191,7 +191,7 @@ def send_safe_request(
 
     Args:
         endpoint: Target endpoint path (e.g. '/api/Products', '/rest/products/search?q=apple').
-        method: HTTP method. Must be in {'GET', 'PUT', 'OPTIONS'}.
+        method: HTTP method. Must be in {'GET', 'POST', 'OPTIONS'}.
         payload_category: Identifier in payloads.json.
         payload_value: Optional specific payload string or dictionary.
         burst_count: Number of requests to send (default: 1; >1 for Burst Rate Limit test).
@@ -533,8 +533,8 @@ def main() -> None:
         "--method",
         "-m",
         default="GET",
-        choices=["GET", "PUT", "OPTIONS", "POST", "DELETE"],
-        help="HTTP Method (Allowed: GET, PUT, OPTIONS).",
+        choices=["GET", "POST", "OPTIONS", "PUT", "DELETE"],
+        help="HTTP Method (Allowed: GET, POST, OPTIONS).",
     )
     parser.add_argument(
         "--payload-category",

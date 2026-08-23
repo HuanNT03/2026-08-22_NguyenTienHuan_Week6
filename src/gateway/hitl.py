@@ -29,7 +29,7 @@ def assess_request_risk(
     """Evaluate the operational and security risk level of a proposed HTTP test request.
 
     Args:
-        method: HTTP method (e.g. 'GET', 'PUT', 'OPTIONS').
+        method: HTTP method (e.g. 'GET', 'POST', 'OPTIONS').
         endpoint: Target HTTP path (e.g. '/api/Products', '/rest/products/1/reviews').
         payload_category: Category identifier from payloads.json (e.g. 'sql_injection_probes').
         burst_count: Total number of requests planned in rapid succession (Burst Mode).
@@ -64,7 +64,7 @@ def assess_request_risk(
         )
 
     # 2. Evaluate Medium Risk criteria
-    if method_upper == "PUT":
+    if method_upper == "POST":
         risk_factors.append(f"Phương thức {method_upper} có khả năng ghi đè/tạo dữ liệu mới trên máy chủ mục tiêu")
 
     if 5 < count <= 20:
@@ -95,7 +95,7 @@ def assess_request_risk(
         purpose = "Kiểm chứng Gateway kích hoạt mã 413 Request Entity Too Large khi nhận payload 1.5MB"
     elif count > 1:
         purpose = f"Kiểm chứng Gateway kích hoạt mã 429 Too Many Requests khi gửi {count} requests liên tiếp"
-    elif method_upper == "PUT":
+    elif method_upper == "POST":
         purpose = f"Kiểm thử gửi dữ liệu kiểm toán {method_upper} tới {clean_endpoint}"
     elif method_upper == "OPTIONS":
         purpose = f"Kiểm tra CORS Preflight và danh sách HTTP Methods hỗ trợ trên {clean_endpoint}"

@@ -165,10 +165,10 @@ def test_dispatcher_hitl_rejection_interception() -> None:
     dispatcher = ToolDispatcher(approval_callback=mock_hitl_reject)
 
     with patch("src.gateway.safe_requester.log_audit_event"):
-        # PUT method requires HITL approval
+        # POST method requires HITL approval
         res = dispatcher.execute(
             "send_safe_request",
-            {"endpoint": "/rest/products/1/reviews", "method": "PUT", "payload_category": "special_chars"},
+            {"endpoint": "/rest/products/1/reviews", "method": "POST", "payload_category": "special_chars"},
         )
         assert res["status"] == "rejected"
         assert "rejected by human operator" in res["message"]
@@ -187,7 +187,7 @@ def test_dispatcher_hitl_approval_interception() -> None:
             "status": "success",
             "status_code": 200,
             "endpoint": "/rest/products/1/reviews",
-            "method": "PUT",
+            "method": "POST",
             "headers": {},
             "body": "<untrusted_http_response>success</untrusted_http_response>",
             "truncated": False,
@@ -195,7 +195,7 @@ def test_dispatcher_hitl_approval_interception() -> None:
         }
         res = dispatcher.execute(
             "send_safe_request",
-            {"endpoint": "/rest/products/1/reviews", "method": "PUT", "payload_category": "special_chars"},
+            {"endpoint": "/rest/products/1/reviews", "method": "POST", "payload_category": "special_chars"},
         )
         assert res["status_code"] == 200
         mock_exec.assert_called_once()
