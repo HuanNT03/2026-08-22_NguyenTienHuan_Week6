@@ -219,7 +219,6 @@ def get_session_hitl_manager() -> HITLQueueManager:
 def render_hitl_sidebar(manager: HITLQueueManager | None = None) -> None:
     """Hiển thị Hàng Đợi Phê Duyệt HITL trên Sidebar Streamlit theo chuẩn Bento Box + Material Symbols."""
     mgr = manager or get_session_hitl_manager()
-    counts = mgr.get_counts()
 
     with st.sidebar:
         st.markdown(
