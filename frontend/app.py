@@ -46,7 +46,7 @@ from src.app.scan_runner import (
     check_target_health,
     run_scanner_stream,
 )
-from src.gateway.safe_requester import send_safe_request
+from src.gateway.safe_requester import resolve_safe_payload, send_safe_request
 
 # Streamlit Page Setup - No Unicode Emojis
 st.set_page_config(
