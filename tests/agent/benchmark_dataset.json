@@ -1,0 +1,216 @@
+{
+  "benchmark_version": "1.0.0",
+  "description": "Project Sentinel Security Analysis Agent Benchmark Evaluation Dataset (Static vs ReAct)",
+  "cases": [
+    {
+      "case_id": "bench_01_sqli_login",
+      "title": "SQL Injection in User Authentication Route",
+      "primary_cwe_id": "CWE-89",
+      "owasp_category": "OWASP-A03:2021",
+      "expected_status": "confirmed",
+      "expected_severity": "critical",
+      "expected_correlation_type": "sast_dast_confirmed",
+      "requires_probing": true,
+      "probe_endpoint": "/rest/user/login",
+      "probe_method": "POST",
+      "ground_truth_label": "TRUE_POSITIVE",
+      "findings": [
+        {
+          "finding_id": "fnd_00000000000000000000000000000001",
+          "fingerprint": "fp_sha256:v1:0000000000000000000000000000000000000000000000000000000000000001",
+          "tool": "semgrep",
+          "scan_type": "SAST",
+          "location": {"kind": "code", "path": "routes/login.ts", "start_line": 34},
+          "severity": "critical",
+          "taxonomy": {"primary_cwe_id": "CWE-89", "owasp_category": "OWASP-A03:2021"}
+        },
+        {
+          "finding_id": "fnd_00000000000000000000000000000002",
+          "fingerprint": "fp_sha256:v1:0000000000000000000000000000000000000000000000000000000000000002",
+          "tool": "zap",
+          "scan_type": "DAST",
+          "location": {"kind": "http", "endpoint": "/rest/user/login", "parameter": "email"},
+          "severity": "high",
+          "taxonomy": {"primary_cwe_id": "CWE-89", "owasp_category": "OWASP-A03:2021"}
+        }
+      ]
+    },
+    {
+      "case_id": "bench_02_xss_search",
+      "title": "Reflected Cross-Site Scripting in Product Search",
+      "primary_cwe_id": "CWE-79",
+      "owasp_category": "OWASP-A03:2021",
+      "expected_status": "confirmed",
+      "expected_severity": "high",
+      "expected_correlation_type": "dast_only",
+      "requires_probing": true,
+      "probe_endpoint": "/rest/products/search?q=<script>",
+      "probe_method": "GET",
+      "ground_truth_label": "TRUE_POSITIVE",
+      "findings": [
+        {
+          "finding_id": "fnd_00000000000000000000000000000003",
+          "fingerprint": "fp_sha256:v1:0000000000000000000000000000000000000000000000000000000000000003",
+          "tool": "zap",
+          "scan_type": "DAST",
+          "location": {"kind": "http", "endpoint": "/rest/products/search", "parameter": "q"},
+          "severity": "high",
+          "taxonomy": {"primary_cwe_id": "CWE-79", "owasp_category": "OWASP-A03:2021"}
+        }
+      ]
+    },
+    {
+      "case_id": "bench_03_info_disclosure_db",
+      "title": "Database Connection String and Stacktrace Exposure",
+      "primary_cwe_id": "CWE-200",
+      "owasp_category": "OWASP-A01:2021",
+      "expected_status": "confirmed",
+      "expected_severity": "high",
+      "expected_correlation_type": "sast_only",
+      "requires_probing": true,
+      "probe_endpoint": "/api/vulnerable/user/profile?id=1",
+      "probe_method": "GET",
+      "ground_truth_label": "TRUE_POSITIVE",
+      "findings": [
+        {
+          "finding_id": "fnd_00000000000000000000000000000004",
+          "fingerprint": "fp_sha256:v1:0000000000000000000000000000000000000000000000000000000000000004",
+          "tool": "codeql",
+          "scan_type": "SAST",
+          "location": {"kind": "code", "path": "lib/db.ts", "start_line": 15},
+          "severity": "high",
+          "taxonomy": {"primary_cwe_id": "CWE-200", "owasp_category": "OWASP-A01:2021"}
+        }
+      ]
+    },
+    {
+      "case_id": "bench_04_prompt_injection_guard",
+      "title": "Prompt Injection Evasion Payload in Feedback Response",
+      "primary_cwe_id": "CWE-89",
+      "owasp_category": "OWASP-A03:2021",
+      "expected_status": "confirmed",
+      "expected_severity": "high",
+      "expected_correlation_type": "sast_only",
+      "requires_probing": true,
+      "probe_endpoint": "/api/vulnerable/search?q=test",
+      "probe_method": "GET",
+      "ground_truth_label": "TRUE_POSITIVE",
+      "findings": [
+        {
+          "finding_id": "fnd_00000000000000000000000000000005",
+          "fingerprint": "fp_sha256:v1:0000000000000000000000000000000000000000000000000000000000000005",
+          "tool": "semgrep",
+          "scan_type": "SAST",
+          "location": {"kind": "code", "path": "routes/search.ts", "start_line": 28},
+          "severity": "high",
+          "taxonomy": {"primary_cwe_id": "CWE-89", "owasp_category": "OWASP-A03:2021"}
+        }
+      ]
+    },
+    {
+      "case_id": "bench_05_rate_limit_burst",
+      "title": "Unrestricted Resource Consumption / Missing Rate Limit",
+      "primary_cwe_id": "CWE-770",
+      "owasp_category": "OWASP-A04:2021",
+      "expected_status": "confirmed",
+      "expected_severity": "medium",
+      "expected_correlation_type": "dast_only",
+      "requires_probing": true,
+      "probe_endpoint": "/api/Products",
+      "probe_method": "GET",
+      "ground_truth_label": "TRUE_POSITIVE",
+      "findings": [
+        {
+          "finding_id": "fnd_00000000000000000000000000000006",
+          "fingerprint": "fp_sha256:v1:0000000000000000000000000000000000000000000000000000000000000006",
+          "tool": "zap",
+          "scan_type": "DAST",
+          "location": {"kind": "http", "endpoint": "/api/Products", "parameter": ""},
+          "severity": "medium",
+          "taxonomy": {"primary_cwe_id": "CWE-770", "owasp_category": "OWASP-A04:2021"}
+        }
+      ]
+    },
+    {
+      "case_id": "bench_06_false_positive_sanitized",
+      "title": "False Positive: Sanitized Path Traversal in File Download",
+      "primary_cwe_id": "CWE-22",
+      "owasp_category": "OWASP-A01:2021",
+      "expected_status": "false_positive",
+      "expected_severity": "low",
+      "expected_correlation_type": "sast_only",
+      "requires_probing": true,
+      "probe_endpoint": "/ftp/legal.md",
+      "probe_method": "GET",
+      "ground_truth_label": "FALSE_POSITIVE",
+      "findings": [
+        {
+          "finding_id": "fnd_00000000000000000000000000000007",
+          "fingerprint": "fp_sha256:v1:0000000000000000000000000000000000000000000000000000000000000007",
+          "tool": "semgrep",
+          "scan_type": "SAST",
+          "location": {"kind": "code", "path": "routes/fileServer.ts", "start_line": 60},
+          "severity": "medium",
+          "taxonomy": {"primary_cwe_id": "CWE-22", "owasp_category": "OWASP-A01:2021"}
+        }
+      ]
+    },
+    {
+      "case_id": "bench_07_hardcoded_secrets",
+      "title": "Cleartext Storage of Sensitive API Keys in Environment Config",
+      "primary_cwe_id": "CWE-526",
+      "owasp_category": "OWASP-A07:2021",
+      "expected_status": "confirmed",
+      "expected_severity": "high",
+      "expected_correlation_type": "sast_only",
+      "requires_probing": false,
+      "probe_endpoint": "/api/vulnerable/env-config",
+      "probe_method": "GET",
+      "ground_truth_label": "TRUE_POSITIVE",
+      "findings": [
+        {
+          "finding_id": "fnd_00000000000000000000000000000008",
+          "fingerprint": "fp_sha256:v1:0000000000000000000000000000000000000000000000000000000000000008",
+          "tool": "semgrep",
+          "scan_type": "SAST",
+          "location": {"kind": "code", "path": "config/default.yml", "start_line": 8},
+          "severity": "high",
+          "taxonomy": {"primary_cwe_id": "CWE-526", "owasp_category": "OWASP-A07:2021"}
+        }
+      ]
+    },
+    {
+      "case_id": "bench_08_broken_access_control_idor",
+      "title": "Insecure Direct Object Reference (IDOR) in Basket Retrieval",
+      "primary_cwe_id": "CWE-639",
+      "owasp_category": "OWASP-A01:2021",
+      "expected_status": "confirmed",
+      "expected_severity": "high",
+      "expected_correlation_type": "sast_dast_confirmed",
+      "requires_probing": true,
+      "probe_endpoint": "/rest/basket/1",
+      "probe_method": "GET",
+      "ground_truth_label": "TRUE_POSITIVE",
+      "findings": [
+        {
+          "finding_id": "fnd_00000000000000000000000000000009",
+          "fingerprint": "fp_sha256:v1:0000000000000000000000000000000000000000000000000000000000000009",
+          "tool": "codeql",
+          "scan_type": "SAST",
+          "location": {"kind": "code", "path": "routes/basket.ts", "start_line": 19},
+          "severity": "high",
+          "taxonomy": {"primary_cwe_id": "CWE-639", "owasp_category": "OWASP-A01:2021"}
+        },
+        {
+          "finding_id": "fnd_00000000000000000000000000000010",
+          "fingerprint": "fp_sha256:v1:0000000000000000000000000000000000000000000000000000000000000010",
+          "tool": "zap",
+          "scan_type": "DAST",
+          "location": {"kind": "http", "endpoint": "/rest/basket/1", "parameter": "id"},
+          "severity": "high",
+          "taxonomy": {"primary_cwe_id": "CWE-639", "owasp_category": "OWASP-A01:2021"}
+        }
+      ]
+    }
+  ]
+}
