@@ -11,36 +11,43 @@ import streamlit as st
 
 def inject_bento_css() -> None:
     """Inject custom CSS cho giao diện Bento Box Design (Glassmorphism + Dark Mode)."""
-    css_content = """
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700&display=swap');
+    st.markdown(
+        """
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" />
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
+        @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700&display=swap');
 
-    /* Root styling & typography */
-    html, body, .stApp {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    }
+        /* Root styling & typography */
+        html, body, .stApp {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
 
-    h1, h2, h3, h4, .bento-header-title {
-        font-family: 'Outfit', 'Inter', sans-serif !important;
-        letter-spacing: -0.02em;
-    }
+        h1, h2, h3, h4, .bento-header-title {
+            font-family: 'Outfit', 'Inter', sans-serif !important;
+            letter-spacing: -0.02em;
+        }
 
-    .material-symbols-outlined {
-        font-family: 'Material Symbols Outlined' !important;
-        font-weight: normal;
-        font-style: normal;
-        font-size: 20px;
-        line-height: 1;
-        letter-spacing: normal;
-        text-transform: none;
-        display: inline-block;
-        white-space: nowrap;
-        word-wrap: normal;
-        direction: ltr;
-        vertical-align: middle;
-        -webkit-font-smoothing: antialiased;
-    }
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined' !important;
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            vertical-align: middle;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+            -moz-osx-font-smoothing: grayscale;
+            font-feature-settings: 'liga';
+        }
 
         /* Bento Grid Card Base */
         .bento-card {
@@ -137,12 +144,10 @@ def inject_bento_css() -> None:
         .bento-badge.info { background: rgba(148, 226, 213, 0.15); color: #94e2d5; border: 1px solid rgba(148, 226, 213, 0.4); }
         .bento-badge.success { background: rgba(166, 227, 161, 0.15); color: #a6e3a1; border: 1px solid rgba(166, 227, 161, 0.4); }
         .bento-badge.default { background: rgba(49, 50, 68, 0.6); color: #cdd6f4; border: 1px solid rgba(205, 214, 244, 0.2); }
-    </style>
-    """
-    if hasattr(st, "html"):
-        st.html(css_content)
-    else:
-        st.markdown(css_content, unsafe_allow_html=True)
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def format_material_icon(icon_name: str, size: int = 20, color: str | None = None) -> str:
