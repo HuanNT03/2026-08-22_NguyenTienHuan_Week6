@@ -5,7 +5,7 @@
 Trong khuôn khổ **Project Sentinel**, công cụ **Safe Requester Tool** (`src/gateway/safe_requester.py`) đóng vai trò là cây cầu giao tiếp an toàn duy nhất giữa **AI Security Analysis Agent** (và kỹ sư DevSecOps qua lệnh `make test-request`) với ứng dụng mục tiêu **OWASP Juice Shop (`v20.1.1`)** thông qua **Kong API Gateway (Port 3000)**.
 
 Mục tiêu cốt lõi của hệ thống:
-1. **Kiểm soát tuyệt đối bề mặt tấn công (Strict Method Policy)**: Chỉ cho phép các phương thức HTTP an toàn (`GET`, `PUT`, `OPTIONS`), chặn đứng các phương thức phá hoại hoặc thay đổi dữ liệu nguy hiểm (`POST`, `DELETE`, `PATCH`).
+1. **Kiểm soát tuyệt đối bề mặt tấn công (Strict Method Policy)**: Chỉ cho phép các phương thức HTTP an toàn (`GET`, `POST`, `OPTIONS`), chặn đứng các phương thức phá hoại hoặc thay đổi dữ liệu nguy hiểm (`PUT`, `DELETE`, `PATCH`).
 2. **Bảo mật bí mật Zero-Trust (Secret Isolation)**: Tự động tiêm `x-api-key: <AGENT_API_KEY>` từ biến môi trường vào Socket Outbound, tuyệt đối không hardcode và không bao giờ lưu khóa thật vào file log hay LLM context.
 3. **Chốt chặn Phê duyệt Human-in-the-Loop (HITL)**: Đánh giá rủi ro đa cấp độ (`LOW`, `MEDIUM`, `HIGH`) và yêu cầu người dùng xác nhận (`y/N`) với cơ chế Timeout 120s Fail-Safe (Default to Reject).
 4. **Phòng thủ & Khử khuẩn Dữ liệu 2 Chiều**: Cắt cụt response stream tại 2KB (2048 bytes), làm sạch PII/Secrets, quét phát hiện mã độc Indirect Prompt Injection và bọc trong phong bì XML cô lập an toàn.
@@ -23,7 +23,7 @@ flowchart TD
     end
 
     subgraph PreExecution [2. Đánh Giá Rủi Ro & Chốt Chặn HITL]
-        MethodCheck{"Kiểm tra HTTP Method<br/>(GET, PUT, OPTIONS?)"}
+        MethodCheck{"Kiểm tra HTTP Method<br/>(GET, POST, OPTIONS?)"}
         RiskEval["hitl.assess_request_risk()<br/>(LOW / MEDIUM / HIGH)"]
         HITLPrompt{"Chốt chặn Duyệt HITL<br/>(Timeout 120s Fail-Safe)"}
         Block405["🛑 Chặn 405 Method Not Allowed"]
@@ -50,8 +50,8 @@ flowchart TD
     end
 
     Trigger --> MethodCheck
-    MethodCheck -->|Sai Method: POST, DELETE| Block405 --> AuditLogger
-    MethodCheck -->|Hợp Lệ: GET, PUT, OPTIONS| RiskEval --> HITLPrompt
+    MethodCheck -->|Sai Method: PUT, DELETE| Block405 --> AuditLogger
+    MethodCheck -->|Hợp Lệ: GET, POST, OPTIONS| RiskEval --> HITLPrompt
     
     HITLPrompt -->|Người dùng chọn 'n' hoặc Quá 120s| RejectHitl --> AuditLogger
     HITLPrompt -->|LOW Risk hoặc Được Phê Duyệt 'y'| SecretInject
@@ -72,11 +72,11 @@ flowchart TD
 ## 3. Quá Trình Hoạt Động Gửi Request & Các Ràng Buộc Kỹ Thuật
 
 ### A. Ràng buộc phương thức nghiêm ngặt (Strict Method Policy)
-- **Phương thức được phép**: `GET`, `PUT`, `OPTIONS`.
+- **Phương thức được phép**: `GET`, `POST`, `OPTIONS`.
   - `GET`: Dùng để đọc dữ liệu và kiểm tra các điểm cuối tìm kiếm/danh mục sản phẩm.
-  - `PUT`: Dùng để kiểm thử các route cập nhật an toàn (như gửi review sản phẩm `PUT /rest/products/:id/reviews`).
+  - `POST`: Dùng để kiểm thử các route tạo/cập nhật dữ liệu (như gửi review sản phẩm `POST /rest/products/:id/reviews` hoặc các API mutation).
   - `OPTIONS`: Theo chuẩn RFC 7231, `OPTIONS` là phương thức an toàn (Safe/Idempotent), cho phép AI Agent thăm dò cấu hình CORS và danh sách method mà máy chủ hỗ trợ mà không tạo rủi ro thay đổi dữ liệu.
-- **Phương thức bị cấm**: `POST`, `DELETE`, `PATCH`, `CONNECT`, v.v. Khi nhận các method này, tool dừng thực thi ngay tại tầng Python, trả về mã `405 Method Not Allowed` và ghi log kiểm toán mà không gửi bất kỳ gói tin nào qua mạng.
+- **Phương thức bị cấm**: `PUT`, `DELETE`, `PATCH`, `CONNECT`, v.v. Khi nhận các method này, tool dừng thực thi ngay tại tầng Python, trả về mã `405 Method Not Allowed` và ghi log kiểm toán mà không gửi bất kỳ gói tin nào qua mạng.
 
 ### B. Tiêm khóa bí mật Zero-Trust
 Khóa API Key của Agent (`AGENT_API_KEY`) được nạp tự động từ môi trường (`os.getenv`) và tiêm vào header `x-api-key` trước khi gửi tới Kong Gateway:
@@ -111,17 +111,12 @@ Hệ thống thiết lập hàng rào bảo vệ vững chắc ở cả chiều 
 
 Module `src/gateway/hitl.py` thực hiện đánh giá rủi ro động trước khi gửi request:
 
-```text
-┌────────────────────────────────────────────────────────────────────────────────────────────┐
-│                             BẢNG PHÂN LOẠI RỦI RO HITL                                     │
-├───────────┬─────────────────────────────────────────────────┬──────────────────────────────┤
-│ Mức Rủi Ro│ Tiêu Chí Nhận Diện                              │ Hành Động                    │
+| Mức Rủi Ro| Tiêu Chí Nhận Diện                              | Hành Động                    |
 ├───────────┼─────────────────────────────────────────────────┼──────────────────────────────┤
 │ LOW       │ GET / OPTIONS, payload an toàn, burst <= 5     │ Tự động thực thi an toàn     │
-│ MEDIUM    │ PUT method, probe đặc biệt, 5 < burst <= 20     │ Dừng chờ Người dùng duyệt y/N│
+│ MEDIUM    │ POST method, probe đặc biệt, 5 < burst <= 20    │ Dừng chờ Người dùng duyệt y/N│
 │ HIGH      │ Oversized payload (1.5MB), burst > 20 reqs      │ Dừng chờ duyệt + Cảnh báo tải│
 └───────────┴─────────────────────────────────────────────────┴──────────────────────────────┘
-```
 
 ### Cơ Chế Timeout 120 Giây (Default to Reject)
 - Khi gặp request rủi ro `MEDIUM` hoặc `HIGH`, CLI hiển thị bảng tóm tắt rủi ro và bắt đầu đếm ngược 120 giây.
@@ -150,9 +145,9 @@ Mỗi request (dù thành công, bị từ chối bởi HITL, hay bị chặn b�
 
 ## 7. Xác Minh Thực Nghiệm (Verification & Fact-Check)
 
-### A. Fact-Check Endpoint `PUT /rest/products/:id/reviews`
+### A. Fact-Check Endpoint `POST /rest/products/:id/reviews`
 - Trong mã nguồn gốc OWASP Juice Shop (`target-app/juice-shop/routes/createProductReviews.ts`), hàm `createProductReviews` lấy user qua `security.authenticatedUsers.from(req)`. Nếu không có Bearer token, giá trị trả về là `undefined`.
-- Route `app.put('/rest/products/:id/reviews', ...)` **không được bảo vệ bởi middleware xác thực nào**.
+- Route `app.post('/rest/products/:id/reviews', ...)` (hoặc `app.put(...)`) **không được bảo vệ bởi middleware xác thực nào**.
 - Do đó, request ẩn danh gửi tới endpoint này được máy chủ chấp nhận và trả về mã **`201 Created`** kèm JSON `{"status": "success"}`. Thực nghiệm này đã được chứng minh và kiểm thử tự động trong `tests/gateway/test_safe_requester.py`.
 
 ### B. Kết Quả Kiểm Thử Toàn Diện

@@ -28,7 +28,7 @@ flowchart TD
     end
 
     subgraph ActiveProbe [3. Giai Đoạn Thăm Dò Chủ Động]
-        SafeReq[src/gateway/safe_requester.py<br/>Chỉ chấp nhận GET / PUT]
+        SafeReq[src/gateway/safe_requester.py<br/>Chỉ chấp nhận GET / POST / OPTIONS]
         KongGW[Kong API Gateway :3000<br/>Key-Auth + Rate Limiter]
         TargetApp[OWASP Juice Shop / Mock Target :none/:8088]
     end

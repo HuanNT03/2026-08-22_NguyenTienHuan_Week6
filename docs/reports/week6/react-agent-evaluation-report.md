@@ -201,7 +201,7 @@ Hệ thống tuân thủ nghiêm ngặt 3 vành đai bảo vệ an toàn:
 │ • Kèm cờ cảnh báo cấp cao vô hiệu hóa mọi chỉ thị System Override / Jailbreak.         │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
 │ VÀNH ĐAI 3: IN-FLIGHT HUMAN-IN-THE-LOOP GATEWAY (src/gateway/safe_requester.py)        │
-│ • Kiểm soát nghiêm ngặt các phương thức ghi/sửa (PUT, POST, DELETE), Burst > 20.       │
+│ • Kiểm soát nghiêm ngặt phương thức (GET, POST, OPTIONS), chặn PUT/DELETE, Burst > 20.  │
 │ • Đếm ngược Fail-Safe 120s: Tự động từ chối nếu không có sự phê duyệt của con người.   │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
