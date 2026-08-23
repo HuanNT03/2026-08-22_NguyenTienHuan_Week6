@@ -335,7 +335,7 @@ with tab4:
 
     with col_req1:
         st.markdown("#### 1. Cấu Hình Request Thăm Dò:")
-        probe_endpoint = st.text_input("Endpoint cần kiểm thử (bắt đầu bằng '/'):", value="/rest/products/search?q=apple", placeholder="/rest/products/search?q=apple, /api/Products")
+        probe_endpoint = st.text_input("Endpoint / URL cần kiểm thử (bắt đầu bằng '/' hoặc 'http://', 'https://'):", value="/rest/products/search?q=apple", placeholder="/rest/products/search?q=apple, https://httpbin.org/get")
         probe_method = st.selectbox("Phương thức HTTP (Strict Policy):", ["GET", "PUT", "OPTIONS"], index=0)
 
         probe_payload_cat = st.selectbox(

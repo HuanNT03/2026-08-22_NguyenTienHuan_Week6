@@ -111,7 +111,7 @@ AGENT_TOOLS: list[dict[str, Any]] = [
                 "properties": {
                     "endpoint": {
                         "type": "string",
-                        "description": "Endpoint path cần kiểm thử (bắt đầu bằng '/', ví dụ: '/rest/products/search?q=apple', '/api/Products').",
+                        "description": "Endpoint path hoặc URL tuyệt đối cần kiểm thử (ví dụ: '/rest/products/search?q=apple', 'https://example.com/api').",
                     },
                     "method": {
                         "type": "string",
@@ -354,8 +354,8 @@ class ToolDispatcher:
     def _handle_send_safe_request(self, args: dict[str, Any]) -> dict[str, Any]:
         """Send safe HTTP request via Safe Requester through Kong API Gateway."""
         endpoint = str(args.get("endpoint", "")).strip()
-        if not endpoint or not endpoint.startswith("/"):
-            return {"status": "error", "message": "Tham số 'endpoint' phải bắt đầu bằng '/'."}
+        if not endpoint or not (endpoint.startswith("/") or endpoint.startswith(("http://", "https://"))):
+            return {"status": "error", "message": "Tham số 'endpoint' phải bắt đầu bằng '/' hoặc 'http://' / 'https://'."}
 
         method = str(args.get("method", "GET")).strip().upper()
         payload_category = args.get("payload_category")
