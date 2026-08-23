@@ -29,6 +29,7 @@ from frontend.components.bento import (
 )
 from frontend.components.hitl_queue import get_session_hitl_manager, render_hitl_sidebar
 from src.app.agent_bridge import (
+    AsyncAgentRunner,
     get_configured_model,
     list_analyzed_reports,
     load_analysis_report,
@@ -58,6 +59,10 @@ st.set_page_config(
 
 # Inject Bento CSS & Material Symbols
 inject_bento_css()
+
+# Initialize AsyncAgentRunner in session_state
+if "agent_runner" not in st.session_state:
+    st.session_state.agent_runner = AsyncAgentRunner()
 
 # Render HITL Sidebar
 hitl_mgr = get_session_hitl_manager()
@@ -477,42 +482,53 @@ with tab5:
             max_steps_sel = st.slider("Max ReAct Steps:", min_value=1, max_value=10, value=5)
             btn_run_agent = st.button("Khởi Chạy Phân Tích (Run Agent)", type="primary", use_container_width=True)
 
+    runner: AsyncAgentRunner = st.session_state.agent_runner
+    runner_state = runner.get_status()
+
+    if runner_state.is_running:
+        st.markdown(
+            f"""
+            <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.35); border-radius: 12px; padding: 14px; margin-top: 12px; margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                    <span style="font-size: 13px; font-weight: 700; color: #3B82F6; display: flex; align-items: center; gap: 8px;">
+                        <span class="material-symbols-outlined">sync</span> AI Security Agent Đang Chạy Phân Tích...
+                    </span>
+                    <span class="bento-badge info">Thời gian: {runner_state.elapsed_seconds:.1f}s</span>
+                </div>
+                <div style="font-size: 12px; color: #cdd6f4;">
+                    Agent đang thực thi chu trình ReAct đa bước. Nếu Agent gọi probe rủi ro cao (POST), yêu cầu duyệt sẽ xuất hiện trên <b>HÀNG ĐỢI PHÊ DUYỆT (Sidebar)</b> để bạn tương tác duyệt thời gian thực (120s Fail-Safe).
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        time.sleep(1.0)
+        st.rerun()
+
+    if runner_state.is_finished:
+        if runner_state.error:
+            st.error(f"Lỗi trong quá trình phân tích: {runner_state.error}")
+        else:
+            st.success(f"Phân tích hoàn tất thành công trong {runner_state.elapsed_seconds:.2f}s!")
+        runner.reset()
+
     # Trigger Agent Analysis
     if btn_run_agent:
         if not selected_findings_file:
             st.error("Vui lòng chọn hoặc tải lên tệp Unified Findings.")
+        elif runner_state.is_running:
+            st.warning("Agent đang chạy một phiên phân tích khác. Vui lòng chờ hoàn tất.")
         else:
-            with st.spinner(f"AI Security Agent đang phân tích ({agent_mode_sel} mode, max {max_steps_sel} steps)..."):
-                start_agent_t = time.time()
-
-                def ui_agent_hitl_callback(assessment: dict[str, Any]) -> bool:
-                    """Đón bắt các lệnh gọi tool rủi ro cao từ Agent và ghi nhận vào HITL Queue trên Sidebar."""
-                    endpoint = assessment.get("endpoint", "/")
-                    method = assessment.get("method", "GET")
-                    risk_level = assessment.get("risk_level", "MEDIUM")
-                    purpose = assessment.get("purpose", f"Probe kiểm thử {method} vào {endpoint}")
-                    hitl_mgr.record_rejected_action(
-                        endpoint=endpoint,
-                        method=method,
-                        payload=assessment.get("payload"),
-                        risk_level=risk_level,
-                        rationale=f"Agent ReAct Probe: {purpose}",
-                        reason="Chốt chặn HITL: Tự động chặn trong phiên Agent tự động (cần phê duyệt thủ công)",
-                    )
-                    return False
-
-                success, res_summary = run_agent_analysis(
-                    findings_path=selected_findings_file,
-                    model=model_name,
-                    agent_mode=agent_mode_sel,
-                    max_react_steps=max_steps_sel,
-                    approval_callback=ui_agent_hitl_callback,
-                )
-                if success:
-                    st.success(f"Phân tích hoàn tất trong {time.time() - start_agent_t:.2f}s!")
-                    st.rerun()
-                else:
-                    st.error(f"Lỗi khi chạy Agent: {res_summary.get('error')}")
+            started = runner.start(
+                findings_path=selected_findings_file,
+                model=model_name,
+                agent_mode=agent_mode_sel,
+                max_react_steps=max_steps_sel,
+                approval_callback=hitl_mgr.request_in_flight_approval,
+            )
+            if started:
+                st.toast("Đã khởi chạy phiên phân tích AI Agent!")
+                st.rerun()
 
     st.divider()
 

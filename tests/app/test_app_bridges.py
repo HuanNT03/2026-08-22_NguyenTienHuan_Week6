@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from src.app.agent_bridge import (
+    AsyncAgentRunner,
     get_configured_model,
     list_analyzed_reports,
     load_analysis_report,
@@ -182,5 +183,29 @@ def test_execute_normalization_invalid_selected_tools(tmp_path: Path):
     )
     assert success is False
     assert "Không có tệp scanner hợp lệ nào" in summary.get("error", "")
+
+
+def test_async_agent_runner_lifecycle(tmp_path: Path):
+    """Verify AsyncAgentRunner thread lifecycle, status checking, and error handling."""
+    import time
+
+    runner = AsyncAgentRunner()
+    assert runner.get_status().is_running is False
+    assert runner.get_status().is_finished is False
+
+    # Start runner with non-existent file to trigger fast failure
+    started = runner.start(findings_path=str(tmp_path / "non_existent_findings.jsonl"))
+    assert started is True
+
+    # Try starting another while running (or wait for worker to complete)
+    time.sleep(0.2)
+    status = runner.get_status()
+    assert status.is_finished is True
+    assert status.is_running is False
+    assert status.error is not None
+
+    runner.reset()
+    assert runner.get_status().run_id == "idle"
+
 
 

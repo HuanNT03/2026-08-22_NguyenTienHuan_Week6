@@ -6,6 +6,7 @@ Chuẩn hóa 100% bằng Google Material Symbols Outlined, loại bỏ hoàn to�
 
 from __future__ import annotations
 
+import threading
 import time
 from dataclasses import dataclass, field
 from typing import Any, Literal
@@ -20,7 +21,7 @@ class HITLAction:
     Attributes:
         action_id: Mã định danh hành động (vd: 'REQ-01').
         endpoint: Endpoint HTTP kiểm thử (vd: '/rest/products/search?q=apple').
-        method: Phương thức HTTP ('GET', 'PUT', 'OPTIONS').
+        method: Phương thức HTTP ('GET', 'POST', 'OPTIONS').
         payload: Dữ liệu payload gửi kèm (nếu có).
         headers: Các HTTP header tùy chỉnh.
         risk_level: Mức độ rủi ro ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL').
@@ -31,6 +32,9 @@ class HITLAction:
         resolved_by: Tên người/hệ thống đã đưa ra quyết định duyệt/từ chối.
         resolved_at: Thời điểm xử lý quyết định.
         rejection_reason: Lý do từ chối nếu bị hủy.
+        sync_event: Đối tượng threading.Event để đánh thức luồng Agent đang chờ.
+        decision: Quyết định duyệt (True: Approve, False: Reject).
+        is_in_flight: True nếu hành động sinh ra từ Agent đang chạy trực tiếp.
     """
 
     action_id: str
@@ -46,6 +50,9 @@ class HITLAction:
     resolved_by: str | None = None
     resolved_at: float | None = None
     rejection_reason: str | None = None
+    sync_event: Any = None
+    decision: bool | None = None
+    is_in_flight: bool = False
 
     @property
     def remaining_seconds(self) -> int:
@@ -67,6 +74,7 @@ class HITLQueueManager:
         """Khởi tạo danh sách rỗng các action và bộ đếm tuần tự."""
         self.actions: dict[str, HITLAction] = {}
         self._seq: int = 1
+        self._lock = threading.Lock()
 
     def add_action(
         self,
@@ -92,23 +100,81 @@ class HITLQueueManager:
         Returns:
             str: Mã định danh hành động (vd: 'REQ-01', 'REQ-02').
         """
-        action_id = f"REQ-{self._seq:02d}"
-        self._seq += 1
-        action = HITLAction(
-            action_id=action_id,
-            endpoint=endpoint,
-            method=method.upper(),
-            payload=payload,
-            headers=headers or {},
-            risk_level=risk_level,
-            rationale=rationale,
-            timeout_seconds=timeout_seconds,
-        )
-        self.actions[action_id] = action
-        return action_id
+        with self._lock:
+            action_id = f"REQ-{self._seq:02d}"
+            self._seq += 1
+            action = HITLAction(
+                action_id=action_id,
+                endpoint=endpoint,
+                method=method.upper(),
+                payload=payload,
+                headers=headers or {},
+                risk_level=risk_level,
+                rationale=rationale,
+                timeout_seconds=timeout_seconds,
+            )
+            self.actions[action_id] = action
+            return action_id
+
+    def request_in_flight_approval(
+        self,
+        assessment: dict[str, Any],
+        timeout_seconds: int = 120,
+    ) -> bool:
+        """Tạo pending action cho Agent đang chạy, tạm dừng luồng gọi đến khi có quyết định duyệt hoặc timeout.
+
+        Args:
+            assessment: Dict chứa thông tin đánh giá rủi ro từ assess_request_risk.
+            timeout_seconds: Thời gian chờ tối đa bằng giây (mặc định 120s).
+
+        Returns:
+            bool: True nếu chuyên viên bấm Phê duyệt, False nếu bị Từ chối hoặc Timeout.
+        """
+        ev = threading.Event()
+        endpoint = str(assessment.get("endpoint", "/"))
+        method = str(assessment.get("method", "GET")).upper()
+        payload = assessment.get("payload")
+        headers = assessment.get("headers")
+        risk_level = assessment.get("risk_level", "MEDIUM")
+        purpose = str(assessment.get("purpose", f"Agent ReAct Probe {method} {endpoint}"))
+
+        with self._lock:
+            action_id = f"REQ-{self._seq:02d}"
+            self._seq += 1
+            action = HITLAction(
+                action_id=action_id,
+                endpoint=endpoint,
+                method=method,
+                payload=payload,
+                headers=headers or {},
+                risk_level=risk_level if risk_level in ("LOW", "MEDIUM", "HIGH", "CRITICAL") else "MEDIUM",
+                rationale=f"Agent In-Flight Probe: {purpose}",
+                timeout_seconds=timeout_seconds,
+                status="PENDING",
+                sync_event=ev,
+                is_in_flight=True,
+            )
+            self.actions[action_id] = action
+
+        # Tạm dừng luồng Agent cho tới khi có signal từ UI hoặc hết hạn timeout
+        ev.wait(timeout=timeout_seconds)
+
+        with self._lock:
+            cur_act = self.actions.get(action_id)
+            if cur_act and cur_act.status == "APPROVED" and cur_act.decision is True:
+                return True
+
+            # Nếu quá 120s chưa có người duyệt -> tự động chuyển sang TIMED_OUT (Fail-Safe)
+            if cur_act and cur_act.status == "PENDING":
+                cur_act.status = "TIMED_OUT"
+                cur_act.decision = False
+                cur_act.resolved_at = time.time()
+                cur_act.rejection_reason = f"Timeout ({timeout_seconds}s limit reached)"
+
+            return False
 
     def approve_action(self, action_id: str, operator: str = "security_operator") -> bool:
-        """Đánh dấu hành động là APPROVED (Phê duyệt).
+        """Đánh dấu hành động là APPROVED (Phê duyệt) và đánh thức luồng Agent nếu có.
 
         Args:
             action_id: Mã hành động cần duyệt.
@@ -117,15 +183,19 @@ class HITLQueueManager:
         Returns:
             bool: True nếu chuyển trạng thái thành công, False nếu mã không tồn tại hoặc không ở trạng thái PENDING.
         """
-        if action_id not in self.actions:
-            return False
-        action = self.actions[action_id]
-        if action.status != "PENDING":
-            return False
-        action.status = "APPROVED"
-        action.resolved_by = operator
-        action.resolved_at = time.time()
-        return True
+        with self._lock:
+            if action_id not in self.actions:
+                return False
+            action = self.actions[action_id]
+            if action.status != "PENDING":
+                return False
+            action.status = "APPROVED"
+            action.decision = True
+            action.resolved_by = operator
+            action.resolved_at = time.time()
+            if action.sync_event is not None:
+                action.sync_event.set()
+            return True
 
     def reject_action(
         self,
@@ -133,7 +203,7 @@ class HITLQueueManager:
         reason: str = "Rejected by operator",
         operator: str = "security_operator",
     ) -> bool:
-        """Đánh dấu hành động là REJECTED (Từ chối).
+        """Đánh dấu hành động là REJECTED (Từ chối) và đánh thức luồng Agent nếu có.
 
         Args:
             action_id: Mã hành động cần từ chối.
@@ -143,16 +213,20 @@ class HITLQueueManager:
         Returns:
             bool: True nếu chuyển trạng thái thành công, False nếu mã không tồn tại hoặc không ở trạng thái PENDING.
         """
-        if action_id not in self.actions:
-            return False
-        action = self.actions[action_id]
-        if action.status != "PENDING":
-            return False
-        action.status = "REJECTED"
-        action.rejection_reason = reason
-        action.resolved_by = operator
-        action.resolved_at = time.time()
-        return True
+        with self._lock:
+            if action_id not in self.actions:
+                return False
+            action = self.actions[action_id]
+            if action.status != "PENDING":
+                return False
+            action.status = "REJECTED"
+            action.decision = False
+            action.rejection_reason = reason
+            action.resolved_by = operator
+            action.resolved_at = time.time()
+            if action.sync_event is not None:
+                action.sync_event.set()
+            return True
 
     def record_rejected_action(
         self,
@@ -165,23 +239,24 @@ class HITLQueueManager:
         reason: str = "Tự động chặn bởi chính sách HITL (cần phê duyệt thủ công)",
     ) -> str:
         """Ghi nhận một hành động bị chặn trực tiếp từ Agent vào danh sách đã từ chối."""
-        action_id = f"REQ-{self._seq:02d}"
-        self._seq += 1
-        action = HITLAction(
-            action_id=action_id,
-            endpoint=endpoint,
-            method=method.upper(),
-            payload=payload,
-            headers=headers or {},
-            risk_level=risk_level,
-            rationale=rationale,
-            status="REJECTED",
-            resolved_by="hitl_policy_gate",
-            resolved_at=time.time(),
-            rejection_reason=reason,
-        )
-        self.actions[action_id] = action
-        return action_id
+        with self._lock:
+            action_id = f"REQ-{self._seq:02d}"
+            self._seq += 1
+            action = HITLAction(
+                action_id=action_id,
+                endpoint=endpoint,
+                method=method.upper(),
+                payload=payload,
+                headers=headers or {},
+                risk_level=risk_level,
+                rationale=rationale,
+                status="REJECTED",
+                resolved_by="hitl_policy_gate",
+                resolved_at=time.time(),
+                rejection_reason=reason,
+            )
+            self.actions[action_id] = action
+            return action_id
 
     def check_timeouts(self) -> list[str]:
         """Quét và tự động chuyển các hành động quá hạn 120s sang trạng thái TIMED_OUT.
@@ -313,19 +388,22 @@ def render_hitl_sidebar(manager: HITLQueueManager | None = None) -> None:
                     with col_appr:
                         if st.button("Phê duyệt", key=f"btn_appr_{act.action_id}", type="primary", use_container_width=True):
                             mgr.approve_action(act.action_id)
-                            try:
-                                from src.gateway.safe_requester import send_safe_request
-                                probe_res = send_safe_request(
-                                    endpoint=act.endpoint,
-                                    method=act.method,
-                                    payload_value=act.payload,
-                                    headers=act.headers,
-                                    auto_approve=True,
-                                )
-                                st.session_state.last_probe_response = probe_res
-                                st.toast(f"Đã duyệt và gửi thành công #{act.action_id} (HTTP {probe_res.get('status_code')})!")
-                            except Exception as err:
-                                st.toast(f"Lỗi khi gửi request: {err}")
+                            if act.is_in_flight:
+                                st.toast(f"Đã phê duyệt #{act.action_id} cho AI Agent!")
+                            else:
+                                try:
+                                    from src.gateway.safe_requester import send_safe_request
+                                    probe_res = send_safe_request(
+                                        endpoint=act.endpoint,
+                                        method=act.method,
+                                        payload_value=act.payload,
+                                        headers=act.headers,
+                                        auto_approve=True,
+                                    )
+                                    st.session_state.last_probe_response = probe_res
+                                    st.toast(f"Đã duyệt và gửi thành công #{act.action_id} (HTTP {probe_res.get('status_code')})!")
+                                except Exception as err:  # noqa: BLE001
+                                    st.toast(f"Lỗi khi gửi request: {err}")
                             st.rerun()
                     with col_rej:
                         if st.button("Từ chối", key=f"btn_rej_{act.action_id}", use_container_width=True):

@@ -1,12 +1,111 @@
-"""Cầu nối kích hoạt AI Security Analysis Agent và đọc kết quả phân tích cho Web App."""
-
 import json
 import os
+import threading
+import time
+import uuid
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from src.agent.config import AgentConfig
 from src.agent.orchestrator import run_analysis
+
+
+@dataclass
+class AgentRunState:
+    """Đại diện cho trạng thái thực thi phiên phân tích của Agent."""
+
+    run_id: str
+    is_running: bool = False
+    is_finished: bool = False
+    error: str | None = None
+    summary: dict[str, Any] | None = None
+    start_time: float = 0.0
+    elapsed_seconds: float = 0.0
+
+
+class AsyncAgentRunner:
+    """Quản lý chạy nền bất đồng bộ của AI Security Analysis Agent."""
+
+    def __init__(self) -> None:
+        """Khởi tạo trạng thái rỗng và lock đồng bộ."""
+        self.state = AgentRunState(run_id="idle", is_running=False)
+        self._thread: threading.Thread | None = None
+        self._lock = threading.Lock()
+
+    def start(
+        self,
+        findings_path: str,
+        model: str | None = None,
+        agent_mode: str = "react",
+        max_react_steps: int = 5,
+        output_dir: str = "reports/analyzed",
+        log_file: str | None = None,
+        approval_callback: Any = None,
+    ) -> bool:
+        """Bắt đầu tiến trình chạy phân tích nền nếu chưa có tiến trình nào đang hoạt động.
+
+        Args:
+            findings_path: Đường dẫn tệp findings JSONL.
+            model: Tên mô hình LLM.
+            agent_mode: Chế độ 'react' hoặc 'static'.
+            max_react_steps: Số bước ReAct tối đa.
+            output_dir: Thư mục chứa báo cáo.
+            log_file: Tệp ghi log.
+            approval_callback: Callback xử lý HITL in-flight.
+
+        Returns:
+            bool: True nếu khởi động thành công, False nếu đang có tiến trình chạy.
+        """
+        with self._lock:
+            if self.state.is_running:
+                return False
+
+            run_id = f"run_{uuid.uuid4().hex[:12]}"
+            start_t = time.time()
+            self.state = AgentRunState(
+                run_id=run_id,
+                is_running=True,
+                is_finished=False,
+                start_time=start_t,
+                elapsed_seconds=0.0,
+            )
+
+        def _worker() -> None:
+            success, res = run_agent_analysis(
+                findings_path=findings_path,
+                model=model,
+                agent_mode=agent_mode,
+                max_react_steps=max_react_steps,
+                output_dir=output_dir,
+                log_file=log_file,
+                approval_callback=approval_callback,
+            )
+            with self._lock:
+                self.state.is_running = False
+                self.state.is_finished = True
+                self.state.elapsed_seconds = round(time.time() - start_t, 2)
+                if success:
+                    self.state.summary = res
+                else:
+                    self.state.error = res.get("error", "Lỗi không xác định khi chạy Agent")
+
+        self._thread = threading.Thread(target=_worker, daemon=True)
+        self._thread.start()
+        return True
+
+    def get_status(self) -> AgentRunState:
+        """Lấy trạng thái thực thi hiện tại của Agent."""
+        with self._lock:
+            if self.state.is_running:
+                self.state.elapsed_seconds = round(time.time() - self.state.start_time, 2)
+            return self.state
+
+    def reset(self) -> None:
+        """Đặt lại trạng thái runner về mặc định."""
+        with self._lock:
+            self.state = AgentRunState(run_id="idle", is_running=False)
+            self._thread = None
 
 
 def get_configured_model() -> str:

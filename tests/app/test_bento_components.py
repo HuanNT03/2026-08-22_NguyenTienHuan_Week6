@@ -128,3 +128,95 @@ def test_hitl_queue_manager_record_rejected_action() -> None:
     assert len(mgr.rejected_actions) == 1
     assert mgr.actions[action_id].status == "REJECTED"
     assert mgr.actions[action_id].rejection_reason == "Chốt chặn HITL: Tự động chặn trong phiên Agent"
+
+
+def test_hitl_queue_manager_in_flight_approval_multithreaded() -> None:
+    """Verify thread-safe in-flight approval pause and wake-up via approval."""
+    import threading
+    import time
+
+    mgr = HITLQueueManager()
+    result_container: dict[str, bool] = {}
+
+    def agent_worker() -> None:
+        assessment = {
+            "endpoint": "/rest/user/login",
+            "method": "POST",
+            "payload": {"email": "admin@juice-sh.op"},
+            "risk_level": "MEDIUM",
+            "purpose": "Test SQLi login bypass",
+        }
+        res = mgr.request_in_flight_approval(assessment, timeout_seconds=5)
+        result_container["decision"] = res
+
+    # Start agent thread that will pause in request_in_flight_approval
+    t = threading.Thread(target=agent_worker, daemon=True)
+    t.start()
+
+    # Allow worker to register pending action
+    time.sleep(0.1)
+    pending = mgr.pending_actions
+    assert len(pending) == 1
+    action_id = pending[0].action_id
+
+    # Approve action from UI thread
+    approved = mgr.approve_action(action_id, operator="sec_operator")
+    assert approved is True
+
+    # Wait for agent thread to finish
+    t.join(timeout=2.0)
+    assert not t.is_alive()
+    assert result_container.get("decision") is True
+    assert mgr.actions[action_id].status == "APPROVED"
+
+
+def test_hitl_queue_manager_in_flight_rejection_multithreaded() -> None:
+    """Verify thread-safe in-flight rejection pause and wake-up via rejection."""
+    import threading
+    import time
+
+    mgr = HITLQueueManager()
+    result_container: dict[str, bool] = {}
+
+    def agent_worker() -> None:
+        assessment = {
+            "endpoint": "/api/vulnerable/feedback",
+            "method": "POST",
+            "risk_level": "HIGH",
+            "purpose": "Test feedback mutation",
+        }
+        res = mgr.request_in_flight_approval(assessment, timeout_seconds=5)
+        result_container["decision"] = res
+
+    t = threading.Thread(target=agent_worker, daemon=True)
+    t.start()
+
+    time.sleep(0.1)
+    pending = mgr.pending_actions
+    assert len(pending) == 1
+    action_id = pending[0].action_id
+
+    # Reject action from UI thread
+    rejected = mgr.reject_action(action_id, reason="Unsafe endpoint")
+    assert rejected is True
+
+    t.join(timeout=2.0)
+    assert not t.is_alive()
+    assert result_container.get("decision") is False
+    assert mgr.actions[action_id].status == "REJECTED"
+
+
+def test_hitl_queue_manager_in_flight_timeout() -> None:
+    """Verify in-flight approval fails safely with timeout if no approval occurs."""
+    mgr = HITLQueueManager()
+    assessment = {
+        "endpoint": "/api/timeout-test",
+        "method": "POST",
+        "risk_level": "MEDIUM",
+    }
+    # Short timeout for testing
+    res = mgr.request_in_flight_approval(assessment, timeout_seconds=0.2)
+    assert res is False
+    assert len(mgr.rejected_actions) == 1
+    assert mgr.rejected_actions[0].status == "TIMED_OUT"
+
