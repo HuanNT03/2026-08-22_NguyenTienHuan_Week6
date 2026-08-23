@@ -88,6 +88,7 @@ class EmbeddingClient:
         )
         self.base_url = os.getenv("EMBEDDING_BASE_URL") or os.getenv("OPENAI_BASE_URL") or None
         self._fastembed_instance: Any = None
+        self._openai_client: Any = None
 
     def _ensure_configured(self) -> None:
         """Validate that all required embedding configurations are present when running online."""
@@ -125,16 +126,18 @@ class EmbeddingClient:
 
         self._ensure_configured()
 
-        try:
+        if self._openai_client is None:
             import openai
 
-            client = openai.OpenAI(api_key=self.api_key, base_url=self.base_url)
+            self._openai_client = openai.OpenAI(api_key=self.api_key, base_url=self.base_url)
+
+        try:
             embeddings: list[list[float]] = []
             batch_size = 10
             sanitized_texts = [t.strip()[:8000] if t.strip() else "empty" for t in texts]
             for i in range(0, len(sanitized_texts), batch_size):
                 batch = sanitized_texts[i : i + batch_size]
-                response = client.embeddings.create(input=batch, model=self.model)
+                response = self._openai_client.embeddings.create(input=batch, model=self.model)
                 embeddings.extend([item.embedding for item in response.data])
             return embeddings
         except Exception as error:
