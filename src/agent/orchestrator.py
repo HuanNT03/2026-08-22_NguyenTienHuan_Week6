@@ -70,6 +70,10 @@ def run_analysis(
     if kb_service is None:
         kb_service = KnowledgeSearchService()
 
+    default_log_file = log_file or str(Path("logs/agent-runner.log"))
+    from src.agent.trace_logger import TraceLogger
+    trace_logger = TraceLogger(log_file=default_log_file)
+
     all_entries: list[ReportEntry] = []
     total_prompt_tokens = 0
     total_completion_tokens = 0
@@ -83,8 +87,46 @@ def run_analysis(
             len(group.findings),
             group.correlation_type,
         )
-        entries = analyze_group(group, kb_service=kb_service, client=client, config=cfg)
+        t_grp_start = time.time()
+        trace_logger.log_span(
+            group_id=group.group_id,
+            step_index=0,
+            run_type="chain",
+            name="GroupAnalysisOrchestrator",
+            start_time=t_grp_start,
+            end_time=t_grp_start,
+            status="running",
+            inputs={"group_id": group.group_id, "correlation_type": group.correlation_type, "findings_count": len(group.findings)},
+            outputs=None,
+            metadata={
+                "model": cfg.model,
+                "agent_mode": cfg.agent_mode,
+                "prompt_version": cfg.prompt_version,
+                "fingerprints": [f["fingerprint"] for f in group.findings],
+            },
+        )
+
+        entries = analyze_group(group, kb_service=kb_service, client=client, config=cfg, trace_logger=trace_logger)
         all_entries.extend(entries)
+
+        t_grp_end = time.time()
+        trace_logger.log_span(
+            group_id=group.group_id,
+            step_index=0,
+            run_type="chain",
+            name="GroupAnalysisOrchestrator",
+            start_time=t_grp_start,
+            end_time=t_grp_end,
+            status="success" if any(e.analysis_status == "success" for e in entries) else "error",
+            inputs={"group_id": group.group_id, "correlation_type": group.correlation_type, "findings_count": len(group.findings)},
+            outputs={"entries_count": len(entries), "statuses": [e.analysis_status for e in entries]},
+            metadata={
+                "model": cfg.model,
+                "agent_mode": cfg.agent_mode,
+                "prompt_version": cfg.prompt_version,
+                "fingerprints": [f["fingerprint"] for f in group.findings],
+            },
+        )
 
     logger.info("=== Phase 3: Post-Processing & Coverage Verification ===")
     coverage = verify_coverage(findings, all_entries)

@@ -47,8 +47,10 @@ def run_agent_analysis(
     config.max_react_steps = int(max_react_steps)
     config.output_dir = Path(output_dir)
 
+    target_log_file = log_file or str(Path("logs/agent-runner.log"))
+
     try:
-        summary = run_analysis(findings_path=findings, config=config, log_file=log_file)
+        summary = run_analysis(findings_path=findings, config=config, log_file=target_log_file)
         return True, summary
     except Exception as exc:  # noqa: BLE001
         return False, {"error": f"Lỗi trong quá trình chạy Security Analysis Agent: {exc}"}

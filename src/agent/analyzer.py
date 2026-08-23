@@ -356,6 +356,7 @@ def analyze_group(
     kb_service: KnowledgeSearchService,
     client: OpenAI | None = None,
     config: AgentConfig | None = None,
+    trace_logger: Any = None,
 ) -> list[ReportEntry]:
     """Execute security analysis for a single AnalysisGroup routing to ReAct or Static engine."""
     cfg = config or AgentConfig()
@@ -370,7 +371,7 @@ def analyze_group(
     if cfg.agent_mode == "react":
         approval_cb = (lambda _: True) if getattr(cfg, "auto_approve", False) else getattr(cfg, "approval_callback", None)
         dispatcher = ToolDispatcher(kb_service=kb_service, max_repeat_tool_calls=2, approval_callback=approval_cb)
-        engine = ReActAnalysisEngine(client=client, config=cfg, dispatcher=dispatcher)
+        engine = ReActAnalysisEngine(client=client, config=cfg, dispatcher=dispatcher, trace_logger=trace_logger)
         system_prompt = (
             cfg.system_prompt_path.read_text(encoding="utf-8")
             if cfg.system_prompt_path.is_file()

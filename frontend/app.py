@@ -656,6 +656,44 @@ with tab6:
             st.info("Chưa có log thực thi của agent.")
         else:
             log_content = agent_log_path.read_text(encoding="utf-8", errors="ignore")
-            lines = [l for l in log_content.splitlines() if l.strip()]
-            preview_log = "\n".join(lines[-30:]) if lines else "File log trống."
-            render_realtime_log_box(preview_log, max_height="320px")
+            lines = [l.strip() for l in log_content.splitlines() if l.strip()]
+
+            parsed_spans: list[dict[str, Any]] = []
+            for line in lines:
+                try:
+                    span_obj = json.loads(line)
+                    if isinstance(span_obj, dict) and "run_type" in span_obj:
+                        parsed_spans.append(span_obj)
+                except Exception:  # noqa: BLE001, S110
+                    pass
+
+            if parsed_spans:
+                st.caption(f"Tổng số execution spans: **{len(parsed_spans)}** (Hiển thị 10 spans mới nhất)")
+                for span in reversed(parsed_spans[-10:]):
+                    rtype = str(span.get("run_type", "tool")).upper()
+                    st_val = span.get("status", "success")
+                    s_badge = "success" if st_val == "success" else ("high" if st_val == "running" else "critical")
+                    dur = span.get("duration_ms", 0.0)
+                    tokens = span.get("token_usage", {})
+                    token_str = f" | Tokens: <b>{tokens.get('total_tokens', 0)}</b>" if tokens else ""
+
+                    st.markdown(
+                        f"""
+                        <div style="background: rgba(17, 25, 39, 0.8); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 10px; margin-bottom: 8px;">
+                            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+                                <span><span class="bento-badge info">{rtype}</span> <b>{span.get('name')}</b> (Step {span.get('step_index')})</span>
+                                <span class="bento-badge {s_badge}">{st_val.upper()}</span>
+                            </div>
+                            <div style="font-size: 11px; color: #94a3b8;">
+                                Nhóm: <code>{span.get('group_id')}</code> | Latency: <b>{dur:.1f}ms</b>{token_str}
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                with st.expander("Xem toàn văn log thô (Raw JSONL Trace)", expanded=False):
+                    preview_log = "\n".join(lines[-30:]) if lines else "File log trống."
+                    render_realtime_log_box(preview_log, max_height="260px")
+            else:
+                preview_log = "\n".join(lines[-30:]) if lines else "File log trống."
+                render_realtime_log_box(preview_log, max_height="320px")

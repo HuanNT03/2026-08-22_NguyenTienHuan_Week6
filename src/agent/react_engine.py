@@ -10,7 +10,8 @@ from __future__ import annotations
 import json
 import logging
 import re
-from typing import TYPE_CHECKING, Any
+import time
+from typing import TYPE_CHECKING, Any, Literal
 
 from openai import OpenAI
 
@@ -20,6 +21,7 @@ from src.agent.tools import AGENT_TOOLS, ToolDispatcher
 
 if TYPE_CHECKING:
     from src.agent.config import AgentConfig
+    from src.agent.trace_logger import TraceLogger
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +48,7 @@ class ReActAnalysisEngine:
         client: OpenAI,
         config: AgentConfig,
         dispatcher: ToolDispatcher,
+        trace_logger: TraceLogger | None = None,
     ) -> None:
         """Initialize ReActAnalysisEngine with OpenAI client, config, and ToolDispatcher.
 
@@ -53,10 +56,12 @@ class ReActAnalysisEngine:
             client: OpenAI client instance.
             config: Agent runtime configuration.
             dispatcher: ToolDispatcher instance for executing tool calls.
+            trace_logger: Optional TraceLogger instance for structured span tracking.
         """
         self.client = client
         self.config = config
         self.dispatcher = dispatcher
+        self.trace_logger = trace_logger
 
     def run_group_analysis(
         self,
@@ -95,6 +100,7 @@ class ReActAnalysisEngine:
                     max_steps,
                 )
 
+                t_llm_start = time.time()
                 # Execute ChatCompletion with native tool calling enabled
                 response = self.client.chat.completions.create(
                     model=self.config.model,
@@ -103,6 +109,7 @@ class ReActAnalysisEngine:
                     tools=AGENT_TOOLS,
                     tool_choice="auto",
                 )
+                t_llm_end = time.time()
 
                 choice = response.choices[0].message
                 tool_calls = getattr(choice, "tool_calls", None) or []
@@ -115,6 +122,45 @@ class ReActAnalysisEngine:
                     assistant_msg["tool_calls"] = tool_calls
 
                 messages.append(assistant_msg)
+
+                # Record LLM Span in trace logger
+                if self.trace_logger is not None:
+                    usage = getattr(response, "usage", None)
+                    token_dict = None
+                    if usage is not None:
+                        token_dict = {
+                            "prompt_tokens": getattr(usage, "prompt_tokens", 0) or 0,
+                            "completion_tokens": getattr(usage, "completion_tokens", 0) or 0,
+                            "total_tokens": getattr(usage, "total_tokens", 0) or 0,
+                        }
+                    self.trace_logger.log_span(
+                        group_id=group.group_id,
+                        step_index=step,
+                        run_type="llm",
+                        name=self.config.model,
+                        start_time=t_llm_start,
+                        end_time=t_llm_end,
+                        status="success",
+                        inputs={"messages": messages, "model": self.config.model},
+                        outputs={
+                            "thought": choice.content or "",
+                            "tool_calls": [
+                                {
+                                    "name": getattr(tc, "function", None) and getattr(tc.function, "name", "") or "",
+                                    "arguments": getattr(tc, "function", None) and getattr(tc.function, "arguments", "") or "",
+                                }
+                                for tc in tool_calls
+                            ],
+                        },
+                        metadata={
+                            "model": self.config.model,
+                            "agent_mode": self.config.agent_mode,
+                            "prompt_version": self.config.prompt_version,
+                            "temperature": self.config.temperature,
+                            "max_steps": max_steps,
+                        },
+                        token_usage=token_dict,
+                    )
 
                 # If the model requested tool calls -> execute them and continue loop
                 if tool_calls:
@@ -129,7 +175,45 @@ class ReActAnalysisEngine:
                     for tc in tool_calls:
                         tool_name = tc.function.name
                         tool_args = tc.function.arguments
+
+                        t_tool_start = time.time()
                         tool_result = self.dispatcher.execute(tool_name, tool_args)
+                        t_tool_end = time.time()
+
+                        # Record tool execution span in trace logger
+                        if self.trace_logger is not None:
+                            tool_status: Literal["success", "error", "rejected"] = "success"
+                            if isinstance(tool_result, dict):
+                                if tool_result.get("status") == "rejected":
+                                    tool_status = "rejected"
+                                elif tool_result.get("status") == "error":
+                                    tool_status = "error"
+
+                            parsed_args = tool_args
+                            if isinstance(tool_args, str):
+                                try:
+                                    parsed_args = json.loads(tool_args)
+                                except Exception:  # noqa: BLE001
+                                    parsed_args = {"raw": tool_args}
+
+                            r_type: Literal["retriever", "tool"] = "retriever" if tool_name == "search_knowledge_base" else "tool"
+                            self.trace_logger.log_span(
+                                group_id=group.group_id,
+                                step_index=step,
+                                run_type=r_type,
+                                name=tool_name,
+                                start_time=t_tool_start,
+                                end_time=t_tool_end,
+                                status=tool_status,
+                                inputs=parsed_args if isinstance(parsed_args, dict) else {"raw": parsed_args},
+                                outputs=tool_result,
+                                metadata={
+                                    "model": self.config.model,
+                                    "agent_mode": self.config.agent_mode,
+                                    "prompt_version": self.config.prompt_version,
+                                    "tool_name": tool_name,
+                                },
+                            )
 
                         # Append tool response message according to OpenAI specification
                         messages.append(
