@@ -354,7 +354,7 @@ class ToolDispatcher:
     def _handle_send_safe_request(self, args: dict[str, Any]) -> dict[str, Any]:
         """Send safe HTTP request via Safe Requester through Kong API Gateway."""
         endpoint = str(args.get("endpoint", "")).strip()
-        if not endpoint or not (endpoint.startswith("/") or endpoint.startswith(("http://", "https://"))):
+        if not endpoint or not endpoint.startswith(("/", "http://", "https://")):
             return {"status": "error", "message": "Tham số 'endpoint' phải bắt đầu bằng '/' hoặc 'http://' / 'https://'."}
 
         method = str(args.get("method", "GET")).strip().upper()
