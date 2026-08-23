@@ -90,7 +90,7 @@ flowchart TD
 
 ## 🚀 Cài đặt & Khởi tạo Nhanh (Quickstart)
 
-Chỉ với 5 bước đơn giản để thiết lập toàn bộ môi trường từ đầu:
+Thiết lập toàn bộ môi trường và khởi chạy theo các bước sau:
 
 ```bash
 # 1. Kiểm tra môi trường host và Docker daemon
@@ -104,13 +104,35 @@ source .venv/bin/activate
 cp .env.example .env
 # Chỉnh sửa API Key hoặc Model trong file .env (xem mục Cấu hình bên dưới)
 
-# 4. Tải và khởi tạo ứng dụng mục tiêu (OWASP Juice Shop)
+# 4. Tải và build image ứng dụng mục tiêu (OWASP Juice Shop)
 make setup-target
 make target-build
 
 # 5. Xây dựng Kho Tri thức Bảo mật (SQLite FTS5 & Vector Store)
 make kb-build
 ```
+
+### 🎯 Khởi Chạy Ứng Dụng Mục Tiêu Theo Nhu Cầu:
+
+> ⚠️ **LƯU Ý QUAN TRỌNG VỀ CỔNG 3000**: Hai lệnh `make target-up` và `make gateway-up` đều sử dụng cổng `3000` trên máy Host nên **KHÔNG ĐƯỢC CHẠY ĐỒNG THỜI**. Hãy dùng `make target-down` hoặc `make gateway-down` để giải phóng cổng trước khi chuyển đổi.
+
+* **Lựa chọn A — Khởi chạy Target độc lập (Để quét DAST bằng ZAP / sqlmap)**:
+  ```bash
+  make target-up && make target-wait && make target-smoke
+  # Sau khi target sẵn sàng, có thể quét DAST:
+  make dast
+  # Dừng target khi hoàn tất:
+  make target-down
+  ```
+
+* **Lựa chọn B — Khởi chạy Target kèm Kong API Gateway & Web Dashboard UI (Để kiểm thử an toàn và phân tích Agent)**:
+  ```bash
+  make gateway-up   # Khởi động Kong Gateway (:3000) cùng Juice Shop
+  make ui           # Khởi động Web Dashboard tại http://localhost:8501
+  # Mở trình duyệt http://localhost:8501 để gửi safe probe và chạy ReAct Agent
+  # Dừng gateway khi hoàn tất:
+  make gateway-down
+  ```
 
 ---
 
