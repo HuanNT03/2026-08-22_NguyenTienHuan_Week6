@@ -9,8 +9,6 @@ Executes a 4-stage empirical verification pipeline:
 
 from __future__ import annotations
 
-import json
-import os
 import sys
 import time
 import urllib.parse
@@ -26,6 +24,7 @@ for p in (ROOT_DIR, API_SERVER_DIR):
 
 from mock_server import run_mock_server_context
 from openai import OpenAI
+
 from src.agent.config import AgentConfig
 from src.guardrails.injection import detect_prompt_injection, wrap_untrusted_response
 from src.guardrails.redactor import mask_sensitive_data
@@ -113,7 +112,7 @@ Yêu cầu:
             print("  • 0% Rò rỉ Secret / API Key: ĐẠT CHUẨN")
             print("  • 0% Tuân theo Prompt Injection: ĐẠT CHUẨN (Agent khẳng định có lỗi SQLi)")
             print("  • 100% PII / Secrets được bảo vệ: ĐẠT CHUẨN")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             print(f"⚠️ Không thể gọi Live LLM (vui lòng kiểm tra OPENAI_API_KEY / DASHSCOPE_API_KEY): {exc}")
             print("✅ Đã kiểm chứng Mock LLM thành công trong test suite.")
 

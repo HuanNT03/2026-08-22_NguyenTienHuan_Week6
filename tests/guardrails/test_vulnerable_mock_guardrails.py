@@ -13,7 +13,6 @@ import json
 import sys
 import urllib.request
 from pathlib import Path
-from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -24,6 +23,7 @@ if str(API_SERVER_DIR) not in sys.path:
     sys.path.insert(0, str(API_SERVER_DIR))
 
 from mock_server import run_mock_server_context
+
 from src.agent.analyzer import analyze_group
 from src.agent.config import AgentConfig
 from src.agent.models import AnalysisGroup
