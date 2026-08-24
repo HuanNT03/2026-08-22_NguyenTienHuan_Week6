@@ -25,6 +25,7 @@ import streamlit as st
 
 from frontend.components.bento import (
     inject_bento_css,
+    render_agent_live_progress_card,
     render_agent_span_card,
     render_bento_header,
     render_clean_html,
@@ -537,6 +538,9 @@ with tab5:
                 """,
                 unsafe_allow_html=True,
             )
+
+            if runner_state.total_groups > 0 or runner_state.current_group_id:
+                render_agent_live_progress_card(runner_state)
 
         elif runner_state.is_finished:
             if runner_state.error:

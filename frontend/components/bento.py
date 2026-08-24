@@ -381,3 +381,63 @@ def render_gateway_audit_card(rec: dict[str, Any]) -> None:
             if body_snippet:
                 st.caption("**Response Body Snippet (Sanitized):**")
                 st.code(body_snippet, language="json" if body_snippet.startswith(("{", "[")) else "text")
+
+
+def build_agent_live_progress_card_html(state: Any) -> str:
+    """Tạo chuỗi HTML cho thẻ Bento Live Progress thể hiện nhóm finding Agent đang phân tích."""
+    idx = getattr(state, "current_group_idx", 0)
+    total = getattr(state, "total_groups", 0)
+    pct = (idx / total * 100) if total > 0 else 0.0
+    group_id = getattr(state, "current_group_id", "") or "grp_initializing"
+    cwe = getattr(state, "current_cwe", "") or "N/A"
+    title = getattr(state, "current_title", "") or "Khởi tạo ngữ cảnh phân tích..."
+    location = getattr(state, "current_location", "") or "Mục tiêu ứng dụng"
+    corr_type = getattr(state, "current_correlation_type", "") or "sast_and_dast"
+    tools = getattr(state, "current_tools", [])
+    tools_str = ", ".join(tools) if tools else "scanner"
+    status_text = getattr(state, "current_status_text", "analyzing")
+
+    status_badge_text = "Đang phân tích" if status_text == "analyzing" else "Đã hoàn thành"
+    status_badge_variant = "high" if status_text == "analyzing" else "success"
+
+    return f"""
+    <div style="background: rgba(17, 25, 39, 0.9); border: 1.5px solid rgba(77, 142, 255, 0.4); border-radius: 14px; padding: 18px 22px; margin-bottom: 16px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span class="material-symbols-outlined" style="font-size: 26px; color: #4D8EFF;">psychology</span>
+                <span style="font-size: 16px; font-weight: 700; color: #f8fafc;">Tiến Trình Phân Tích: Nhóm {idx} / {total}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="bento-badge {status_badge_variant}">{status_badge_text}</span>
+                <span class="bento-badge info">{pct:.0f}%</span>
+            </div>
+        </div>
+
+        <div style="width: 100%; background: rgba(255, 255, 255, 0.08); border-radius: 6px; height: 8px; margin-bottom: 16px; overflow: hidden;">
+            <div style="width: {pct:.1f}%; background: linear-gradient(90deg, #4D8EFF 0%, #4EDEA3 100%); height: 100%; border-radius: 6px; transition: width 0.4s ease;"></div>
+        </div>
+
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 10px; padding: 12px 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                <div style="font-size: 15px; font-weight: 600; color: #ffffff;">{title}</div>
+                <span class="bento-badge critical" style="font-size: 11px;">{cwe}</span>
+            </div>
+            <div style="font-size: 13px; color: #94a3b8; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                <span class="material-symbols-outlined" style="font-size: 16px; color: #60a5fa;">pin_drop</span>
+                <span>Vị trí: <code style="color: #cbd5e1; font-size: 12px;">{location}</code></span>
+            </div>
+            <div style="font-size: 12px; color: #64748b; display: flex; gap: 16px; flex-wrap: wrap;">
+                <span>Mã nhóm: <code style="color: #94a3b8;">{group_id}</code></span>
+                <span>Tương quan: <b style="color: #cba6f7;">{corr_type}</b></span>
+                <span>Công cụ: <b style="color: #89dceb;">{tools_str}</b></span>
+            </div>
+        </div>
+    </div>
+    """
+
+
+def render_agent_live_progress_card(state: Any) -> None:
+    """Render thẻ Bento Live Progress cho nhóm lỗ hổng Agent đang phân tích trong Streamlit."""
+    html = build_agent_live_progress_card_html(state)
+    render_clean_html(html)
+

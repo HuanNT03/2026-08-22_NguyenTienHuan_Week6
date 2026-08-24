@@ -341,3 +341,44 @@ def test_render_gateway_audit_card_behavior(monkeypatch: pytest.MonkeyPatch) -> 
     assert "Prompt Injection" in html_output
 
 
+def test_render_agent_live_progress_card_behavior(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify render_agent_live_progress_card displays current group, CWE, location, and progress."""
+    from src.app.agent_bridge import AgentRunState
+    from frontend.components.bento import render_agent_live_progress_card
+
+    captured_html = []
+
+    def mock_markdown(content: str, unsafe_allow_html: bool = False) -> None:
+        captured_html.append(content)
+
+    monkeypatch.setattr(st, "markdown", mock_markdown)
+
+    state = AgentRunState(
+        run_id="run_live_test",
+        is_running=True,
+        current_group_idx=3,
+        total_groups=10,
+        current_group_id="grp_sha256:v1:test123456",
+        current_cwe="CWE-89",
+        current_title="SQL Injection in Login Route",
+        current_location="/rest/user/login",
+        current_correlation_type="sast_and_dast",
+        current_tools=["codeql", "zap"],
+        current_status_text="analyzing",
+    )
+
+    render_agent_live_progress_card(state)
+
+    assert len(captured_html) >= 1
+    html_output = captured_html[0]
+    assert "Nhóm 3 / 10" in html_output
+    assert "30%" in html_output
+    assert "CWE-89" in html_output
+    assert "SQL Injection in Login Route" in html_output
+    assert "/rest/user/login" in html_output
+    assert "sast_and_dast" in html_output
+    assert "codeql" in html_output
+    assert "zap" in html_output
+
+
+
