@@ -3,7 +3,7 @@ import os
 import threading
 import time
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +22,16 @@ class AgentRunState:
     summary: dict[str, Any] | None = None
     start_time: float = 0.0
     elapsed_seconds: float = 0.0
+    # Tiến độ phân tích thời gian thực (Realtime Live Progress)
+    current_group_idx: int = 0
+    total_groups: int = 0
+    current_group_id: str = ""
+    current_cwe: str = ""
+    current_title: str = ""
+    current_location: str = ""
+    current_correlation_type: str = ""
+    current_tools: list[str] = field(default_factory=list)
+    current_status_text: str = ""
 
 
 class AsyncAgentRunner:
@@ -71,6 +81,18 @@ class AsyncAgentRunner:
                 elapsed_seconds=0.0,
             )
 
+        def _on_progress(idx: int, total: int, group: Any, status_text: str) -> None:
+            with self._lock:
+                self.state.current_group_idx = idx
+                self.state.total_groups = total
+                self.state.current_group_id = getattr(group, "group_id", "")
+                self.state.current_cwe = getattr(group, "primary_cwe", "")
+                self.state.current_title = getattr(group, "title", "")
+                self.state.current_location = getattr(group, "location_summary", "")
+                self.state.current_correlation_type = getattr(group, "correlation_type", "")
+                self.state.current_tools = list(getattr(group, "tools", []))
+                self.state.current_status_text = status_text
+
         def _worker() -> None:
             success, res = run_agent_analysis(
                 findings_path=findings_path,
@@ -80,6 +102,7 @@ class AsyncAgentRunner:
                 output_dir=output_dir,
                 log_file=log_file,
                 approval_callback=approval_callback,
+                progress_callback=_on_progress,
             )
             with self._lock:
                 self.state.is_running = False
@@ -121,6 +144,7 @@ def run_agent_analysis(
     output_dir: str = "reports/analyzed",
     log_file: str | None = None,
     approval_callback: Any = None,
+    progress_callback: Any = None,
 ) -> tuple[bool, dict[str, Any]]:
     """
     Kích hoạt Security Analysis Agent chạy phân tích trên tập findings_path.
@@ -133,6 +157,7 @@ def run_agent_analysis(
         output_dir: Thư mục chứa báo cáo xuất ra
         log_file: Tệp ghi log tùy chọn
         approval_callback: Hàm callback phê duyệt rủi ro HITL (nếu có)
+        progress_callback: Callback báo cáo tiến độ nhóm đang xử lý
 
     Returns:
         tuple[bool, dict]: (Thành công hay không, Thông tin tóm tắt kết quả analysis summary)
@@ -153,7 +178,12 @@ def run_agent_analysis(
     target_log_file = log_file or str(Path("logs/agent-runner.log"))
 
     try:
-        summary = run_analysis(findings_path=findings, config=config, log_file=target_log_file)
+        summary = run_analysis(
+            findings_path=findings,
+            config=config,
+            log_file=target_log_file,
+            progress_callback=progress_callback,
+        )
         return True, summary
     except Exception as exc:  # noqa: BLE001
         return False, {"error": f"Lỗi trong quá trình chạy Security Analysis Agent: {exc}"}

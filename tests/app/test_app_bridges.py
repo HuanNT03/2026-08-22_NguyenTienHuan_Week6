@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from src.app.agent_bridge import (
+    AgentRunState,
     AsyncAgentRunner,
     export_report_to_markdown,
     get_configured_model,
@@ -280,6 +281,21 @@ def test_export_report_to_markdown():
     # Verify empty entries handling
     empty_output = export_report_to_markdown([])
     assert "Không có dữ liệu phân tích" in empty_output
+
+
+def test_agent_progress_tracking_fields():
+    """Verify AgentRunState contains all progress tracking fields with proper defaults."""
+    state = AgentRunState(run_id="test_run_123")
+    assert state.current_group_idx == 0
+    assert state.total_groups == 0
+    assert state.current_group_id == ""
+    assert state.current_cwe == ""
+    assert state.current_title == ""
+    assert state.current_location == ""
+    assert state.current_correlation_type == ""
+    assert state.current_tools == []
+    assert state.current_status_text == ""
+
 
 
 

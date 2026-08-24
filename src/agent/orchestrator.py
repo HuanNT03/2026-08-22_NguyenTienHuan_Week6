@@ -45,12 +45,25 @@ def run_analysis(
     client: OpenAI | None = None,
     kb_service: KnowledgeSearchService | None = None,
     log_file: Path | str | None = None,
+    progress_callback: Any = None,
 ) -> dict[str, Any]:
     """Execute full 3-phase Security Analysis Agent pipeline.
 
     Phase 1: Pre-grouping & correlation
     Phase 2: Agentic loop & KB retrieval
     Phase 3: Post-processing, 100% coverage verification, & report output
+
+    Args:
+        findings_path: Path to the unified findings JSONL file.
+        output_dir: Optional output directory for analyzed reports.
+        config: Agent configuration instance.
+        client: Optional OpenAI client.
+        kb_service: Optional KnowledgeSearchService instance.
+        log_file: Optional log file path.
+        progress_callback: Optional callable(idx, total, group, status_text) for progress reporting.
+
+    Returns:
+        dict[str, Any]: Summary dictionary of the analysis execution.
     """
     start_time = time.time()
     cfg = config or AgentConfig()
@@ -79,6 +92,12 @@ def run_analysis(
     total_completion_tokens = 0
 
     for idx, group in enumerate(groups, start=1):
+        if progress_callback is not None:
+            try:
+                progress_callback(idx, len(groups), group, "analyzing")
+            except Exception:  # noqa: BLE001
+                pass
+
         logger.info(
             "[%d/%d] Analyzing group %s (%d findings, correlation: %s)",
             idx,
@@ -127,6 +146,12 @@ def run_analysis(
                 "fingerprints": [f["fingerprint"] for f in group.findings],
             },
         )
+
+        if progress_callback is not None:
+            try:
+                progress_callback(idx, len(groups), group, "completed")
+            except Exception:  # noqa: BLE001
+                pass
 
     logger.info("=== Phase 3: Post-Processing & Coverage Verification ===")
     coverage = verify_coverage(findings, all_entries)
