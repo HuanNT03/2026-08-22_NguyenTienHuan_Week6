@@ -168,7 +168,56 @@ HITL_TIMEOUT_SECONDS=120
 
 ## 🛡️ Hướng dẫn Vận hành Full Luồng (End-to-End Workflow)
 
-Hệ thống hỗ trợ 2 phương thức vận hành song song và đồng bộ 100%:
+---
+
+### 🎬 Hướng Dẫn Chạy Demo Thực Nghiệm Với Mock Server & Web UI (Quick Demo Guide)
+
+Phần này hướng dẫn kịch bản demo hoàn chỉnh từ **Quét DAST $\rightarrow$ Chuẩn Hóa Findings $\rightarrow$ ReAct AI Agent Phân Tích $\rightarrow$ Tải Báo Cáo** sử dụng Vulnerable Mock Server:
+
+#### 1. Khởi động Mock Server & Giao diện Web UI qua Make
+```bash
+# 1. Khởi động Vulnerable Mock Server giả lập các endpoint lỗ hổng (Port 3000)
+make mock-server-up
+
+# 2. Khởi động Web Dashboard Streamlit (Port 8501)
+make ui
+```
+> Mở trình duyệt và truy cập vào: **`http://localhost:8501`**
+
+#### 2. Quét DAST Baseline bằng OWASP ZAP (Tab 1 — Quét Bảo Mật)
+1. Tại **Tab 1**, kiểm tra mục tiêu ở trạng thái **`Target Online (HTTP 200)`**.
+2. Tại mục chọn công cụ quét, chọn **`ZAP Baseline Scan (Crawl + Passive)`**.
+3. Bấm nút **"Khởi Chạy Quét (Run Scanner)"**.
+4. Theo dõi tiến trình quét và live logs. Sau khi quét xong, báo cáo quét thô được lưu tự động tại `reports/raw/zap.json`.
+
+#### 3. Chuẩn Hóa Báo Cáo Thành Unified Findings (Tab 2 — Quản Lý Dữ Liệu)
+1. Chuyển sang **Tab 2 (Quản Lý Dữ Liệu)**.
+2. Trong danh sách các tệp raw report, tích chọn tệp **`zap.json`** vừa quét.
+3. Bấm nút **"Chuẩn Hóa Báo Cáo (Run Normalizer)"**.
+4. Hệ thống sẽ chuẩn hóa dữ liệu sang tệp `reports/normalized/unified-findings-YYYYMMDDTHHMMSSZ.jsonl` tuân thủ nghiêm ngặt chuẩn `unified_findings.schema.json`.
+
+#### 4. Phân Tích Chuyên Sâu Bằng ReAct AI Agent (Tab 5 — Báo Cáo & Phân Tích)
+1. Chuyển sang **Tab 5 (Báo Cáo & Phân Tích)**.
+2. Tại danh sách tệp đầu vào, chọn tệp **`unified-findings-*.jsonl`** vừa sinh ở Bước 3.
+3. Cấu hình tham số:
+   - **Chế độ Agent**: `ReAct Agent (Tự động gọi Tool + Safe Probe)` (Mặc định).
+   - **Mô hình LLM**: `qwen-plus` (hoặc mô hình đã cấu hình trong `.env`).
+4. Bấm nút **"Khởi Chạy Phân Tích (Run Agent)"**.
+5. Theo dõi tiến trình phân tích thời gian thực qua **Bento Live Progress Card** (thể hiện rõ Agent đang xử lý nhóm nào, mã CWE, vị trí endpoint/mã nguồn và số bước ReAct).
+
+#### 5. Xem Kết Quả & Tải Báo Cáo Về Máy
+1. Khi phân tích hoàn tất, giao diện hiển thị:
+   - **Lưới Threat KPI Grid**: Thống kê số lượng lỗ hổng thực tế **True Positives (TP)** và cảnh báo giả **False Positives (FP)** kèm tỷ lệ %.
+   - **Bảng Tổng Hợp Chi Tiết**: Nguyên nhân gốc (Root Cause), khuyến nghị khắc phục (Remediation), và bằng chứng (Evidence).
+2. **Tải báo cáo về máy**:
+   - Nhấn nút **"Tải Báo Cáo Markdown (.md)"** ngay đầu Section 2 để tải tài liệu báo cáo phân tích an ninh Markdown về máy.
+   - Báo cáo JSONL tương ứng cũng được lưu trữ sẵn tại thư mục `reports/analyzed/security-analysis-report-*.jsonl` để tích hợp vào hệ thống SIEM/SOC.
+
+#### 6. Dọn dẹp sau khi demo
+```bash
+make mock-server-down   # Dừng và giải phóng container Mock Server
+make ui-down            # Dừng Web Dashboard
+```
 
 ---
 
