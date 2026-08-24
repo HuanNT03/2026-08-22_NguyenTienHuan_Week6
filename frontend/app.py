@@ -7,9 +7,11 @@ Chuẩn hóa 100% không sử dụng ký tự emoji (Unicode Emojis).
 
 from __future__ import annotations
 
+import html
 import json
 import os
 import sys
+import textwrap
 import time
 from pathlib import Path
 from typing import Any
@@ -140,30 +142,34 @@ with tab1:
         st.markdown("#### 2. Trạng Thái Target App:")
         if is_alive:
             st.markdown(
-                f"""
-                <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 12px; margin-bottom: 10px;">
-                    <div style="display: flex; align-items: center; gap: 8px; color: #10b981; font-weight: 700; font-size: 14px;">
-                        <span class="material-symbols-outlined" style="font-size: 20px;">check_circle</span> Target Online (HTTP {http_code})
+                textwrap.dedent(
+                    f"""
+                    <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 12px; margin-bottom: 10px;">
+                        <div style="display: flex; align-items: center; gap: 8px; color: #10b981; font-weight: 700; font-size: 14px;">
+                            <span class="material-symbols-outlined" style="font-size: 20px;">check_circle</span> Target Online (HTTP {http_code})
+                        </div>
+                        <div style="color: #94a3b8; font-size: 12px; margin-top: 4px; font-family: monospace;">
+                            {target_url}
+                        </div>
                     </div>
-                    <div style="color: #94a3b8; font-size: 12px; margin-top: 4px; font-family: monospace;">
-                        {target_url}
-                    </div>
-                </div>
-                """,
+                    """
+                ),
                 unsafe_allow_html=True,
             )
         else:
             st.markdown(
-                f"""
-                <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 10px; padding: 12px; margin-bottom: 10px;">
-                    <div style="display: flex; align-items: center; gap: 8px; color: #ef4444; font-weight: 700; font-size: 14px;">
-                        <span class="material-symbols-outlined" style="font-size: 20px;">error</span> Target Offline
+                textwrap.dedent(
+                    f"""
+                    <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 10px; padding: 12px; margin-bottom: 10px;">
+                        <div style="display: flex; align-items: center; gap: 8px; color: #ef4444; font-weight: 700; font-size: 14px;">
+                            <span class="material-symbols-outlined" style="font-size: 20px;">error</span> Target Offline
+                        </div>
+                        <div style="color: #94a3b8; font-size: 12px; margin-top: 4px; font-family: monospace;">
+                            {target_url}
+                        </div>
                     </div>
-                    <div style="color: #94a3b8; font-size: 12px; margin-top: 4px; font-family: monospace;">
-                        {target_url}
-                    </div>
-                </div>
-                """,
+                    """
+                ),
                 unsafe_allow_html=True,
             )
 
@@ -654,60 +660,78 @@ with tab5:
                     "low": "low",
                 }.get(agent_sev.lower(), "default")
 
+                safe_primary_cwe = html.escape(str(primary_cwe))
+                safe_owasp_cat = html.escape(str(owasp_cat))
+                safe_agent_sev = html.escape(str(agent_sev)).upper()
+                safe_orig_sev = html.escape(str(orig_sev)).upper()
+                safe_conf_lvl = html.escape(str(conf_lvl)).upper()
+                safe_corr_type = html.escape(str(corr_type))
+                safe_sev_rat = html.escape(str(sev_rat))
+                safe_conf_rat = html.escape(str(conf_rat))
+                safe_all_cwes_str = html.escape(str(all_cwes_str))
+                safe_expl = html.escape(str(expl))
+                safe_rec_act = html.escape(str(rec_act))
+
                 with st.expander(f"[{grp_id}] {grp_title} ({primary_cwe}) — {len(items)} findings | Severity: {agent_sev.upper()}", expanded=True):
                     # Header Summary Bento Card
                     injection_badge_html = """<span class="bento-badge critical"><span class="material-symbols-outlined" style="font-size: 14px;">warning</span> Đã Chặn Prompt Injection</span>""" if is_injection else ""
 
                     st.markdown(
-                        f"""
-                        <div style="background: rgba(17, 25, 39, 0.7); border-radius: 12px; padding: 14px; margin-bottom: 14px; border: 1px solid rgba(255,255,255,0.06);">
-                            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; align-items: center;">
-                                <span class="bento-badge info"><span class="material-symbols-outlined" style="font-size: 14px;">tag</span> Primary: {primary_cwe}</span>
-                                <span class="bento-badge default"><span class="material-symbols-outlined" style="font-size: 14px;">category</span> OWASP: {owasp_cat}</span>
-                                <span class="bento-badge {sev_badge_variant}"><span class="material-symbols-outlined" style="font-size: 14px;">shield</span> Severity: {agent_sev.upper()} (Gốc: {orig_sev})</span>
-                                <span class="bento-badge success"><span class="material-symbols-outlined" style="font-size: 14px;">verified</span> Confidence: {conf_lvl.upper()}</span>
-                                <span class="bento-badge default"><span class="material-symbols-outlined" style="font-size: 14px;">sync_alt</span> Tương Quan: {corr_type}</span>
-                                {injection_badge_html}
+                        textwrap.dedent(
+                            f"""
+                            <div style="background: rgba(17, 25, 39, 0.7); border-radius: 12px; padding: 14px; margin-bottom: 14px; border: 1px solid rgba(255,255,255,0.06);">
+                                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; align-items: center;">
+                                    <span class="bento-badge info"><span class="material-symbols-outlined" style="font-size: 14px;">tag</span> Primary: {safe_primary_cwe}</span>
+                                    <span class="bento-badge default"><span class="material-symbols-outlined" style="font-size: 14px;">category</span> OWASP: {safe_owasp_cat}</span>
+                                    <span class="bento-badge {sev_badge_variant}"><span class="material-symbols-outlined" style="font-size: 14px;">shield</span> Severity: {safe_agent_sev} (Gốc: {safe_orig_sev})</span>
+                                    <span class="bento-badge success"><span class="material-symbols-outlined" style="font-size: 14px;">verified</span> Confidence: {safe_conf_lvl}</span>
+                                    <span class="bento-badge default"><span class="material-symbols-outlined" style="font-size: 14px;">sync_alt</span> Tương Quan: {safe_corr_type}</span>
+                                    {injection_badge_html}
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 12px; color: #94a3b8; margin-bottom: 8px;">
+                                    <div><b>Lý do đánh giá mức độ:</b> {safe_sev_rat}</div>
+                                    <div><b>Căn cứ mức độ tin cậy:</b> {safe_conf_rat}</div>
+                                </div>
+                                <div style="font-size: 11px; color: #6c7086;">
+                                    <b>Tất cả CWE liên quan:</b> <code>{safe_all_cwes_str}</code>
+                                </div>
                             </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 12px; color: #94a3b8; margin-bottom: 8px;">
-                                <div><b>Lý do đánh giá mức độ:</b> {sev_rat}</div>
-                                <div><b>Căn cứ mức độ tin cậy:</b> {conf_rat}</div>
-                            </div>
-                            <div style="font-size: 11px; color: #6c7086;">
-                                <b>Tất cả CWE liên quan:</b> <code>{all_cwes_str}</code>
-                            </div>
-                        </div>
-                        """,
+                            """
+                        ),
                         unsafe_allow_html=True,
                     )
 
                     # Section A: Explanation (Root cause)
                     st.markdown(
-                        f"""
-                        <div style="background: rgba(30, 41, 59, 0.6); border-left: 4px solid #3B82F6; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px;">
-                            <div style="font-size: 12px; font-weight: 700; color: #60A5FA; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
-                                <span class="material-symbols-outlined" style="font-size: 16px;">psychology</span> NGUYÊN NHÂN GỐC RỄ & PHÂN TÍCH TÁC ĐỘNG (EXPLANATION)
+                        textwrap.dedent(
+                            f"""
+                            <div style="background: rgba(30, 41, 59, 0.6); border-left: 4px solid #3B82F6; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px;">
+                                <div style="font-size: 12px; font-weight: 700; color: #60A5FA; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                                    <span class="material-symbols-outlined" style="font-size: 16px;">psychology</span> NGUYÊN NHÂN GỐC RỄ & PHÂN TÍCH TÁC ĐỘNG (EXPLANATION)
+                                </div>
+                                <div style="font-size: 13px; color: #e2e8f0; line-height: 1.6;">
+                                    {safe_expl}
+                                </div>
                             </div>
-                            <div style="font-size: 13px; color: #e2e8f0; line-height: 1.6;">
-                                {expl}
-                            </div>
-                        </div>
-                        """,
+                            """
+                        ),
                         unsafe_allow_html=True,
                     )
 
                     # Section B: Recommended Action (Remediation)
                     st.markdown(
-                        f"""
-                        <div style="background: rgba(6, 78, 59, 0.3); border-left: 4px solid #10B981; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px;">
-                            <div style="font-size: 12px; font-weight: 700; color: #34D399; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
-                                <span class="material-symbols-outlined" style="font-size: 16px;">build</span> KHUYẾN NGHỊ KHẮC PHỤC (RECOMMENDED ACTIONS)
+                        textwrap.dedent(
+                            f"""
+                            <div style="background: rgba(6, 78, 59, 0.3); border-left: 4px solid #10B981; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px;">
+                                <div style="font-size: 12px; font-weight: 700; color: #34D399; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                                    <span class="material-symbols-outlined" style="font-size: 16px;">build</span> KHUYẾN NGHỊ KHẮC PHỤC (RECOMMENDED ACTIONS)
+                                </div>
+                                <div style="font-size: 13px; color: #e2e8f0; line-height: 1.6;">
+                                    {safe_rec_act}
+                                </div>
                             </div>
-                            <div style="font-size: 13px; color: #e2e8f0; line-height: 1.6;">
-                                {rec_act}
-                            </div>
-                        </div>
-                        """,
+                            """
+                        ),
                         unsafe_allow_html=True,
                     )
 
@@ -725,24 +749,29 @@ with tab5:
                         headers_json = json.dumps(ptr.get("headers", {}), indent=2, ensure_ascii=False)
                         payload_val = ptr.get("payload")
                         payload_json = json.dumps(payload_val, indent=2, ensure_ascii=False) if payload_val is not None else "null"
+                        safe_ptr_method = html.escape(str(ptr.get("method", "GET")))
+                        safe_ptr_endpoint = html.escape(str(ptr.get("endpoint", "/")))
+                        safe_ptr_rationale = html.escape(str(ptr.get("rationale", "N/A")))
 
                         st.markdown(
-                            f"""
-                            <div style="background: rgba(250, 179, 135, 0.08); border: 1px solid rgba(250, 179, 135, 0.25); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                    <div style="font-size: 12px; font-weight: 700; color: #fab387; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px;">
-                                        <span class="material-symbols-outlined" style="font-size: 16px;">science</span> ĐỀ XUẤT KIỂM THỬ AN TOÀN (PROPOSED TEST REQUEST)
+                            textwrap.dedent(
+                                f"""
+                                <div style="background: rgba(250, 179, 135, 0.08); border: 1px solid rgba(250, 179, 135, 0.25); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                        <div style="font-size: 12px; font-weight: 700; color: #fab387; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px;">
+                                            <span class="material-symbols-outlined" style="font-size: 16px;">science</span> ĐỀ XUẤT KIỂM THỬ AN TOÀN (PROPOSED TEST REQUEST)
+                                        </div>
+                                        <span class="bento-badge {ptr_status_badge}">Trạng thái: {ptr_status.upper()}</span>
                                     </div>
-                                    <span class="bento-badge {ptr_status_badge}">Trạng thái: {ptr_status.upper()}</span>
+                                    <div style="font-size: 12px; color: #cdd6f4; margin-bottom: 6px;">
+                                        <b>Request:</b> <code>{safe_ptr_method} {safe_ptr_endpoint}</code>
+                                    </div>
+                                    <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">
+                                        <b>Căn cứ & Mục đích probe:</b> {safe_ptr_rationale}
+                                    </div>
                                 </div>
-                                <div style="font-size: 12px; color: #cdd6f4; margin-bottom: 6px;">
-                                    <b>Request:</b> <code>{ptr.get('method', 'GET')} {ptr.get('endpoint', '/')}</code>
-                                </div>
-                                <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">
-                                    <b>Căn cứ & Mục đích probe:</b> {ptr.get('rationale', 'N/A')}
-                                </div>
-                            </div>
-                            """,
+                                """
+                            ),
                             unsafe_allow_html=True,
                         )
                         col_p1, col_p2 = st.columns(2)
@@ -767,20 +796,27 @@ with tab5:
                     # Section D: Knowledge References
                     if kb_refs:
                         st.markdown(
-                            """
-                            <div style="font-size: 12px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-top: 10px; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
-                                <span class="material-symbols-outlined" style="font-size: 16px;">menu_book</span> TÀI LIỆU TRI THỨC THAM CHIẾU (KNOWLEDGE REFERENCES)
-                            </div>
-                            """,
+                            textwrap.dedent(
+                                """
+                                <div style="font-size: 12px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-top: 10px; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                                    <span class="material-symbols-outlined" style="font-size: 16px;">menu_book</span> TÀI LIỆU TRI THỨC THAM CHIẾU (KNOWLEDGE REFERENCES)
+                                </div>
+                                """
+                            ),
                             unsafe_allow_html=True,
                         )
                         for ref in kb_refs:
+                            safe_doc_id = html.escape(str(ref.get("doc_id", "N/A")))
+                            safe_doc_title = html.escape(str(ref.get("title", "N/A")))
+                            safe_doc_rel = html.escape(str(ref.get("relevance", "N/A")))
                             st.markdown(
-                                f"""
-                                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 6px 10px; margin-bottom: 4px; font-size: 12px;">
-                                    <span class="bento-badge info">[{ref.get('doc_id')}]</span> <b>{ref.get('title')}</b>: <span style="color: #94a3b8;">{ref.get('relevance')}</span>
-                                </div>
-                                """,
+                                textwrap.dedent(
+                                    f"""
+                                    <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 6px 10px; margin-bottom: 4px; font-size: 12px;">
+                                        <span class="bento-badge info">[{safe_doc_id}]</span> <b>{safe_doc_title}</b>: <span style="color: #94a3b8;">{safe_doc_rel}</span>
+                                    </div>
+                                    """
+                                ),
                                 unsafe_allow_html=True,
                             )
 
@@ -839,17 +875,19 @@ with tab6:
                     status = rec.get("status_code", 0)
                     st_badge = "success" if status == 200 else ("high" if status in (405, 429, 413) else "critical")
                     st.markdown(
-                        f"""
-                        <div style="background: rgba(17, 25, 39, 0.8); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 10px; margin-bottom: 8px;">
-                            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
-                                <span><b>{rec.get('method')}</b> <code>{rec.get('endpoint')}</code></span>
-                                <span class="bento-badge {st_badge}">HTTP {status}</span>
+                        textwrap.dedent(
+                            f"""
+                            <div style="background: rgba(17, 25, 39, 0.8); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 10px; margin-bottom: 8px;">
+                                <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+                                    <span><b>{rec.get('method')}</b> <code>{rec.get('endpoint')}</code></span>
+                                    <span class="bento-badge {st_badge}">HTTP {status}</span>
+                                </div>
+                                <div style="font-size: 11px; color: #94a3b8;">
+                                    Latency: <b>{rec.get('duration_ms', 0):.1f}ms</b> | Approval: <b>{rec.get('approval_status')}</b> | PII Redacted: <b>{rec.get('guardrails', {}).get('redaction_count', 0)}</b>
+                                </div>
                             </div>
-                            <div style="font-size: 11px; color: #94a3b8;">
-                                Latency: <b>{rec.get('duration_ms', 0):.1f}ms</b> | Approval: <b>{rec.get('approval_status')}</b> | PII Redacted: <b>{rec.get('guardrails', {}).get('redaction_count', 0)}</b>
-                            </div>
-                        </div>
-                        """,
+                            """
+                        ),
                         unsafe_allow_html=True,
                     )
 
@@ -881,17 +919,19 @@ with tab6:
                     token_str = f" | Tokens: <b>{tokens.get('total_tokens', 0)}</b>" if tokens else ""
 
                     st.markdown(
-                        f"""
-                        <div style="background: rgba(17, 25, 39, 0.8); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 10px; margin-bottom: 8px;">
-                            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
-                                <span><span class="bento-badge info">{rtype}</span> <b>{span.get('name')}</b> (Step {span.get('step_index')})</span>
-                                <span class="bento-badge {s_badge}">{st_val.upper()}</span>
+                        textwrap.dedent(
+                            f"""
+                            <div style="background: rgba(17, 25, 39, 0.8); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 10px; margin-bottom: 8px;">
+                                <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+                                    <span><span class="bento-badge info">{rtype}</span> <b>{span.get('name')}</b> (Step {span.get('step_index')})</span>
+                                    <span class="bento-badge {s_badge}">{st_val.upper()}</span>
+                                </div>
+                                <div style="font-size: 11px; color: #94a3b8;">
+                                    Nhóm: <code>{span.get('group_id')}</code> | Latency: <b>{dur:.1f}ms</b>{token_str}
+                                </div>
                             </div>
-                            <div style="font-size: 11px; color: #94a3b8;">
-                                Nhóm: <code>{span.get('group_id')}</code> | Latency: <b>{dur:.1f}ms</b>{token_str}
-                            </div>
-                        </div>
-                        """,
+                            """
+                        ),
                         unsafe_allow_html=True,
                     )
                 with st.expander("Xem toàn văn log thô (Raw JSONL Trace)", expanded=False):
