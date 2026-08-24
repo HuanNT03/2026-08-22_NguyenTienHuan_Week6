@@ -33,7 +33,7 @@ Bao gồm:
 - [x] Hướng dẫn cài đặt.
   - Đường dẫn: `README.md`
 - [x] Hướng dẫn chạy demo.
-  - Đường dẫn: `docs/reports/week6/react-agent-evaluation-report.md` (Mục 6) và `scripts/live_mock_probe_demo.py`
+  - Đường dẫn: `README.md` (Mục Hướng dẫn Chạy Demo Thực Nghiệm Với Mock Server & Web UI), `docs/reports/week6/react-agent-evaluation-report.md` (Mục 6) và `scripts/live_mock_probe_demo.py`
 - [x] Các giới hạn của hệ thống.
   - Đường dẫn: `docs/reports/week6/product-brief.md` (Mục 5) và `docs/reports/week6/react-agent-evaluation-report.md` (Mục 7.1)
 - [x] Các quyết định thiết kế chính.
