@@ -13,11 +13,11 @@ Bao gồm:
 - [x] Security Analysis Agent.
   - Đường dẫn: `src/agent/`
 - [x] Python Tool gửi request.
-  - Đường dẫn: `src/agent/dispatcher.py` và `src/gateway/`
+  - Đường dẫn: `src/agent/tools.py` và `src/gateway/safe_requester.py`
 - [x] Guardrails.
-  - Đường dẫn: `src/gateway/` và `src/agent/dispatcher.py`
+  - Đường dẫn: `src/guardrails/` và `src/gateway/`
 - [x] Chức năng che dữ liệu.
-  - Đường dẫn: `src/gateway/redactor.py`
+  - Đường dẫn: `src/guardrails/redactor.py`
 - [x] Docker Compose.
   - Đường dẫn: `docker-compose.yml` và `docker-compose.gateway.yml`
 
@@ -70,7 +70,7 @@ Bản demo cần thể hiện:
 - [x] Prompt Injection bị chặn.
   - Đường dẫn: `tests/guardrails/test_vulnerable_mock_guardrails.py` và `frontend/app.py` (Tab 6)
 - [x] Dữ liệu nhạy cảm bị che.
-  - Đường dẫn: `src/gateway/redactor.py` và `frontend/app.py` (Tab 4 và Tab 6)
+  - Đường dẫn: `src/guardrails/redactor.py` và `frontend/app.py` (Tab 4 và Tab 6)
 
 ## 5. Bản mô tả sản phẩm ngắn
 
