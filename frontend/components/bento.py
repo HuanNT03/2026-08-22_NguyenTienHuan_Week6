@@ -76,12 +76,15 @@ def build_guardrails_kpi_grid_html(
     confirmed_tp: int = 0,
     false_positives: int = 0,
 ) -> str:
-    """Generate HTML grid for Guardrails & Threat Metrics in Tab 5."""
+    """Generate HTML grid for Guardrails & Threat Metrics in Tab 5 with 6 KPI cards."""
+    tp_percent = (confirmed_tp / total_groups * 100) if total_groups > 0 else 0.0
+    fp_percent = (false_positives / total_groups * 100) if total_groups > 0 else 0.0
+
     return f"""
-    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 16px;">
+    <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 16px;">
         <div class="bento-card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <span class="material-symbols-outlined" style="font-size: 26px; color: #4EDEA3;">shield</span>
+                <span class="material-symbols-outlined" style="font-size: 24px; color: #4EDEA3;">shield</span>
                 <span class="bento-badge success">Active</span>
             </div>
             <div class="bento-title">PII Masked</div>
@@ -90,7 +93,7 @@ def build_guardrails_kpi_grid_html(
         </div>
         <div class="bento-card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <span class="material-symbols-outlined" style="font-size: 26px; color: #fab387;">gpp_maybe</span>
+                <span class="material-symbols-outlined" style="font-size: 24px; color: #fab387;">gpp_maybe</span>
                 <span class="bento-badge high">Neutralized</span>
             </div>
             <div class="bento-title">Injections Neutralized</div>
@@ -99,7 +102,7 @@ def build_guardrails_kpi_grid_html(
         </div>
         <div class="bento-card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <span class="material-symbols-outlined" style="font-size: 26px; color: #4D8EFF;">gavel</span>
+                <span class="material-symbols-outlined" style="font-size: 24px; color: #4D8EFF;">gavel</span>
                 <span class="bento-badge info">Gate</span>
             </div>
             <div class="bento-title">HITL Decisions</div>
@@ -108,15 +111,34 @@ def build_guardrails_kpi_grid_html(
         </div>
         <div class="bento-card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <span class="material-symbols-outlined" style="font-size: 26px; color: #cba6f7;">speed</span>
+                <span class="material-symbols-outlined" style="font-size: 24px; color: #cba6f7;">speed</span>
                 <span class="bento-badge default">Gateway</span>
             </div>
             <div class="bento-title">Mean Gateway Latency</div>
             <div class="bento-value">{mean_latency_ms:.1f}ms</div>
-            <div class="bento-desc">{total_groups} Groups ({confirmed_tp} TP / {false_positives} FP)</div>
+            <div class="bento-desc">Avg Roundtrip Response</div>
+        </div>
+        <div class="bento-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span class="material-symbols-outlined" style="font-size: 24px; color: #4EDEA3;">verified</span>
+                <span class="bento-badge success">Confirmed</span>
+            </div>
+            <div class="bento-title">True Positives (TP)</div>
+            <div class="bento-value">{confirmed_tp} <span style="font-size: 13px; font-weight: 500; color: #4EDEA3;">({tp_percent:.0f}%)</span></div>
+            <div class="bento-desc">Confirmed Real Threats</div>
+        </div>
+        <div class="bento-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span class="material-symbols-outlined" style="font-size: 24px; color: #FF6B6B;">cancel</span>
+                <span class="bento-badge critical">Filtered</span>
+            </div>
+            <div class="bento-title">False Positives (FP)</div>
+            <div class="bento-value">{false_positives} <span style="font-size: 13px; font-weight: 500; color: #FF6B6B;">({fp_percent:.0f}%)</span></div>
+            <div class="bento-desc">Dismissed Scanner Noise</div>
         </div>
     </div>
     """
+
 
 
 def render_guardrails_kpi_grid(

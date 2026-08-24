@@ -637,10 +637,50 @@ with tab5:
                 st.session_state["report_groups_per_page"] = 5
             if "report_groups_expand_all" not in st.session_state:
                 st.session_state["report_groups_expand_all"] = False
+            if "report_confidence_filter" not in st.session_state:
+                st.session_state["report_confidence_filter"] = "Tất cả mức độ tin cậy"
 
-            col_h3, col_ctrl = st.columns([1, 1])
+            col_h3, col_filter = st.columns([1.2, 1.8])
             with col_h3:
                 st.markdown(f"### Bảng Tổng Hợp Phân Tích Lỗ Hổng ({total_groups_count} Nhóm — {total_entries} Findings):")
+            with col_filter:
+                conf_options = [
+                    "Tất cả mức độ tin cậy",
+                    "Confirmed (Xác thực 100% TP)",
+                    "High (Độ tin cậy cao)",
+                    "Medium (Độ tin cậy vừa)",
+                    "Low (Độ tin cậy thấp)",
+                    "False Positive (Cảnh báo giả FP)",
+                ]
+                selected_conf = st.selectbox(
+                    "Lọc theo độ tin cậy của Agent:",
+                    conf_options,
+                    index=conf_options.index(st.session_state["report_confidence_filter"]) if st.session_state["report_confidence_filter"] in conf_options else 0,
+                    key="sel_agent_conf_filter",
+                )
+                if selected_conf != st.session_state["report_confidence_filter"]:
+                    st.session_state["report_confidence_filter"] = selected_conf
+                    st.session_state["report_groups_page"] = 1
+                    st.rerun()
+
+            # Filter groups by selected confidence level
+            conf_map = {
+                "Confirmed (Xác thực 100% TP)": "confirmed",
+                "High (Độ tin cậy cao)": "high",
+                "Medium (Độ tin cậy vừa)": "medium",
+                "Low (Độ tin cậy thấp)": "low",
+                "False Positive (Cảnh báo giả FP)": "false_positive",
+            }
+            target_conf = conf_map.get(selected_conf)
+            if target_conf:
+                filtered_groups_list = [
+                    (gid, items) for gid, items in groups_list
+                    if any(item.get("confidence", {}).get("level") == target_conf for item in items)
+                ]
+            else:
+                filtered_groups_list = groups_list
+
+            filtered_count = len(filtered_groups_list)
 
             # Pagination Bar Controls
             per_page_options = [5, 10, 20, "Tất cả"]
@@ -663,10 +703,10 @@ with tab5:
             # Calculate pages
             if selected_per_page == "Tất cả":
                 total_pages = 1
-                page_size = total_groups_count if total_groups_count > 0 else 1
+                page_size = filtered_count if filtered_count > 0 else 1
             else:
                 page_size = int(selected_per_page)
-                total_pages = max(1, (total_groups_count + page_size - 1) // page_size)
+                total_pages = max(1, (filtered_count + page_size - 1) // page_size)
 
             if st.session_state["report_groups_page"] > total_pages:
                 st.session_state["report_groups_page"] = total_pages
@@ -675,8 +715,8 @@ with tab5:
 
             current_page = st.session_state["report_groups_page"]
             start_idx = (current_page - 1) * page_size
-            end_idx = min(start_idx + page_size, total_groups_count)
-            current_page_groups = groups_list[start_idx:end_idx]
+            end_idx = min(start_idx + page_size, filtered_count)
+            current_page_groups = filtered_groups_list[start_idx:end_idx]
 
             with c_prev:
                 if st.button("Trang Trước", disabled=(current_page <= 1), use_container_width=True, key="btn_grp_prev"):
@@ -684,10 +724,11 @@ with tab5:
                     st.rerun()
 
             with c_info:
+                display_start = start_idx + 1 if filtered_count > 0 else 0
                 render_clean_html(
                     f"""
                     <div style="text-align: center; font-size: 13px; font-weight: 700; color: #cdd6f4; line-height: 2.4;">
-                        Trang {current_page} / {total_pages} ({start_idx + 1}-{end_idx} / {total_groups_count})
+                        Trang {current_page} / {total_pages} ({display_start}-{end_idx} / {filtered_count} nhóm)
                     </div>
                     """
                 )
@@ -702,6 +743,9 @@ with tab5:
                 if st.button(toggle_btn_label, use_container_width=True, key="btn_grp_toggle_all"):
                     st.session_state["report_groups_expand_all"] = not st.session_state["report_groups_expand_all"]
                     st.rerun()
+
+            if not current_page_groups:
+                st.info(f"Không có nhóm lỗ hổng nào khớp với bộ lọc: '{selected_conf}'.")
 
             for grp_idx, (grp_id, items) in enumerate(current_page_groups, start=start_idx + 1):
                 first_item = items[0]

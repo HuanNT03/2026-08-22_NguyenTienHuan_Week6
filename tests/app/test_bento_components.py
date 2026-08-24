@@ -41,7 +41,7 @@ def test_build_realtime_log_box_html() -> None:
 
 
 def test_build_guardrails_kpi_grid_html() -> None:
-    """Verify Guardrails KPI grid generation with all 4 metrics."""
+    """Verify Guardrails KPI grid generation with all 6 executive metrics including TP/FP rates."""
     html = build_guardrails_kpi_grid_html(
         pii_count=14,
         injection_count=3,
@@ -57,8 +57,17 @@ def test_build_guardrails_kpi_grid_html() -> None:
     assert "Injections Neutralized" in html
     assert "3" in html
     assert "HITL Decisions" in html
+    assert "8 / 10" in html
+    assert "Mean Gateway Latency" in html
     assert "124.5ms" in html
+    assert "True Positives (TP)" in html
+    assert "4" in html
+    assert "80%" in html
+    assert "False Positives (FP)" in html
+    assert "1" in html
+    assert "20%" in html
     assert "material-symbols-outlined" in html
+
 
 
 def test_hitl_queue_manager_lifecycle() -> None:
