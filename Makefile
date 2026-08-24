@@ -287,3 +287,8 @@ test-mock-guardrails: ## Chạy bài kiểm thử thực nghiệm E2E Guardrails
 test-live-mock-probe: ## Chạy kịch bản 4 chặng Live Mock Probe trực quan trên Terminal.
 	@$(VENV_PYTHON) scripts/live_mock_probe_demo.py
 
+.PHONY: slides
+slides: ## Mở slide thuyết trình HTML tương tác (Monochrome Ivory Ledger) trên trình duyệt.
+	@xdg-open slides/index.html 2>/dev/null || sensible-browser slides/index.html 2>/dev/null || open slides/index.html 2>/dev/null || echo "Vui lòng mở tệp: file://$(shell pwd)/slides/index.html trên trình duyệt."
+
+

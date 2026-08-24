@@ -1,0 +1,1399 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Sentinel — Presentation Slide Deck</title>
+    
+    <!-- Google Fonts: Jost (Headlines), Lora (Serif accents), JetBrains Mono (Code/Labels) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&family=Jost:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;1,300&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+
+    <style>
+        /* =====================================================================
+           MONOCHROME (IVORY LEDGER) DESIGN SYSTEM
+           Literary Editorial Aesthetic: Black Ink on Cream Paper
+           ===================================================================== */
+        :root {
+            --cream-paper: #FAFADF;
+            --cream-paper-2: #F2F2D2;
+            --cream-paper-3: #EBEBC4;
+            --cream-warm: #F5F0E4;
+            --ink-black: #1A1A16;
+            --ink-graphite: #5E5E54;
+            --ink-graphite-light: #8A8A80;
+            --ink-border: rgba(26, 26, 22, 0.18);
+            --ink-border-bold: rgba(26, 26, 22, 0.85);
+
+            --font-display: 'Jost', system-ui, -apple-system, sans-serif;
+            --font-serif: 'Lora', Georgia, serif;
+            --font-mono: 'JetBrains Mono', monospace;
+
+            --stage-width: 1920px;
+            --stage-height: 1080px;
+            --slide-padding-x: 96px;
+            --slide-padding-y: 72px;
+
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --duration-normal: 0.5s;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #121210;
+            font-family: var(--font-display);
+            color: var(--ink-black);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Viewport Container: Scales 16:9 stage into window */
+        .deck-viewport {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #141412;
+        }
+
+        .deck-stage {
+            position: relative;
+            width: var(--stage-width);
+            height: var(--stage-height);
+            background-color: var(--cream-paper);
+            transform-origin: center center;
+            overflow: hidden;
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.6);
+        }
+
+        /* Slide base */
+        .slide {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            padding: var(--slide-padding-y) var(--slide-padding-x);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background-color: var(--cream-paper);
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        visibility var(--duration-normal) var(--ease-out-expo);
+        }
+
+        .slide.active {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            z-index: 10;
+        }
+
+        /* Editorial Header & Chrome */
+        .slide-chrome-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            border-bottom: 1px solid var(--ink-border);
+            padding-bottom: 18px;
+            margin-bottom: 32px;
+        }
+
+        .slide-kicker {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+            color: var(--ink-graphite);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .slide-kicker-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--ink-black);
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .slide-number-label {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            color: var(--ink-graphite);
+            font-weight: 500;
+        }
+
+        /* Typography Hierarchy */
+        .title-display {
+            font-size: 68px;
+            font-weight: 200;
+            line-height: 1.05;
+            letter-spacing: -0.02em;
+            color: var(--ink-black);
+            margin-bottom: 16px;
+        }
+
+        .title-sub {
+            font-family: var(--font-serif);
+            font-style: italic;
+            font-size: 26px;
+            color: var(--ink-graphite);
+            line-height: 1.4;
+            font-weight: 400;
+        }
+
+        .section-h2 {
+            font-size: 42px;
+            font-weight: 300;
+            letter-spacing: -0.01em;
+            line-height: 1.15;
+            color: var(--ink-black);
+            margin-bottom: 8px;
+        }
+
+        .body-text {
+            font-size: 19px;
+            font-weight: 300;
+            line-height: 1.65;
+            color: var(--ink-black);
+        }
+
+        .caption-text {
+            font-size: 14px;
+            font-weight: 300;
+            line-height: 1.5;
+            color: var(--ink-graphite);
+        }
+
+        /* Hairline rule */
+        .hairline-rule {
+            width: 48px;
+            height: 1px;
+            background: var(--ink-black);
+            margin: 20px 0;
+        }
+
+        /* Slide Content Areas */
+        .slide-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* Grids & Cards */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 32px;
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+        }
+
+        .grid-1-2 {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 48px;
+        }
+
+        .grid-2-1 {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 48px;
+        }
+
+        /* Editorial Card */
+        .ledger-card {
+            background-color: var(--cream-warm);
+            border: 1px solid var(--ink-border);
+            padding: 28px 32px;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .ledger-card-title {
+            font-family: var(--font-serif);
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--ink-black);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .ledger-badge {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            letter-spacing: 0.08em;
+            padding: 4px 10px;
+            border: 1px solid var(--ink-black);
+            text-transform: uppercase;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 2px;
+        }
+
+        .ledger-badge.invert {
+            background: var(--ink-black);
+            color: var(--cream-paper);
+        }
+
+        /* Flow steps */
+        .step-block {
+            border-left: 2px solid var(--ink-black);
+            padding-left: 20px;
+            margin-bottom: 24px;
+        }
+
+        .step-num {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--ink-graphite);
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .step-title {
+            font-size: 20px;
+            font-weight: 500;
+            color: var(--ink-black);
+            margin-bottom: 6px;
+        }
+
+        /* Code block */
+        .code-box {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            line-height: 1.55;
+            background: #F0F0D0;
+            border: 1px solid var(--ink-border);
+            padding: 16px 20px;
+            border-radius: 3px;
+            overflow-x: auto;
+            color: var(--ink-black);
+        }
+
+        /* Table */
+        .ledger-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 15px;
+            text-align: left;
+        }
+
+        .ledger-table th {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            border-bottom: 2px solid var(--ink-black);
+            padding: 10px 14px;
+            color: var(--ink-graphite);
+        }
+
+        .ledger-table td {
+            border-bottom: 1px solid var(--ink-border);
+            padding: 12px 14px;
+            vertical-align: top;
+            color: var(--ink-black);
+        }
+
+        .ledger-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Slide Footer Chrome */
+        .slide-chrome-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid var(--ink-border);
+            padding-top: 18px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--ink-graphite);
+        }
+
+        /* Floating Nav Controls */
+        .nav-controls {
+            position: fixed;
+            bottom: 28px;
+            right: 36px;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--cream-warm);
+            padding: 8px 16px;
+            border: 1px solid var(--ink-border-bold);
+            border-radius: 40px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+        }
+
+        .nav-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            color: var(--ink-black);
+            transition: all 0.2s ease;
+        }
+
+        .nav-btn:hover {
+            background: var(--ink-black);
+            color: var(--cream-paper);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .slide-counter {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--ink-black);
+            padding: 0 8px;
+        }
+
+        /* Reveal animations */
+        .reveal {
+            opacity: 0;
+            transform: translateY(18px);
+            transition: opacity 0.6s var(--ease-out-expo), transform 0.6s var(--ease-out-expo);
+        }
+
+        .slide.active .reveal {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .slide.active .reveal:nth-child(1) { transition-delay: 0.05s; }
+        .slide.active .reveal:nth-child(2) { transition-delay: 0.12s; }
+        .slide.active .reveal:nth-child(3) { transition-delay: 0.18s; }
+        .slide.active .reveal:nth-child(4) { transition-delay: 0.24s; }
+
+        /* Highlight box */
+        .stat-huge {
+            font-size: 72px;
+            font-weight: 200;
+            line-height: 0.95;
+            letter-spacing: -0.03em;
+            color: var(--ink-black);
+            margin-bottom: 6px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="deck-viewport">
+        <main class="deck-stage" id="deckStage">
+
+            <!-- ===================================================================
+                 SLIDE 1: COVER / TITLE
+                 =================================================================== -->
+            <section class="slide active" data-slide="1">
+                <div class="slide-chrome-top">
+                    <div class="slide-kicker"><span class="slide-kicker-dot"></span> VINUNI X VINSOC — SECURITY CAPSTONE PROJECT</div>
+                    <div class="slide-number-label">MONOGRAPH / 01</div>
+                </div>
+                <div class="slide-body" style="justify-content: center; padding: 40px 0;">
+                    <div class="reveal">
+                        <span class="ledger-badge invert" style="margin-bottom: 24px;">DEVSECOPS & AI AGENTIC SECURITY</span>
+                        <h1 class="title-display">PROJECT SENTINEL</h1>
+                        <p class="title-sub">Automated Vulnerability Orchestration & ReAct AI Operations with Active Guardrails and Human-in-the-Loop</p>
+                        <div class="hairline-rule" style="width: 120px;"></div>
+                    </div>
+                    <div class="reveal" style="display: flex; gap: 48px; margin-top: 24px;">
+                        <div>
+                            <div class="step-num">TARGET APPLICATION</div>
+                            <div class="body-text" style="font-weight: 500;">OWASP Juice Shop v20.1.1 & Mock Target</div>
+                        </div>
+                        <div>
+                            <div class="step-num">CORE ARCHITECTURE</div>
+                            <div class="body-text" style="font-weight: 500;">Multi-SAST/DAST + Two-Stage RAG + Kong Gateway</div>
+                        </div>
+                        <div>
+                            <div class="step-num">EVALUATION BASELINE</div>
+                            <div class="body-text" style="font-weight: 500;">284+ Unit & Integration Verification Suites</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="slide-chrome-bottom">
+                    <span>SECURITY RESEARCH & APPLIED AI GROUP</span>
+                    <span>AUGUST 2026 — STAGE EDITION</span>
+                </div>
+            </section>
+
+            <!-- ===================================================================
+                 SLIDE 2: PROBLEM STATEMENT
+                 =================================================================== -->
+            <section class="slide" data-slide="2">
+                <div class="slide-chrome-top">
+                    <div class="slide-kicker"><span class="slide-kicker-dot"></span> CHAPTER I: PROBLEM LANDSCAPE</div>
+                    <div class="slide-number-label">02 / 15</div>
+                </div>
+                <div class="slide-body">
+                    <div class="reveal">
+                        <h2 class="section-h2">Thách Thức Trong Quy Trình Vận Hành SOC & DevSecOps</h2>
+                        <p class="title-sub">Ba rào cản lớn ngăn cản việc tự động hóa đánh giá an ninh mạng hiệu quả</p>
+                    </div>
+                    <div class="grid-3 reveal" style="margin-top: 36px;">
+                        <div class="ledger-card">
+                            <div>
+                                <span class="ledger-badge" style="margin-bottom: 16px;">BOTTLENECK 01</span>
+                                <h3 class="ledger-card-title">Cảnh Báo Phân Mảnh</h3>
+                                <p class="body-text" style="font-size: 16px;">Mỗi công cụ SAST/DAST xuất ra một định dạng riêng (SARIF, JSON, XML). Dữ liệu phân mảnh khiến chuyên viên SOC ngập trong hàng ngàn bản ghi trùng lặp.</p>
+                            </div>
+                            <div class="caption-text" style="border-top: 1px solid var(--ink-border); padding-top: 12px; margin-top: 18px;">
+                                ➔ Hệ quả: Tốn 60% thời gian xử lý thủ công
+                            </div>
+                        </div>
+
+                        <div class="ledger-card">
+                            <div>
+                                <span class="ledger-badge" style="margin-bottom: 16px;">BOTTLENECK 02</span>
+                                <h3 class="ledger-card-title">Tỷ Lệ Cảnh Báo Giả Cao</h3>
+                                <p class="body-text" style="font-size: 16px;">SAST phát hiện lỗi code tĩnh nhưng không biết có route ra ngoài hay không; DAST phát hiện probe runtime nhưng thiếu context mã nguồn để xác định Root Cause.</p>
+                            </div>
+                            <div class="caption-text" style="border-top: 1px solid var(--ink-border); padding-top: 12px; margin-top: 18px;">
+                                ➔ Hệ quả: Bỏ sót các lỗ hổng khai thác thực tế
+                            </div>
+                        </div>
+
+                        <div class="ledger-card">
+                            <div>
+                                <span class="ledger-badge" style="margin-bottom: 16px;">BOTTLENECK 03</span>
+                                <h3 class="ledger-card-title">Rủi Ro GenAI Mất Kiểm Soát</h3>
+                                <p class="body-text" style="font-size: 16px;">Đưa LLM vào phân tích dễ bị tấn công <b>Prompt Injection</b> từ server mục tiêu, rò rỉ dữ liệu nhạy cảm (PII/Secrets), hoặc tự ý gửi probe phá hoại hệ thống.</p>
+                            </div>
+                            <div class="caption-text" style="border-top: 1px solid var(--ink-border); padding-top: 12px; margin-top: 18px;">
+                                ➔ Hệ quả: Mất an toàn thông tin doanh nghiệp
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="slide-chrome-bottom">
+                    <span>PROJECT SENTINEL ARCHITECTURE</span>
+                    <span>DIAGNOSIS & OPPORTUNITY</span>
+                </div>
+            </section>
+
+            <!-- ===================================================================
+                 SLIDE 3: SYSTEM ARCHITECTURE
+                 =================================================================== -->
+            <section class="slide" data-slide="3">
+                <div class="slide-chrome-top">
+                    <div class="slide-kicker"><span class="slide-kicker-dot"></span> CHAPTER II: SYSTEM OVERVIEW</div>
+                    <div class="slide-number-label">03 / 15</div>
+                </div>
+                <div class="slide-body">
+                    <div class="reveal">
+                        <h2 class="section-h2">Kiến Trúc Tổng Thể 5 Tầng Của Project Sentinel</h2>
+                        <p class="title-sub">Pipeline khép kín: Quét ➔ Chuẩn hóa ➔ Truy hồi RAG ➔ ReAct Agent ➔ Gateway Guardrails</p>
+                    </div>
+                    <div class="grid-1-2 reveal" style="margin-top: 32px; align-items: stretch;">
+                        <div class="ledger-card" style="background: var(--ink-black); color: var(--cream-paper);">
+                            <div>
+                                <span class="ledger-badge" style="border-color: var(--cream-paper); color: var(--cream-paper); margin-bottom: 16px;">CORE PRINCIPLE</span>
+                                <h3 style="font-family: var(--font-serif); font-size: 26px; color: var(--cream-paper); line-height: 1.3; margin-bottom: 16px;">
+                                    "Defense-in-Depth & Grounded AI Reasoning"
+                                </h3>
+                                <p style="font-size: 15px; color: #a8a89c; line-height: 1.6;">
+                                    Mọi thông tin từ scanner đều được chuẩn hóa theo hợp đồng dữ liệu nghiêm ngặt. Agent không ảo giác nhờ RAG chuyên sâu và không gây hại nhờ API Gateway kiểm soát.
+                                </p>
+                            </div>
+                            <div style="font-family: var(--font-mono); font-size: 12px; color: #a8a89c; border-top: 1px solid rgba(255,255,255,0.15); padding-top: 14px;">
+                                Target: OWASP Juice Shop v20.1.1
+                            </div>
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; justify-content: space-between;">
+                            <div class="step-block" style="margin-bottom: 14px;">
+                                <div class="step-num">TẦNG 1: MULTI-SCANNER ENGINES</div>
+                                <div class="step-title" style="font-size: 17px;">Semgrep SAST (Rulesets) + CodeQL SAST (Taint Flow) + OWASP ZAP (DAST Baseline & Full)</div>
+                            </div>
+                            <div class="step-block" style="margin-bottom: 14px;">
+                                <div class="step-num">TẦNG 2: UNIFIED NORMALIZER & CORRELATION</div>
+                                <div class="step-title" style="font-size: 17px;">Chuẩn hóa Unified Findings JSONL + Thuật toán gom nhóm tương quan lai 4 bước (Grouper Engine)</div>
+                            </div>
+                            <div class="step-block" style="margin-bottom: 14px;">
+                                <div class="step-num">TẦNG 3: TWO-STAGE HYBRID KNOWLEDGE BASE (RAG)</div>
+                                <div class="step-title" style="font-size: 17px;">SQLite FTS5 (Lexical BM25) + FastEmbed Dense Vector (Offline ONNX) + Parent-Child Chunking</div>
+                            </div>
+                            <div class="step-block" style="margin-bottom: 14px;">
+                                <div class="step-num">TẦNG 4: REACT AI SECURITY AGENT</div>
+                                <div class="step-title" style="font-size: 17px;">Chu trình ReAct lặp đa chặng: Thought ➔ Action ➔ Observation, sinh báo cáo có cấu trúc</div>
+                            </div>
+                            <div class="step-block" style="margin-bottom: 0;">
+                                <div class="step-num">TẦNG 5: ENTERPRISE GATEWAY & GUARDRAILS</div>
+                                <div class="step-title" style="font-size: 17px;">Kong Gateway Allowlist + Redactor PII/Secrets + Prompt Injection Shield + Hàng đợi HITL (120s Timeout)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="slide-chrome-bottom">
+                    <span>PROJECT SENTINEL ARCHITECTURE</span>
+                    <span>LAYERED BLUEPRINT</span>
+                </div>
+            </section>
+
+            <!-- ===================================================================
+                 SLIDE 4: MULTI-SCANNER SAST & DAST
+                 =================================================================== -->
+            <section class="slide" data-slide="4">
+                <div class="slide-chrome-top">
+                    <div class="slide-kicker"><span class="slide-kicker-dot"></span> CHAPTER III: SCANNERS ORCHESTRATION</div>
+                    <div class="slide-number-label">04 / 15</div>
+                </div>
+                <div class="slide-body">
+                    <div class="reveal">
+                        <h2 class="section-h2">Pipeline Quét Tự Động Hóa: SAST & DAST</h2>
+                        <p class="title-sub">Kết hợp phân tích tĩnh chuyên sâu và kiểm thử động thời gian thực có xác thực</p>
+                    </div>
+                    <div class="grid-3 reveal" style="margin-top: 36px;">
+                        <div class="ledger-card">
+                            <div>
+                                <span class="ledger-badge">SAST SCANNER 01</span>
+                                <h3 class="ledger-card-title">Semgrep SAST</h3>
+                                <p class="body-text" style="font-size: 15px; margin-bottom: 14px;">Quét nhanh theo các bộ quy tắc (rulesets) JavaScript, NodeJS, Express, bám sát các danh mục OWASP Top 10.</p>
+                                <ul style="font-size: 13px; color: var(--ink-graphite); padding-left: 18px; line-height: 1.6;">
+                                    <li>Tốc độ quét: ~3-5 giây</li>
+                                    <li>Định dạng: SARIF JSON</li>
+                                    <li>Phát hiện: Hardcoded Secret, XSS, Weak Crypto</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="ledger-card">
+                            <div>
+                                <span class="ledger-badge">SAST SCANNER 02</span>
+                                <h3 class="ledger-card-title">CodeQL SAST</h3>
+                                <p class="body-text" style="font-size: 15px; margin-bottom: 14px;">Phân tích sâu đồ thị cú pháp (AST) và luồng ô nhiễm (Taint Data Flow) từ Source đầu vào đến Sink thực thi.</p>
+                                <ul style="font-size: 13px; color: var(--ink-graphite); padding-left: 18px; line-height: 1.6;">
+                                    <li>Truy vết: Source ➔ Steps ➔ Sink</li>
+                                    <li>Độ chính xác cao, ít False Positive</li>
+                                    <li>Phát hiện: SQL Injection, NoSQL Injection, RCE</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="ledger-card">
+                            <div>
+                                <span class="ledger-badge">DAST SCANNER 03</span>
+                                <h3 class="ledger-card-title">OWASP ZAP DAST</h3>
+                                <p class="body-text" style="font-size: 15px; margin-bottom: 14px;">Kiểm thử ứng dụng động thời gian chạy với 2 cấp độ xác thực người dùng được cấp phép.</p>
+                                <ul style="font-size: 13px; color: var(--ink-graphite); padding-left: 18px; line-height: 1.6;">
+                                    <li><b>Baseline Scan</b>: Auth <code>user@juice-sh.op</code></li>
+                                    <li><b>Full Active Scan</b>: Auth <code>admin@juice-sh.op</code></li>
+                                    <li>Spider crawl forms & HTTP attack payloads</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="slide-chrome-bottom">
+                    <span>SEMGREP • CODEQL • OWASP ZAP</span>
+                    <span>CONTAINERIZED WORKFLOW</span>
+                </div>
+            </section>
+
+            <!-- ===================================================================
+                 SLIDE 5: UNIFIED FINDINGS SCHEMA CONTRACT
+                 =================================================================== -->
+            <section class="slide" data-slide="5">
+                <div class="slide-chrome-top">
+                    <div class="slide-kicker"><span class="slide-kicker-dot"></span> CHAPTER IV: DATA CONTRACTS</div>
+                    <div class="slide-number-label">05 / 15</div>
+                </div>
+                <div class="slide-body">
+                    <div class="reveal">
+                        <h2 class="section-h2">Data Contract 1: Unified Findings Schema</h2>
+                        <p class="title-sub">Chuẩn hóa đầu ra đa scanner về một schema thống nhất: <code>schemas/unified_findings.schema.json</code></p>
+                    </div>
+                    <div class="grid-2 reveal" style="margin-top: 28px;">
+                        <div>
+                            <table class="ledger-table">
+                                <thead>
+                                    <tr>
+                                        <th>Trường Dữ Liệu</th>
+                                        <th>Kiểu Dữ Liệu</th>
+                                        <th>Mục Đích & Ràng Buộc</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>finding_id</code></td>
+                                        <td>String</td>
+                                        <td>Mã duy nhất: <code>fnd_[0-9a-f]{32}</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>fingerprint</code></td>
+                                        <td>String</td>
+                                        <td>Mã băm bất biến <code>fp_sha256:v1:...</code> khử trùng lặp</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>group_key</code></td>
+                                        <td>String</td>
+                                        <td>Hash gom nhóm từ <code>(primary_cwe, location)</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>tool / scan</code></td>
+                                        <td>Object</td>
+                                        <td>Ghi nhận công cụ (semgrep, codeql, zap) và SAST/DAST</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>location</code></td>
+                                        <td>OneOf</td>
+                                        <td>Đa hình: <code>code_location</code> hoặc <code>http_location</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>evidence</code></td>
+                                        <td>Object</td>
+                                        <td>Trích đoạn code snippet hoặc HTTP request/response</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>data_flow</code></td>
+                                        <td>Array / Null</td>
+                                        <td>Chuỗi taint Source ➔ Sink từ CodeQL</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>raw_sources</code></td>
+                                        <td>Array</td>
+                                        <td>Truy vết <code>json_pointer</code> về file scan gốc</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; justify-content: space-between;">
+                            <div class="ledger-card" style="margin-bottom: 16px;">
+                                <div class="step-num">CANONICAL HASHING FORMULA</div>
+                                <div class="code-box" style="font-size: 12px; margin-top: 8px;">
+fingerprint = "fp_sha256:v1:" + sha256(
+    tool_name + "|" + rule_id + "|" + 
+    primary_cwe + "|" + location_key + "|" + evidence_hash
+)
+                                </div>
+                            </div>
+                            <div class="ledger-card">
+                                <div class="step-num">PROVENANCE & INTEGRITY</div>
+                                <p class="body-text" style="font-size: 14px; margin-top: 6px;">
+                                    Đảm bảo tính toán vẹn dữ liệu: Không sửa đổi bản ghi gốc mà giữ nguyên đường dẫn truy vết JSON Pointer. Mọi dòng trong file normalized JSONL đều được validate 100% qua JSON Schema Draft 2020-12.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="slide-chrome-bottom">
+                    <span>SCHEMAS/UNIFIED_FINDINGS.SCHEMA.JSON</span>
+                    <span>DATA INTEGRITY</span>
+                </div>
+            </section>
+
+            <!-- ===================================================================
+                 SLIDE 6: GROUPING & CORRELATION PIPELINE
+                 =================================================================== -->
+            <section class="slide" data-slide="6">
+                <div class="slide-chrome-top">
+                    <div class="slide-kicker"><span class="slide-kicker-dot"></span> CHAPTER V: CORRELATION ENGINE</div>
+                    <div class="slide-number-label">06 / 15</div>
+                </div>
+                <div class="slide-body">
+                    <div class="reveal">
+                        <h2 class="section-h2">Pipeline Gom Nhóm & Tương Quan 4 Bước</h2>
+                        <p class="title-sub">Thuật toán tại <code>src/agent/grouper.py</code> & <code>src/agent/correlator.py</code> trước khi nạp vào AI Agent</p>
+                    </div>
+                    <div class="grid-4 reveal" style="margin-top: 32px;">
+                        <div class="ledger-card">
+                            <span class="ledger-badge">BƯỚC 1</span>
+                            <h3 class="ledger-card-title" style="font-size: 18px;">Khởi Tạo Cụm group_key</h3>
+                            <p class="body-text" style="font-size: 14px;">Gom nhanh các findings có cùng mã CWE chính và vị trí xuất hiện ban đầu.</p>
+                        </div>
+
+                        <div class="ledger-card" style="border: 2px solid var(--ink-black); background: var(--cream-paper-3);">
+                            <span class="ledger-badge invert">BƯỚC 2 (CORE)</span>
+                            <h3 class="ledger-card-title" style="font-size: 18px;">Tương Quan Lai Đa Scanner</h3>
+                            <p class="body-text" style="font-size: 13px; line-height: 1.5;">Hợp nhất SAST & DAST dựa trên 4 tiêu chuẩn đối chiếu khắt khe của <code>correlate_findings</code>.</p>
+                        </div>
+
+                        <div class="ledger-card">
+                            <span class="ledger-badge">BƯỚC 3</span>
+                            <h3 class="ledger-card-title" style="font-size: 18px;">Khử Trùng Lặp Fingerprint</h3>
+                            <p class="body-text" style="font-size: 14px;">Loại bỏ các finding trùng băm, chỉ giữ lại 1 bản ghi đại diện có bằng chứng tốt nhất.</p>
+                        </div>
+
+                        <div class="ledger-card">
+                            <span class="ledger-badge">BƯỚC 4</span>
+                            <h3 class="ledger-card-title" style="font-size: 18px;">Xác Định AnalysisGroup</h3>
+                            <p class="body-text" style="font-size: 14px;">Gán nhãn <code>correlation_type</code> (sast_and_dast, sast_only...) và Primary CWE cho Agent Prompt.</p>
+                        </div>
+                    </div>
+
+                    <div class="ledger-card reveal" style="margin-top: 24px;">
+                        <div class="step-num">CHI TIẾT 4 TIÊU CHÍ TƯƠNG QUAN TRONG BƯỚC 2 (CORRELATE_FINDINGS):</div>
+                        <div class="grid-4" style="margin-top: 10px; gap: 16px;">
+                            <div style="font-size: 13px;">
+                                <b>1. Tập giao CWE (Overlap):</b><br><span style="color: var(--ink-graphite);">Kiểm tra <code>cwes_a & cwes_b</code>. Nếu chỉ trùng Broad CWEs (CWE-20/400) bắt buộc phải thỏa thêm tiêu chí 2, 3 hoặc 4.</span>
+                            </div>
+                            <div style="font-size: 13px;">
+                                <b>2. Từ đồng nghĩa Tiêu đề:</b><br><span style="color: var(--ink-graphite);">Mở rộng tập <code>SYNONYM_GROUPS</code> (sql/sqli, redirect/url, traversal/path, xss...) và lọc bỏ generic words.</span>
+                            </div>
+                            <div style="font-size: 13px;">
+                                <b>3. Đối chiếu Vị trí:</b><br><span style="color: var(--ink-graphite);">So khớp tệp mã nguồn (<code>loc.path</code> trong SAST) hoặc endpoint API (<code>loc.endpoint</code> trong DAST).</span>
+                            </div>
+                            <div style="font-size: 13px;">
+                                <b>4. DAST Param vs Taint Flow:</b><br><span style="color: var(--ink-graphite);">So khớp tham số DAST (ví dụ <code>q</code>, <code>id</code>) vào Source ➔ Sink của luồng Data Flow CodeQL.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="slide-chrome-bottom">
+                    <span>SRC/AGENT/GROUPER.PY • SRC/AGENT/CORRELATOR.PY</span>
+                    <span>CONTEXT OPTIMIZATION: -85% TOKENS</span>
+                </div>
+            </section>
+
+            <!-- ===================================================================
+                 SLIDE 7: HYBRID RAG KNOWLEDGE BASE
+                 =================================================================== -->
+            <section class="slide" data-slide="7">
+                <div class="slide-chrome-top">
+                    <div class="slide-kicker"><span class="slide-kicker-dot"></span> CHAPTER VI: SECURITY KNOWLEDGE RETRIEVAL</div>
+                    <div class="slide-number-label">07 / 15</div>
+                </div>
+                <div class="slide-body">
+                    <div class="reveal">
+                        <h2 class="section-h2">Truy Hồi Tri Thức Lai Chuyên Sâu (Hybrid RAG)</h2>
+                        <p class="title-sub">Kết hợp sức mạnh tìm kiếm từ khóa chính xác BM25 và Vector ngữ nghĩa đa tầng</p>
+                    </div>
+                    <div class="grid-2 reveal" style="margin-top: 32px;">
+                        <div class="ledger-card">
+                            <span class="ledger-badge">STAGE 1: LEXICAL RETRIEVAL</span>
+                            <h3 class="ledger-card-title">SQLite FTS5 (BM25 Search)</h3>
+                            <p class="body-text" style="font-size: 15px; margin-bottom: 14px;">
+                                Tìm kiếm siêu tốc dựa trên từ khóa kỹ thuật chuẩn xác tuyệt đối: mã CWE (<code>CWE-89</code>), tên hàm nguy hiểm (<code>eval()</code>, <code>query()</code>), header bảo mật.
+                            </p>
+                            <div class="code-box" style="font-size: 12px;">
+SELECT doc_id, title, rank FROM kb_fts5 
+WHERE kb_fts5 MATCH 'cwe:89 AND "SQL Injection"' 
+ORDER BY rank LIMIT 5;
+                            </div>
+                        </div>
+
+                        <div class="ledger-card">
+                            <span class="ledger-badge">STAGE 2: DENSE SEMANTIC RETRIEVAL</span>
+                            <h3 class="ledger-card-title">FastEmbed Vector (Offline ONNX)</h3>
+                            <p class="body-text" style="font-size: 15px; margin-bottom: 14px;">
+                                Sử dụng mô hình <code>sentence-transformers/all-MiniLM-L6-v2</code> (384-dim) chạy offline trên CPU cục bộ, không tốn chi phí API và bảo vệ tuyệt đối dữ liệu.
+                            </p>
+                            <div class="caption-text" style="border-top: 1px solid var(--ink-border); padding-top: 10px;">
+                                ➔ Hỗ trợ mở rộng: Alibaba DashScope <code>text-embedding-v4</code> (1024-dim)
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ledger-card reveal" style="margin-top: 24px; background: var(--cream-paper-2);">
+                        <div class="step-num">KỸ THUẬT PARENT-CHILD SECTION-AWARE CHUNKING</div>
+                        <p class="body-text" style="font-size: 14px; margin-top: 4px;">
+                            Văn bản Markdown (OWASP Cheatsheet, CWE Remediation) được chia nhỏ thành từng Section (Child chunks) để Vector Embedding chính xác, nhưng khi Agent truy hồi sẽ lấy trọn vẹn Document cha (Parent Context) để không bị đứt đoạn kiến thức.
+                        </p>
+                    </div>
+                </div>
+                <div class="slide-chrome-bottom">
+                    <span>SQLITE FTS5 • FASTEMBED ONNX • PARENT-CHILD CHUNKING</span>
+                    <span>ZERO HALLUCINATION</span>
+                </div>
+            </section>
+
+            <!-- ===================================================================
+                 SLIDE 8: REACT AI SECURITY AGENT
+                 =================================================================== -->
+            <section class="slide" data-slide="8">
+                <div class="slide-chrome-top">
+                    <div class="slide-kicker"><span class="slide-kicker-dot"></span> CHAPTER VII: AGENTIC REASONING</div>
+                    <div class="slide-number-label">08 / 15</div>
+                </div>
+                <div class="slide-body">
+                    <div class="reveal">
+                        <h2 class="section-h2">Trái Tim Hệ Thống: ReAct AI Security Agent</h2>
+                        <p class="title-sub">Chu trình suy luận ReAct lặp đa chặng kết hợp Tool Calling để thẩm định lỗ hổng</p>
+                    </div>
+                    <div class="grid-2-1 reveal" style="margin-top: 32px;">
+                        <div class="ledger-card">
+                            <span class="ledger-badge invert">REACT MULTI-TURN CYCLE</span>
+                            <div style="display: flex; flex-direction: column; gap: 16px; margin-top: 16px;">
+                                <div style="border-left: 3px solid var(--ink-black); padding-left: 14px;">
+                                    <div class="step-num">THOUGHT (SUY NGHĨ PHÂN TÍCH)</div>
+                                    <p class="body-text" style="font-size: 14px;">Agent phân tích nhóm lỗ hổng: <i>"Nhóm này có SQLi trên endpoint /rest/products/search, cần tra cứu mẫu probe và CWE-89..."</i></p>
+                                </div>
+                                <div style="border-left: 3px solid var(--ink-graphite); padding-left: 14px;">
+                                    <div class="step-num">ACTION (GỌI CÔNG CỤ / TOOL CALL)</div>
+                                    <p class="body-text" style="font-size: 14px;">Gọi <code>search_knowledge_base("CWE-89 remediation")</code> và <code>lookup_safe_payloads("sqli")</code>.</p>
+                                </div>
+                                <div style="border-left: 3px solid var(--ink-graphite-light); padding-left: 14px;">
+                                    <div class="step-num">OBSERVATION (QUAN SÁT KẾT QUẢ)</div>
+                                    <p class="body-text" style="font-size: 14px;">Nhận tài liệu khắc phục và payload an toàn, Agent tổng hợp nguyên nhân gốc và đề xuất request kiểm thử an toàn.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; justify-content: space-between;">
+                            <div class="ledger-card" style="margin-bottom: 16px;">
+                                <div class="step-num">DISPATCHER TOOLBOX</div>
+                                <ul style="font-size: 13px; color: var(--ink-black); padding-left: 16px; line-height: 1.7; margin-top: 8px;">
+                                    <li><code>search_knowledge_base</code></li>
+                                    <li><code>get_knowledge_document</code></li>
+                                    <li><code>lookup_safe_payloads</code></li>
+                                    <li><code>send_safe_request</code></li>
+                                </ul>
+                            </div>
+                            <div class="ledger-card">
+                                <div class="step-num">MODEL ORCHESTRATION</div>
+                                <p class="body-text" style="font-size: 13px; margin-top: 6px;">
+                                    Tương thích chuẩn OpenAI API: <b>Qwen-Plus</b>, DeepSeek, hoặc kết nối qua 9router / Ollama cục bộ.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="slide-chrome-bottom">
+                    <span>SRC/AGENT/REACT_ENGINE.PY • DISPATCHER</span>
+                    <span>AUTONOMOUS AUDITING</span>
+                </div>
+            </section>
+
+            <!-- ===================================================================
+                 SLIDE 9: SECURITY ANALYSIS REPORT SCHEMA
+                 =================================================================== -->
+            <section class="slide" data-slide="9">
+                <div class="slide-chrome-top">
+                    <div class="slide-kicker"><span class="slide-kicker-dot"></span> CHAPTER VIII: REPORT CONTRACT</div>
+                    <div class="slide-number-label">09 / 15</div>
+                </div>
+                <div class="slide-body">
+                    <div class="reveal">
+                        <h2 class="section-h2">Data Contract 2: Security Analysis Report Schema</h2>
+                        <p class="title-sub">Chuẩn hóa đầu ra phân tích của AI Agent: <code>schemas/security_analysis_report.schema.json</code></p>
+                    </div>
+                    <div class="grid-2 reveal" style="margin-top: 28px;">
+                        <table class="ledger-table">
+                            <thead>
+                                <tr>
+                                    <th>Trường Schema</th>
+                                    <th>Mô Tả Ý Nghĩa</th>
+                                    <th>Ví Dụ Giá Trị</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>analysis_id</code></td>
+                                    <td>Mã phân tích duy nhất</td>
+                                    <td><code>analysis_a1b2c3...</code></td>
+                                </tr>
+                                <tr>
+                                    <td><code>correlation_type</code></td>
+                                    <td>Loại tương quan phát hiện</td>
+                                    <td><code>sast_and_dast</code>, <code>sast_only</code></td>
+                                </tr>
+                                <tr>
+                                    <td><code>severity</code></td>
+                                    <td>Đánh giá lại mức độ + Rationale</td>
+                                    <td><code>agent_assessment: "critical"</code></td>
+                                </tr>
+                                <tr>
+                                    <td><code>confidence</code></td>
+                                    <td>Độ tin cậy + Căn cứ đánh giá</td>
+                                    <td><code>level: "confirmed"</code></td>
+                                </tr>
+                                <tr>
+                                    <td><code>explanation</code></td>
+                                    <td>Nguyên nhân gốc & tác động lỗi</td>
+                                    <td>Phân tích chi tiết cơ chế lỗi</td>
+                                </tr>
+                                <tr>
+                                    <td><code>recommended_action</code></td>
+                                    <td>Khuyến nghị sửa code từng bước</td>
+                                    <td>Dùng Parameterized Query</td>
+                                </tr>
+                                <tr>
+                                    <td><code>proposed_test_request</code></td>
+                                    <td>Request probe kiểm thử an toàn</td>
+                                    <td>Method, Endpoint, Payload, Headers</td>
+                                </tr>
+                                <tr>
+                                    <td><code>knowledge_references</code></td>
+                                    <td>Tài liệu KB đã trích dẫn</td>
+                                    <td>Doc ID, Title, Relevance score</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div style="display: flex; flex-direction: column; justify-content: space-between;">
+                            <div class="ledger-card" style="background: var(--cream-paper-3); margin-bottom: 16px;">
+                                <div class="step-num">PROPOSED TEST REQUEST STRUCTURE</div>
+                                <div class="code-box" style="font-size: 12px; margin-top: 6px;">
+"proposed_test_request": {
+  "method": "GET",
+  "endpoint": "/rest/products/search?q='",
+  "headers": {"Accept": "application/json"},
+  "payload": null,
+  "rationale": "Verify SQL syntax error disclosure",
+  "status": "not_sent"
+}
+                                </div>
+                            </div>
+                            <div class="ledger-card">
+                                <div class="step-num">PROMPT INJECTION FLAG</div>
+                                <p class="body-text" style="font-size: 14px; margin-top: 6px;">
+                                    Trường <code>metadata.prompt_injection_detected: boolean</code> tự động gắn cờ cảnh báo đỏ nếu phát hiện server mục tiêu cố tình tiêm mã độc điều khiển mô hình.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="slide-chrome-bottom">
+                    <span>SCHEMAS/SECURITY_ANALYSIS_REPORT.SCHEMA.JSON</span>
+                    <span>STRUCTURED OUTPUTS</span>
+                </div>
+            </section>
+
+            <!-- ===================================================================
+                 SLIDE 10: ENTERPRISE GATEWAY & GUARDRAILS
+                 =================================================================== -->
+            <section class="slide" data-slide="10">
+                <div class="slide-chrome-top">
+                    <div class="slide-kicker"><span class="slide-kicker-dot"></span> CHAPTER IX: ACTIVE GUARDRAILS</div>
+                    <div class="slide-number-label">10 / 15</div>
+                </div>
+                <div class="slide-body">
+                    <div class="reveal">
+                        <h2 class="section-h2">Doanh Nghiệp API Gateway & Active Guardrails</h2>
+                        <p class="title-sub">Cổng kiểm thử an toàn qua Kong Gateway và hệ thống phòng vệ chủ động 2 lớp</p>
+                    </div>
+                    <div class="grid-3 reveal" style="margin-top: 36px;">
+                        <div class="ledger-card">
+                            <span class="ledger-badge">DEFENSE LAYER 01</span>
+                            <h3 class="ledger-card-title">Kong Gateway Allowlist</h3>
+                            <p class="body-text" style="font-size: 15px; margin-bottom: 12px;">Đóng vai trò Reverse Proxy kiểm soát chặt chẽ toàn bộ lưu lượng mạng ra vào mục tiêu.</p>
+                            <ul style="font-size: 13px; color: var(--ink-graphite); padding-left: 18px; line-height: 1.6;">
+                                <li><b>Chỉ cho phép:</b> <code>GET</code>, <code>POST</code>, <code>OPTIONS</code></li>
+                                <li><b>Chặn triệt để:</b> <code>PUT</code>, <code>DELETE</code>, <code>PATCH</code></li>
+                                <li>Rate Limiting & Socket Timeout 7.0s</li>
+                            </ul>
+                        </div>
+
+                        <div class="ledger-card">
+                            <span class="ledger-badge">DEFENSE LAYER 02</span>
+                            <h3 class="ledger-card-title">PII & Secret Redactor</h3>
+                            <p class="body-text" style="font-size: 15px; margin-bottom: 12px;">Tự động che giấu thông tin nhạy cảm ở cả hai chiều Request gửi đi và Response nhận về.</p>
+                            <ul style="font-size: 13px; color: var(--ink-graphite); padding-left: 18px; line-height: 1.6;">
+                                <li>Che Email, JWT Token, API Key, Password</li>
+                                <li>Che Số căn cước công dân (CCCD), Điện thoại</li>
+                                <li>Độ trễ xử lý Regex cực thấp: &lt; 5ms</li>
+                            </ul>
+                        </div>
+
+                        <div class="ledger-card">
+                            <span class="ledger-badge">DEFENSE LAYER 03</span>
+                            <h3 class="ledger-card-title">Prompt Injection Shield</h3>
+                            <p class="body-text" style="font-size: 15px; margin-bottom: 12px;">Quét và vô hiệu hóa các chỉ thị tấn công độc hại ẩn trong dữ liệu phản hồi từ server mục tiêu.</p>
+                            <ul style="font-size: 13px; color: var(--ink-graphite); padding-left: 18px; line-height: 1.6;">
+                                <li>Phát hiện chỉ thị <i>"Ignore previous instructions"</i></li>
+                                <li>Đóng gói trong thẻ <code>&lt;untrusted_response&gt;</code></li>
+                                <li>Triệt tiêu khả năng LLM Hijacking</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="slide-chrome-bottom">
+                    <span>KONG API GATEWAY • UNIFIED REDACTOR • INJECTION SHIELD</span>
+                    <span>ACTIVE DEFENSE</span>
+                </div>
+            </section>
+
+            <!-- ===================================================================
+                 SLIDE 11: HUMAN-IN-THE-LOOP (HITL)
+                 =================================================================== -->
+            <section class="slide" data-slide="11">
+                <div class="slide-chrome-top">
+                    <div class="slide-kicker"><span class="slide-kicker-dot"></span> CHAPTER X: HUMAN-IN-THE-LOOP</div>
+                    <div class="slide-number-label">11 / 15</div>
+                </div>
+                <div class="slide-body">
+                    <div class="reveal">
+                        <h2 class="section-h2">Cơ Chế Phê Duyệt An Toàn Human-in-the-Loop (HITL)</h2>
+                        <p class="title-sub">Giữ con người nắm quyền kiểm soát tối cao đối với mọi thao tác có nguy cơ thay đổi dữ liệu</p>
+                    </div>
+                    <div class="grid-2 reveal" style="margin-top: 32px;">
+                        <div class="ledger-card">
+                            <span class="ledger-badge invert">RISK-BASED APPROVAL POLICY</span>
+                            <div style="margin-top: 18px; display: flex; flex-direction: column; gap: 16px;">
+                                <div>
+                                    <div class="step-num">MỨC RỦI RO THẤP (GET REQUESTS)</div>
+                                    <p class="body-text" style="font-size: 15px;">Các truy vấn đọc dữ liệu, thăm dò header an toàn được tự động phê duyệt (<code>AUTO_APPROVED</code>) để tối ưu tốc độ kiểm thử.</p>
+                                </div>
+                                <div style="border-top: 1px solid var(--ink-border); padding-top: 14px;">
+                                    <div class="step-num">MỨC RỦI RO CAO (POST / MUTATION)</div>
+                                    <p class="body-text" style="font-size: 15px;">Mọi probe POST (gửi payload đăng nhập, tạo review, sửa đổi dữ liệu) bắt buộc phải đưa vào <b>Hàng Đợi HITL Sidebar</b> chờ chuyên viên SOC bấm duyệt.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="ledger-card" style="background: var(--cream-paper-3);">
+                            <span class="ledger-badge">IN-FLIGHT MULTI-THREADED TIMEOUT</span>
+                            <h3 class="ledger-card-title" style="margin-top: 12px;">Cơ Chế Khóa Đa Luồng & 120s Fail-Safe</h3>
+                            <p class="body-text" style="font-size: 14px; line-height: 1.6; margin-bottom: 16px;">
+                                Khi Agent phát lệnh POST probe, luồng Agent chuyển sang trạng thái <code>wait()</code>. Giao diện Sidebar hiển thị chi tiết Endpoint, Payload, Header và đồng hồ đếm ngược 120 giây.
+                            </p>
+                            <div class="code-box" style="font-size: 12px;">
+# Fail-Safe: Quá 120 giây không có tương tác
+if elapsed_seconds > 120.0:
+    action.status = "TIMED_OUT"
+    return False  # Tự động hủy an toàn
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="slide-chrome-bottom">
+                    <span>FRONTEND/COMPONENTS/HITL_QUEUE.PY</span>
+                    <span>120S FAIL-SAFE PROTECTION</span>
+                </div>
+            </section>
+
+            <!-- ===================================================================
+                 SLIDE 12: BENTO BOX DASHBOARD
+                 =================================================================== -->
+            <section class="slide" data-slide="12">
+                <div class="slide-chrome-top">
+                    <div class="slide-kicker"><span class="slide-kicker-dot"></span> CHAPTER XI: USER INTERFACE</div>
+                    <div class="slide-number-label">12 / 15</div>
+                </div>
+                <div class="slide-body">
+                    <div class="reveal">
+                        <h2 class="section-h2">Trực Quan Hóa Vận Hành: Bento Box Dashboard</h2>
+                        <p class="title-sub">Giao diện điều khiển Streamlit v2 tích hợp 6 Tab chức năng và phân trang báo cáo mượt mà</p>
+                    </div>
+                    <div class="grid-3 reveal" style="margin-top: 28px;">
+                        <div class="ledger-card">
+                            <span class="step-num">TAB 1 & TAB 2</span>
+                            <h3 class="ledger-card-title" style="font-size: 18px;">Quét & Quản Lý Dữ Liệu</h3>
+                            <p class="body-text" style="font-size: 13px;">Khởi chạy 8 profile quét SAST/DAST một chạm; Giám sát Target Health; Chuẩn hóa Unified Findings JSONL.</p>
+                        </div>
+
+                        <div class="ledger-card">
+                            <span class="step-num">TAB 3 & TAB 4</span>
+                            <h3 class="ledger-card-title" style="font-size: 18px;">Tra Cứu RAG & Sandbox</h3>
+                            <p class="body-text" style="font-size: 13px;">Tra cứu tri thức FTS5 + Vector; Live Sandbox gửi probe qua Kong Gateway, quan sát trực quan PII Redaction.</p>
+                        </div>
+
+                        <div class="ledger-card">
+                            <span class="step-num">TAB 5 & TAB 6</span>
+                            <h3 class="ledger-card-title" style="font-size: 18px;">Báo Cáo AI & Giám Sát Logs</h3>
+                            <p class="body-text" style="font-size: 13px;">Bảng tổng hợp ReAct với <b>Phân trang (5/10/20)</b>, Mở/Đóng tất cả; Bento Span Cards xem Token, Error box và bộ lọc log mạng.</p>
+                        </div>
+                    </div>
+
+                    <div class="ledger-card reveal" style="margin-top: 20px; background: var(--cream-warm);">
+                        <div class="step-num">BENTO BOX DESIGN PHILOSOPHY</div>
+                        <p class="body-text" style="font-size: 14px; margin-top: 4px;">
+                            Ứng dụng <code>render_clean_html</code> loại bỏ 100% lỗi code block Markdown, kết hợp Material Symbols Outlined và Executive Threat KPI Grid (PII Masked, Injections Neutralized, HITL Decisions, Mean Latency).
+                        </p>
+                    </div>
+                </div>
+                <div class="slide-chrome-bottom">
+                    <span>FRONTEND/APP.PY • BENTO BOX DESIGN SYSTEM</span>
+                    <span>SEAMLESS OPERATOR EXPERIENCE</span>
+                </div>
+            </section>
+
+            <!-- ===================================================================
+                 SLIDE 13: BENCHMARKS & EXPERIMENTAL RESULTS
+                 =================================================================== -->
+            <section class="slide" data-slide="13">
+                <div class="slide-chrome-top">
+                    <div class="slide-kicker"><span class="slide-kicker-dot"></span> CHAPTER XII: EVALUATION</div>
+                    <div class="slide-number-label">13 / 15</div>
+                </div>
+                <div class="slide-body">
+                    <div class="reveal">
+                        <h2 class="section-h2">Kết Quả Đánh Giá & Các Chỉ Số Thực Nghiệm</h2>
+                        <p class="title-sub">Kiểm chứng toàn diện trên 284+ test suites đảm bảo độ ổn định và hiệu năng cao</p>
+                    </div>
+                    <div class="grid-4 reveal" style="margin-top: 36px;">
+                        <div class="ledger-card" style="text-align: center;">
+                            <div class="stat-huge">284+</div>
+                            <div class="step-num">TEST SUITES PASSED</div>
+                            <p class="caption-text">100% Pass: Unit, Integration, Agent, Gateway & Schema</p>
+                        </div>
+
+                        <div class="ledger-card" style="text-align: center;">
+                            <div class="stat-huge">-85%</div>
+                            <div class="step-num">TRÙNG LẶP CẢNH BÁO</div>
+                            <p class="caption-text">Khử nhiễu nhờ Group Key và Canonical Fingerprinting</p>
+                        </div>
+
+                        <div class="ledger-card" style="text-align: center;">
+                            <div class="stat-huge">&lt;5ms</div>
+                            <div class="step-num">GUARDRAILS LATENCY</div>
+                            <p class="caption-text">Tốc độ che PII và quét Prompt Injection siêu tốc</p>
+                        </div>
+
+                        <div class="ledger-card" style="text-align: center;">
+                            <div class="stat-huge">100%</div>
+                            <div class="step-num">HITL ENFORCEMENT</div>
+                            <p class="caption-text">Không có probe rủi ro cao nào thoát khỏi kiểm duyệt</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="slide-chrome-bottom">
+                    <span>PYTEST SUITES • LINTING MAKE QUALITY</span>
+                    <span>ROBUST & PRODUCTION READY</span>
+                </div>
+            </section>
+
+            <!-- ===================================================================
+                 SLIDE 14: LESSONS, GAPS & ROADMAP
+                 =================================================================== -->
+            <section class="slide" data-slide="14">
+                <div class="slide-chrome-top">
+                    <div class="slide-kicker"><span class="slide-kicker-dot"></span> CHAPTER XIII: LESSONS & FUTURE WORK</div>
+                    <div class="slide-number-label">14 / 15</div>
+                </div>
+                <div class="slide-body">
+                    <div class="reveal">
+                        <h2 class="section-h2">Bài Học Rút Ra, Vấn Đề Tồn Đọng & Định Hướng Mở Rộng</h2>
+                        <p class="title-sub">Nhìn nhận khách quan các điểm nghẽn hiện tại và lộ trình phát triển trong tương lai</p>
+                    </div>
+                    <div class="grid-3 reveal" style="margin-top: 28px;">
+                        <div class="ledger-card">
+                            <span class="ledger-badge">BÀI HỌC KINH NGHIỆM</span>
+                            <ul style="font-size: 13px; color: var(--ink-black); padding-left: 16px; line-height: 1.6; margin-top: 12px;">
+                                <li><b>Data Contract là cốt lõi</b>: Chuẩn hóa JSON Schema từ đầu giúp kết nối đa công cụ trơn tru.</li>
+                                <li><b>Hybrid RAG triệt tiêu ảo giác</b>: Kết hợp BM25 và Vector giúp AI trích dẫn đúng căn cứ.</li>
+                                <li><b>Phân tách tĩnh / động</b>: Giúp kiểm soát rủi ro an toàn khi probe.</li>
+                            </ul>
+                        </div>
+
+                        <div class="ledger-card" style="border: 2px solid var(--ink-black);">
+                            <span class="ledger-badge invert">VẤN ĐỀ CÒN TỒN ĐỌNG</span>
+                            <ul style="font-size: 13px; color: var(--ink-black); padding-left: 16px; line-height: 1.6; margin-top: 12px;">
+                                <li><b>Rủi ro lộ Secret khi Truncate</b>: Khi cắt ngắn response dài, token có thể bị tách đôi khiến Regex bỏ sót.</li>
+                                <li><b>Chưa có file Ground Truth chuẩn</b>: Thiếu tập dữ liệu gắn nhãn đối chiếu để tính điểm Precision/Recall/F1 tự động.</li>
+                                <li><b>Phụ thuộc Quota LLM</b>: Cần cơ chế Multi-Provider Auto-Failover.</li>
+                            </ul>
+                        </div>
+
+                        <div class="ledger-card">
+                            <span class="ledger-badge">HƯỚNG PHÁT TRIỂN (ROADMAP)</span>
+                            <ul style="font-size: 13px; color: var(--ink-black); padding-left: 16px; line-height: 1.6; margin-top: 12px;">
+                                <li><b>Tùy chọn Mục tiêu quét linh hoạt</b>: Nhập Git Repo bất kỳ, Docker Image hoặc Domain ngoài.</li>
+                                <li><b>Tự động nhận diện Tech-Stack</b>: Phân tích NodeJS/Java/Python để tự kích hoạt rulesets tối ưu.</li>
+                                <li><b>Auto-Remediation PR</b>: AI Agent tự sinh code patch và tạo Pull Request trên GitHub.</li>
+                                <li><b>Tích hợp Doanh nghiệp SIEM/SOAR</b>: Bắn log tới Wazuh, Splunk qua Webhook.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="slide-chrome-bottom">
+                    <span>LIMITATIONS & STRATEGIC ROADMAP</span>
+                    <span>CONTINUOUS EVOLUTION</span>
+                </div>
+            </section>
+
+            <!-- ===================================================================
+                 SLIDE 15: CONCLUSION & LIVE DEMO TRANSITION
+                 =================================================================== -->
+            <section class="slide" data-slide="15">
+                <div class="slide-chrome-top">
+                    <div class="slide-kicker"><span class="slide-kicker-dot"></span> CHAPTER XIV: CONCLUSION & DEMO</div>
+                    <div class="slide-number-label">15 / 15</div>
+                </div>
+                <div class="slide-body" style="text-align: center; justify-content: center;">
+                    <div class="reveal">
+                        <span class="ledger-badge invert" style="margin-bottom: 24px;">SUMMARY & LIVE DEMONSTRATION</span>
+                        <h2 class="title-display" style="font-size: 58px; margin-bottom: 20px;">Project Sentinel</h2>
+                        <p class="title-sub" style="max-width: 900px; margin: 0 auto 36px auto;">
+                            "Tự động hóa toàn diện từ Quét ➔ Chuẩn hóa ➔ Suy luận ReAct ➔ Phòng vệ Guardrails. Kết hợp hoàn hảo giữa Sức mạnh Trí tuệ Nhân tạo và Quyền Kiểm soát của Con người."
+                        </p>
+                        <div class="hairline-rule" style="width: 80px; margin: 0 auto 36px auto;"></div>
+                    </div>
+                    <div class="reveal" style="display: inline-flex; gap: 24px; align-items: center;">
+                        <span class="ledger-badge" style="font-size: 14px; padding: 8px 18px;">DEMO STEP 1: TARGET HEALTH</span>
+                        <span class="ledger-badge" style="font-size: 14px; padding: 8px 18px;">DEMO STEP 2: REACT REASONING</span>
+                        <span class="ledger-badge" style="font-size: 14px; padding: 8px 18px;">DEMO STEP 3: HITL PROBE APPROVAL</span>
+                        <span class="ledger-badge" style="font-size: 14px; padding: 8px 18px;">DEMO STEP 4: BENTO OBSERVABILITY</span>
+                    </div>
+                </div>
+                <div class="slide-chrome-bottom">
+                    <span>GITHUB: VINSOC_SENTINELPROJECT/SOC_SENTINEL_PROJECT</span>
+                    <span>THANK YOU FOR YOUR ATTENTION!</span>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Floating Navigation Bar -->
+    <div class="nav-controls">
+        <button class="nav-btn" id="btnPrev" title="Previous Slide (Arrow Left)">
+            <span class="material-symbols-outlined">arrow_back</span>
+        </button>
+        <span class="slide-counter" id="slideCounter">01 / 15</span>
+        <button class="nav-btn" id="btnNext" title="Next Slide (Arrow Right / Space)">
+            <span class="material-symbols-outlined">arrow_forward</span>
+        </button>
+        <div style="width: 1px; height: 20px; background: var(--ink-border-bold); margin: 0 4px;"></div>
+        <button class="nav-btn" id="btnFullscreen" title="Toggle Fullscreen (F)">
+            <span class="material-symbols-outlined">fullscreen</span>
+        </button>
+    </div>
+
+    <script>
+        /* =====================================================================
+           SLIDE DECK CONTROLLER (Next/Prev, Keyboard, Auto-Scaling)
+           ===================================================================== */
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+        let currentSlide = 1;
+
+        const stage = document.getElementById('deckStage');
+        const counter = document.getElementById('slideCounter');
+        const btnPrev = document.getElementById('btnPrev');
+        const btnNext = document.getElementById('btnNext');
+        const btnFullscreen = document.getElementById('btnFullscreen');
+
+        // Responsive 16:9 Stage Scaling
+        function scaleStage() {
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            const targetWidth = 1920;
+            const targetHeight = 1080;
+
+            const scaleX = windowWidth / targetWidth;
+            const scaleY = windowHeight / targetHeight;
+            const scale = Math.min(scaleX, scaleY) * 0.95;
+
+            stage.style.transform = `scale(${scale})`;
+        }
+
+        window.addEventListener('resize', scaleStage);
+        scaleStage();
+
+        // Update active slide
+        function showSlide(index) {
+            if (index < 1) index = 1;
+            if (index > totalSlides) index = totalSlides;
+
+            currentSlide = index;
+
+            slides.forEach((slide, i) => {
+                if (i + 1 === currentSlide) {
+                    slide.classList.add('active');
+                } else {
+                    slide.classList.remove('active');
+                }
+            });
+
+            // Update UI
+            const formattedCurrent = currentSlide.toString().padStart(2, '0');
+            const formattedTotal = totalSlides.toString().padStart(2, '0');
+            counter.textContent = `${formattedCurrent} / ${formattedTotal}`;
+
+            btnPrev.disabled = (currentSlide === 1);
+            btnNext.disabled = (currentSlide === totalSlides);
+        }
+
+        function nextSlide() {
+            if (currentSlide < totalSlides) {
+                showSlide(currentSlide + 1);
+            }
+        }
+
+        function prevSlide() {
+            if (currentSlide > 1) {
+                showSlide(currentSlide - 1);
+            }
+        }
+
+        // Event listeners
+        btnNext.addEventListener('click', nextSlide);
+        btnPrev.addEventListener('click', prevSlide);
+
+        btnFullscreen.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => console.log(err));
+            } else {
+                document.exitFullscreen().catch(err => console.log(err));
+            }
+        });
+
+        // Keyboard Navigation
+        window.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case 'ArrowRight':
+                case ' ':
+                case 'PageDown':
+                    e.preventDefault();
+                    nextSlide();
+                    break;
+                case 'ArrowLeft':
+                case 'PageUp':
+                    e.preventDefault();
+                    prevSlide();
+                    break;
+                case 'Home':
+                    e.preventDefault();
+                    showSlide(1);
+                    break;
+                case 'End':
+                    e.preventDefault();
+                    showSlide(totalSlides);
+                    break;
+                case 'f':
+                case 'F':
+                    btnFullscreen.click();
+                    break;
+            }
+        });
+
+        // Initialize first slide
+        showSlide(1);
+    </script>
+</body>
+</html>
