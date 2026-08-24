@@ -7,6 +7,7 @@ import pytest
 
 from src.app.agent_bridge import (
     AsyncAgentRunner,
+    export_report_to_markdown,
     get_configured_model,
     list_analyzed_reports,
     load_analysis_report,
@@ -206,6 +207,80 @@ def test_async_agent_runner_lifecycle(tmp_path: Path):
 
     runner.reset()
     assert runner.get_status().run_id == "idle"
+
+
+def test_export_report_to_markdown():
+    """Verify conversion of report entries to rich structured Markdown without emojis."""
+    mock_entries = [
+        {
+            "schema_version": "1.1.0",
+            "analysis_id": "analysis_11111111111111111111111111111111",
+            "analysis_group_id": "grp_sqli_login",
+            "analysis_status": "success",
+            "fingerprint": "fp_sha256:v1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "finding_id": "fnd_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "tool": "semgrep",
+            "scan_type": "SAST",
+            "title": "SQL Injection in Login Route",
+            "primary_cwe_id": "CWE-89",
+            "all_cwe_ids": ["CWE-89", "CWE-20"],
+            "owasp_category": "OWASP-A03:2021",
+            "location_summary": "routes/login.ts:35",
+            "severity": {
+                "agent_assessment": "critical",
+                "original_scanner": "high",
+                "rationale": "Direct string concat in authentication query allows complete auth bypass",
+            },
+            "confidence": {
+                "level": "confirmed",
+                "rationale": "Matched tainted dataflow from req.body directly to SQL execution",
+            },
+            "correlation_type": "sast_dast_confirmed",
+            "correlated_with": [],
+            "evidence_summary": "sequelize.query('SELECT * FROM Users WHERE email = ' + req.body.email)",
+            "explanation": "Hàm đăng nhập ghép chuỗi SQL trực tiếp dẫn tới SQLi.",
+            "recommended_action": "Sử dụng Parameterized Query với Sequelize.",
+            "proposed_test_request": {
+                "method": "POST",
+                "endpoint": "/rest/user/login",
+                "headers": {"Content-Type": "application/json"},
+                "payload": {"email": "' OR 1=1--", "password": "any"},
+                "rationale": "Verify SQLi auth bypass probe",
+                "status": "not_sent",
+            },
+            "knowledge_references": [
+                {
+                    "doc_id": "cwe-89",
+                    "title": "SQL Injection Prevention Cheat Sheet",
+                    "relevance": "Cung cấp hướng dẫn sử dụng parameterized query",
+                }
+            ],
+            "metadata": {
+                "analyzed_at": "2026-08-24T11:50:00Z",
+                "model": "qwen-plus",
+                "prompt_version": "system_v2",
+                "grouping_source": "rule_based",
+                "retry_count": 0,
+                "prompt_injection_detected": False,
+            },
+        }
+    ]
+
+    md_output = export_report_to_markdown(mock_entries)
+    assert "# BÁO CÁO PHÂN TÍCH AN NINH" in md_output
+    assert "EXECUTIVE SUMMARY" in md_output
+    assert "SEVERITY MATRIX" in md_output
+    assert "[grp_sqli_login] SQL Injection in Login Route" in md_output
+    assert "CWE-89" in md_output
+    assert "OWASP-A03:2021" in md_output
+    assert "POST /rest/user/login" in md_output
+    assert "Sử dụng Parameterized Query với Sequelize." in md_output
+    assert "SQL Injection Prevention Cheat Sheet" in md_output
+
+    # Verify empty entries handling
+    empty_output = export_report_to_markdown([])
+    assert "Không có dữ liệu phân tích" in empty_output
+
 
 
 

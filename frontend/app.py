@@ -30,6 +30,7 @@ from frontend.components.bento import (
 from frontend.components.hitl_queue import get_session_hitl_manager, render_hitl_sidebar
 from src.app.agent_bridge import (
     AsyncAgentRunner,
+    export_report_to_markdown,
     get_configured_model,
     list_analyzed_reports,
     load_analysis_report,
@@ -573,10 +574,29 @@ with tab5:
     if not available_reports:
         st.info("Chưa có báo cáo phân tích nào trong reports/analyzed/. Hãy khởi chạy Agent ở trên.")
     else:
-        active_report_path = st.selectbox("Chọn báo cáo phân tích để xem:", available_reports, index=0)
+        col_rep_sel, col_rep_dl = st.columns([3, 1])
+        with col_rep_sel:
+            active_report_path = st.selectbox("Chọn báo cáo phân tích để xem:", available_reports, index=0)
         report_entries = load_analysis_report(active_report_path)
 
         if report_entries:
+            md_report_text = export_report_to_markdown(report_entries)
+            report_filename = Path(active_report_path).stem + ".md"
+
+            with col_rep_dl:
+                st.download_button(
+                    label="Tải Báo Cáo Markdown (.md)",
+                    data=md_report_text,
+                    file_name=report_filename,
+                    mime="text/markdown",
+                    type="secondary",
+                    use_container_width=True,
+                    key="btn_dl_markdown_tab5",
+                )
+
+            with st.expander("Xem Trước Toàn Bộ Báo Cáo Markdown (.md)", expanded=False):
+                st.markdown(md_report_text)
+
             # Aggregate KPI Metrics
             total_entries = len(report_entries)
             groups_dict: dict[str, list[dict[str, Any]]] = {}
@@ -606,69 +626,182 @@ with tab5:
             # Section 3: Unified Grouped Analysis Table
             st.markdown(f"### Bảng Tổng Hợp Phân Tích Lỗ Hổng Theo Nhóm ({len(groups_dict)} Nhóm — {total_entries} Findings):")
 
-            for grp_id, items in groups_dict.items():
+            for grp_idx, (grp_id, items) in enumerate(groups_dict.items(), 1):
                 first_item = items[0]
                 corr_type = first_item.get("correlation_type", "sast_only")
                 primary_cwe = first_item.get("primary_cwe_id") or "N/A"
+                all_cwes = first_item.get("all_cwe_ids") or [primary_cwe]
+                all_cwes_str = ", ".join(all_cwes)
+                owasp_cat = first_item.get("owasp_category") or "N/A"
                 grp_title = first_item.get("title", "Lỗ hổng bảo mật")
+                sev_obj = first_item.get("severity", {})
+                agent_sev = sev_obj.get("agent_assessment", "unknown")
+                orig_sev = sev_obj.get("original_scanner", "N/A")
+                sev_rat = sev_obj.get("rationale", "N/A")
+                conf_obj = first_item.get("confidence", {})
+                conf_lvl = conf_obj.get("level", "unknown")
+                conf_rat = conf_obj.get("rationale", "N/A")
+                expl = first_item.get("explanation", "Chưa có phân tích chi tiết.")
+                rec_act = first_item.get("recommended_action", "Chưa có khuyến nghị cụ thể.")
+                kb_refs = first_item.get("knowledge_references", [])
+                meta_obj = first_item.get("metadata", {})
+                is_injection = meta_obj.get("prompt_injection_detected", False)
 
-                with st.expander(f"[{grp_id}] {grp_title} ({primary_cwe}) — {len(items)} findings | Tương quan: {corr_type.upper()}", expanded=True):
-                    # Group Summary Header
+                sev_badge_variant = {
+                    "critical": "critical",
+                    "high": "high",
+                    "medium": "medium",
+                    "low": "low",
+                }.get(agent_sev.lower(), "default")
+
+                with st.expander(f"[{grp_id}] {grp_title} ({primary_cwe}) — {len(items)} findings | Severity: {agent_sev.upper()}", expanded=True):
+                    # Header Summary Bento Card
+                    injection_badge_html = """<span class="bento-badge critical"><span class="material-symbols-outlined" style="font-size: 14px;">warning</span> Đã Chặn Prompt Injection</span>""" if is_injection else ""
+
                     st.markdown(
                         f"""
-                        <div style="background: rgba(17, 25, 39, 0.7); border-radius: 10px; padding: 12px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.06);">
-                            <div style="display: flex; gap: 8px; margin-bottom: 6px;">
-                                <span class="bento-badge info">CWE: {primary_cwe}</span>
-                                <span class="bento-badge default">Correlation: {corr_type}</span>
-                                <span class="bento-badge success">Confidence: {first_item.get('confidence', {}).get('level', 'unknown').upper()}</span>
+                        <div style="background: rgba(17, 25, 39, 0.7); border-radius: 12px; padding: 14px; margin-bottom: 14px; border: 1px solid rgba(255,255,255,0.06);">
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; align-items: center;">
+                                <span class="bento-badge info"><span class="material-symbols-outlined" style="font-size: 14px;">tag</span> Primary: {primary_cwe}</span>
+                                <span class="bento-badge default"><span class="material-symbols-outlined" style="font-size: 14px;">category</span> OWASP: {owasp_cat}</span>
+                                <span class="bento-badge {sev_badge_variant}"><span class="material-symbols-outlined" style="font-size: 14px;">shield</span> Severity: {agent_sev.upper()} (Gốc: {orig_sev})</span>
+                                <span class="bento-badge success"><span class="material-symbols-outlined" style="font-size: 14px;">verified</span> Confidence: {conf_lvl.upper()}</span>
+                                <span class="bento-badge default"><span class="material-symbols-outlined" style="font-size: 14px;">sync_alt</span> Tương Quan: {corr_type}</span>
+                                {injection_badge_html}
                             </div>
-                            <div style="font-size: 13px; color: #cdd6f4;">
-                                <b>Nguyên nhân gốc (Root Cause):</b> {first_item.get('explanation')}
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 12px; color: #94a3b8; margin-bottom: 8px;">
+                                <div><b>Lý do đánh giá mức độ:</b> {sev_rat}</div>
+                                <div><b>Căn cứ mức độ tin cậy:</b> {conf_rat}</div>
                             </div>
-                            <div style="font-size: 13px; color: #10B981; margin-top: 4px;">
-                                <b>Đề xuất khắc phục (Remediation):</b> {first_item.get('recommended_action')}
+                            <div style="font-size: 11px; color: #6c7086;">
+                                <b>Tất cả CWE liên quan:</b> <code>{all_cwes_str}</code>
                             </div>
                         </div>
                         """,
                         unsafe_allow_html=True,
                     )
 
-                    # Nested Sub-Table for Findings in Group
-                    for idx, finding in enumerate(items, 1):
-                        st.markdown(f"**Finding #{idx}: `{finding.get('finding_id')}` | Công cụ: `{finding.get('tool')}` ({finding.get('scan_type')})**")
-                        c_loc, c_sev, c_ev = st.columns([1, 1, 2])
-                        with c_loc:
-                            st.caption(f"**Vị trí:** {finding.get('location_summary')}")
-                            st.caption(f"**Fingerprint:** `{finding.get('fingerprint', '')[:20]}...`")
-                        with c_sev:
-                            sev = finding.get("severity", {})
-                            st.caption(f"**Severity:** Agent `{sev.get('agent_assessment')}` | Gốc `{sev.get('original_scanner')}`")
-                            st.caption(f"**Status:** `{finding.get('analysis_status')}`")
-                        with c_ev:
-                            st.caption(f"**Bằng chứng:** {finding.get('evidence_summary')}")
+                    # Section A: Explanation (Root cause)
+                    st.markdown(
+                        f"""
+                        <div style="background: rgba(30, 41, 59, 0.6); border-left: 4px solid #3B82F6; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px;">
+                            <div style="font-size: 12px; font-weight: 700; color: #60A5FA; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                                <span class="material-symbols-outlined" style="font-size: 16px;">psychology</span> NGUYÊN NHÂN GỐC RỄ & PHÂN TÍCH TÁC ĐỘNG (EXPLANATION)
+                            </div>
+                            <div style="font-size: 13px; color: #e2e8f0; line-height: 1.6;">
+                                {expl}
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
 
-                        # Proposed Test Request & HITL Dispatch
-                        ptr = finding.get("proposed_test_request")
-                        if ptr:
+                    # Section B: Recommended Action (Remediation)
+                    st.markdown(
+                        f"""
+                        <div style="background: rgba(6, 78, 59, 0.3); border-left: 4px solid #10B981; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px;">
+                            <div style="font-size: 12px; font-weight: 700; color: #34D399; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                                <span class="material-symbols-outlined" style="font-size: 16px;">build</span> KHUYẾN NGHỊ KHẮC PHỤC (RECOMMENDED ACTIONS)
+                            </div>
+                            <div style="font-size: 13px; color: #e2e8f0; line-height: 1.6;">
+                                {rec_act}
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+                    # Section C: Proposed Test Request
+                    ptr = first_item.get("proposed_test_request")
+                    if ptr:
+                        ptr_status = ptr.get("status", "not_sent")
+                        ptr_status_badge = {
+                            "sent": "success",
+                            "rejected": "critical",
+                            "timeout_rejected": "high",
+                            "not_sent": "info",
+                        }.get(ptr_status, "default")
+
+                        headers_json = json.dumps(ptr.get("headers", {}), indent=2, ensure_ascii=False)
+                        payload_val = ptr.get("payload")
+                        payload_json = json.dumps(payload_val, indent=2, ensure_ascii=False) if payload_val is not None else "null"
+
+                        st.markdown(
+                            f"""
+                            <div style="background: rgba(250, 179, 135, 0.08); border: 1px solid rgba(250, 179, 135, 0.25); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <div style="font-size: 12px; font-weight: 700; color: #fab387; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px;">
+                                        <span class="material-symbols-outlined" style="font-size: 16px;">science</span> ĐỀ XUẤT KIỂM THỬ AN TOÀN (PROPOSED TEST REQUEST)
+                                    </div>
+                                    <span class="bento-badge {ptr_status_badge}">Trạng thái: {ptr_status.upper()}</span>
+                                </div>
+                                <div style="font-size: 12px; color: #cdd6f4; margin-bottom: 6px;">
+                                    <b>Request:</b> <code>{ptr.get('method', 'GET')} {ptr.get('endpoint', '/')}</code>
+                                </div>
+                                <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">
+                                    <b>Căn cứ & Mục đích probe:</b> {ptr.get('rationale', 'N/A')}
+                                </div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
+                        col_p1, col_p2 = st.columns(2)
+                        with col_p1:
+                            st.caption("**Custom Headers:**")
+                            st.code(headers_json, language="json")
+                        with col_p2:
+                            st.caption("**Probe Payload:**")
+                            st.code(payload_json, language="json")
+
+                        if st.button(f"Đẩy vào Hàng Đợi HITL ({grp_id})", key=f"btn_ptr_{grp_id}"):
+                            req_id = hitl_mgr.add_action(
+                                endpoint=ptr.get("endpoint", "/"),
+                                method=ptr.get("method", "GET"),
+                                payload=ptr.get("payload"),
+                                headers=ptr.get("headers"),
+                                rationale=ptr.get("rationale", ""),
+                            )
+                            st.toast(f"Đã thêm vào hàng đợi HITL với mã #{req_id}!")
+                            st.rerun()
+
+                    # Section D: Knowledge References
+                    if kb_refs:
+                        st.markdown(
+                            """
+                            <div style="font-size: 12px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-top: 10px; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                                <span class="material-symbols-outlined" style="font-size: 16px;">menu_book</span> TÀI LIỆU TRI THỨC THAM CHIẾU (KNOWLEDGE REFERENCES)
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
+                        for ref in kb_refs:
                             st.markdown(
                                 f"""
-                                <div style="background: rgba(250, 179, 135, 0.1); border-left: 3px solid #fab387; padding: 8px 12px; border-radius: 6px; font-size: 12px; margin: 6px 0;">
-                                    <b>Đề xuất kiểm thử an toàn:</b> <code>{ptr.get('method')} {ptr.get('endpoint')}</code> | <i>{ptr.get('rationale')}</i>
+                                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 6px 10px; margin-bottom: 4px; font-size: 12px;">
+                                    <span class="bento-badge info">[{ref.get('doc_id')}]</span> <b>{ref.get('title')}</b>: <span style="color: #94a3b8;">{ref.get('relevance')}</span>
                                 </div>
                                 """,
                                 unsafe_allow_html=True,
                             )
-                            if st.button(f"Đẩy vào HITL Queue ({finding.get('finding_id', '')[:8]})", key=f"btn_q_{finding.get('finding_id')}"):
-                                req_id = hitl_mgr.add_action(
-                                    endpoint=ptr.get("endpoint", "/"),
-                                    method=ptr.get("method", "GET"),
-                                    payload=ptr.get("payload"),
-                                    headers=ptr.get("headers"),
-                                    rationale=ptr.get("rationale", ""),
-                                )
-                                st.success(f"Đã thêm vào hàng đợi HITL với mã #{req_id}!")
-                                st.rerun()
 
+                    # Section E: Sub-findings
+                    st.markdown(f"#### Danh sách phát hiện thành phần ({len(items)} Findings):")
+                    for idx, finding in enumerate(items, 1):
+                        f_id = finding.get("finding_id", "N/A")
+                        f_tool = finding.get("tool", "N/A")
+                        f_scan = finding.get("scan_type", "N/A")
+                        f_loc = finding.get("location_summary", "N/A")
+                        f_fp = finding.get("fingerprint", "N/A")
+                        f_ev = finding.get("evidence_summary", "N/A")
+                        f_status = finding.get("analysis_status", "success")
+
+                        st.markdown(f"**#{idx} | ID: `{f_id}` | Công cụ: `{f_tool}` ({f_scan}) | Trạng thái: `{f_status}`**")
+                        c_loc, c_ev = st.columns([1, 2])
+                        with c_loc:
+                            st.caption(f"**Vị trí:** `{f_loc}`")
+                            st.caption(f"**Fingerprint:** `{f_fp[:24]}...`")
+                        with c_ev:
+                            st.caption(f"**Bằng chứng trích xuất:** `{f_ev}`")
                         st.divider()
 
 

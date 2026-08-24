@@ -197,3 +197,147 @@ def load_analysis_report(report_path: str) -> list[dict[str, Any]]:
                 raise ValueError(f"Dòng {line_number} trong {report_path} không phải JSON hợp lệ: {exc}") from exc
 
     return entries
+
+
+def export_report_to_markdown(report_entries: list[dict[str, Any]]) -> str:
+    """
+    Chuyển đổi danh sách các bản ghi ReportEntry thành tài liệu Markdown có cấu trúc hoàn chỉnh.
+
+    Args:
+        report_entries: Danh sách các bản ghi kết quả phân tích theo security_analysis_report.schema.json.
+
+    Returns:
+        str: Nội dung tài liệu báo cáo an ninh theo định dạng Markdown chuẩn, không chứa emoji.
+    """
+    if not report_entries:
+        return "# BÁO CÁO PHÂN TÍCH AN NINH & SUY LUẬN AI (PROJECT SENTINEL)\n\n*Không có dữ liệu phân tích nào được ghi nhận.*"
+
+    first_meta = report_entries[0].get("metadata", {})
+    model_name = first_meta.get("model", "qwen-plus")
+    prompt_ver = first_meta.get("prompt_version", "system_v2")
+    analyzed_at = first_meta.get("analyzed_at", "")
+
+    # Gom nhóm theo analysis_group_id
+    groups_dict: dict[str, list[dict[str, Any]]] = {}
+    for entry in report_entries:
+        grp_id = entry.get("analysis_group_id", "grp_unknown")
+        groups_dict.setdefault(grp_id, []).append(entry)
+
+    total_findings = len(report_entries)
+    total_groups = len(groups_dict)
+    confirmed_count = sum(1 for e in report_entries if e.get("confidence", {}).get("level") == "confirmed")
+    fp_count = sum(1 for e in report_entries if e.get("confidence", {}).get("level") == "false_positive")
+    injection_count = sum(1 for e in report_entries if e.get("metadata", {}).get("prompt_injection_detected", False))
+
+    md_lines: list[str] = [
+        "# BÁO CÁO PHÂN TÍCH AN NINH & SUY LUẬN AI (PROJECT SENTINEL)",
+        "",
+        "## 1. TỔNG QUAN PHÂN TÍCH (EXECUTIVE SUMMARY)",
+        f"- Thời gian phân tích: {analyzed_at or 'N/A'}",
+        f"- Mô hình AI thực thi: `{model_name}` (Phiên bản System Prompt: `{prompt_ver}`)",
+        f"- Tổng số phát hiện (Findings): **{total_findings}** | Tổng số nhóm lỗ hổng: **{total_groups}**",
+        f"- Xác nhận True Positive (Confirmed): **{confirmed_count}** | False Positive loại trừ: **{fp_count}**",
+        f"- Đòn tấn công Prompt Injection bị vô hiệu hóa: **{injection_count}**",
+        "",
+        "## 2. BẢNG MA TRẬN MỨC ĐỘ NGHIÊM TRỌNG (SEVERITY MATRIX)",
+        "| Nhóm Lỗ Hổng | Primary CWE | Danh Mục OWASP | Severity (Agent / Scanner Gốc) | Độ Tin Cậy (Confidence) | Tương Quan |",
+        "| :--- | :--- | :--- | :--- | :--- | :--- |",
+    ]
+
+    for grp_id, items in groups_dict.items():
+        first = items[0]
+        title = first.get("title", "Lỗ hổng bảo mật")
+        primary_cwe = first.get("primary_cwe_id") or "N/A"
+        owasp = first.get("owasp_category") or "N/A"
+        sev_obj = first.get("severity", {})
+        agent_sev = str(sev_obj.get("agent_assessment", "unknown")).upper()
+        orig_sev = str(sev_obj.get("original_scanner", "N/A")).upper()
+        conf_obj = first.get("confidence", {})
+        conf_lvl = str(conf_obj.get("level", "unknown")).upper()
+        corr = first.get("correlation_type", "sast_only")
+
+        md_lines.append(f"| [{grp_id}] {title} | `{primary_cwe}` | `{owasp}` | **{agent_sev}** ({orig_sev}) | `{conf_lvl}` | `{corr}` |")
+
+    md_lines.extend([
+        "",
+        "## 3. CHI TIẾT CÁC NHÓM LỖ HỔNG & BẰNG CHỨNG (DETAILED FINDINGS)",
+        "",
+    ])
+
+    for grp_idx, (grp_id, items) in enumerate(groups_dict.items(), 1):
+        first = items[0]
+        title = first.get("title", "Lỗ hổng bảo mật")
+        primary_cwe = first.get("primary_cwe_id") or "N/A"
+        all_cwes = ", ".join(first.get("all_cwe_ids") or [primary_cwe])
+        owasp = first.get("owasp_category") or "N/A"
+        corr_type = first.get("correlation_type", "sast_only")
+        sev_obj = first.get("severity", {})
+        conf_obj = first.get("confidence", {})
+        expl = first.get("explanation", "Chưa có phân tích chi tiết.")
+        rec_act = first.get("recommended_action", "Chưa có khuyến nghị cụ thể.")
+
+        md_lines.extend([
+            f"### Nhóm {grp_idx}: [{grp_id}] {title}",
+            f"- **Phân loại CWE**: `{primary_cwe}` (Tất cả: `{all_cwes}`)",
+            f"- **Danh mục OWASP**: `{owasp}`",
+            f"- **Mức độ nghiêm trọng (Severity)**: Agent `{sev_obj.get('agent_assessment')}` | Gốc `{sev_obj.get('original_scanner')}`",
+            f"  * *Lý do đánh giá mức độ*: {sev_obj.get('rationale', 'N/A')}",
+            f"- **Độ tin cậy (Confidence)**: `{conf_obj.get('level')}`",
+            f"  * *Căn cứ xác định độ tin cậy*: {conf_obj.get('rationale', 'N/A')}",
+            f"- **Kiểu tương quan (Correlation Type)**: `{corr_type}`",
+            "",
+            "#### A. Nguyên nhân gốc rễ & Phân tích tác động (Root Cause & Explanation)",
+            f"{expl}",
+            "",
+            "#### B. Khuyến nghị khắc phục (Recommended Actions)",
+            f"{rec_act}",
+            "",
+        ])
+
+        # Proposed test request if any
+        ptr = first.get("proposed_test_request")
+        if ptr:
+            headers_str = json.dumps(ptr.get("headers", {}), ensure_ascii=False)
+            payload_str = json.dumps(ptr.get("payload"), ensure_ascii=False) if ptr.get("payload") is not None else "null"
+            md_lines.extend([
+                "#### C. Đề xuất kiểm thử an toàn (Proposed Test Request)",
+                f"- **Trạng thái**: `{ptr.get('status', 'not_sent')}`",
+                f"- **HTTP Request**: `{ptr.get('method', 'GET')} {ptr.get('endpoint', '/')}`",
+                f"- **Headers**: `{headers_str}`",
+                f"- **Payload**: `{payload_str}`",
+                f"- **Căn cứ & Mục đích probe**: {ptr.get('rationale', 'N/A')}",
+                "",
+            ])
+
+        # Knowledge references
+        kb_refs = first.get("knowledge_references", [])
+        if kb_refs:
+            md_lines.extend([
+                "#### D. Tài liệu tri thức bảo mật tham chiếu (Knowledge References)",
+            ])
+            for ref in kb_refs:
+                md_lines.append(f"- **[{ref.get('doc_id')}] {ref.get('title')}**: {ref.get('relevance')}")
+            md_lines.append("")
+
+        # Sub-findings list
+        md_lines.extend([
+            f"#### E. Danh sách phát hiện thành phần ({len(items)} Findings)",
+        ])
+        for f_idx, item in enumerate(items, 1):
+            f_id = item.get("finding_id", "N/A")
+            f_tool = item.get("tool", "N/A")
+            f_scan = item.get("scan_type", "N/A")
+            f_loc = item.get("location_summary", "N/A")
+            f_ev = item.get("evidence_summary", "N/A")
+            f_fp = item.get("fingerprint", "N/A")
+            f_stat = item.get("analysis_status", "success")
+
+            md_lines.extend([
+                f"{f_idx}. **Finding ID**: `{f_id}` | **Công cụ**: `{f_tool}` ({f_scan}) | **Trạng thái**: `{f_stat}`",
+                f"   - **Vị trí**: `{f_loc}`",
+                f"   - **Fingerprint**: `{f_fp}`",
+                f"   - **Bằng chứng trích xuất**: {f_ev}",
+            ])
+        md_lines.append("")
+
+    return "\n".join(md_lines)
