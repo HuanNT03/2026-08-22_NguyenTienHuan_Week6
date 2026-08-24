@@ -343,8 +343,8 @@ def test_render_gateway_audit_card_behavior(monkeypatch: pytest.MonkeyPatch) -> 
 
 def test_render_agent_live_progress_card_behavior(monkeypatch: pytest.MonkeyPatch) -> None:
     """Verify render_agent_live_progress_card displays current group, CWE, location, and progress."""
-    from src.app.agent_bridge import AgentRunState
     from frontend.components.bento import render_agent_live_progress_card
+    from src.app.agent_bridge import AgentRunState
 
     captured_html = []
 

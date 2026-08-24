@@ -95,8 +95,8 @@ def run_analysis(
         if progress_callback is not None:
             try:
                 progress_callback(idx, len(groups), group, "analyzing")
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("Progress callback error (analyzing): %s", exc)
 
         logger.info(
             "[%d/%d] Analyzing group %s (%d findings, correlation: %s)",
@@ -150,8 +150,8 @@ def run_analysis(
         if progress_callback is not None:
             try:
                 progress_callback(idx, len(groups), group, "completed")
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("Progress callback error (completed): %s", exc)
 
     logger.info("=== Phase 3: Post-Processing & Coverage Verification ===")
     coverage = verify_coverage(findings, all_entries)
