@@ -10,7 +10,7 @@ VENV_PIP := $(VENV)/bin/pip
 .PHONY: help venv install doctor setup-target verify-target down status \
 	target-build target-up target-wait target-smoke target-down target-logs target-status \
 	gateway-up gateway-down gateway-logs gateway-status test-request stest-request gateway-test \
-	lint test test-contracts test-python quality sast sast-semgrep sast-codeql dast dast-zap-fullscan dast-zap-admin dast-zap-fullscan-admin dast-sqlmap validate-reports week1 normalize clean-reports clean \
+	lint test test-contracts test-python quality sast sast-semgrep sast-codeql dast dast-mock dast-zap-fullscan dast-zap-admin dast-zap-fullscan-admin dast-sqlmap validate-reports week1 normalize clean-reports clean \
 	ui-build ui-rebuild ui ui-down ui-logs
 
 help: ## Hiển thị danh sách tất cả các lệnh và hướng dẫn tham số.
@@ -122,6 +122,10 @@ sast-codeql: verify-target ## Xây dựng DB và chạy CodeQL SAST deep taint a
 	@$(PYTHON) scripts/validate-sast-scope.py --tool codeql --report reports/raw/codeql.sarif
 
 dast: ## Chạy OWASP ZAP Baseline DAST (User) quét target (xuất reports/raw/zap.json).
+	@./scripts/run-dast.sh
+
+dast-mock: ## Khởi động Mock Server và chạy OWASP ZAP Baseline DAST (xuất reports/raw/zap.json).
+	@$(MAKE) mock-server-up
 	@./scripts/run-dast.sh
 
 dast-zap-fullscan: ## Chạy OWASP ZAP Full Scan DAST (User) với Client Spider.
@@ -264,12 +268,16 @@ ui-down: ## Dừng container Streamlit Web UI.
 ui-logs: ## Xem live logs từ container Streamlit Web UI.
 	docker compose logs --follow sentinel-ui
 
-.PHONY: mock-server-up mock-server-down test-mock-guardrails test-live-mock-probe
+.PHONY: mock-server-up mock-server-down dast-mock test-mock-guardrails test-live-mock-probe
 
-mock-server-up: ## Khởi động Vulnerable Mock Server. Tham số tùy chọn: PORT=<cổng> (Mặc định: PORT=3000)
-	@$(VENV_PYTHON) api-server/mock_server.py --port $(or $(PORT),3000)
+mock-server-up: ## Khởi động Vulnerable Mock Server qua Docker Compose trong mạng sentinel-security.
+	@docker compose stop juice-shop 2>/dev/null || true
+	@docker compose up -d mock-server
+	@./scripts/wait-for-target.sh
 
-mock-server-down: ## Dừng toàn bộ tiến trình Vulnerable Mock Server đang chạy ngầm.
+mock-server-down: ## Dừng và xóa container Vulnerable Mock Server.
+	@docker compose stop mock-server 2>/dev/null || true
+	@docker compose rm -f mock-server 2>/dev/null || true
 	@fuser -k 3000/tcp 2>/dev/null || pkill -f "python.*mock_server.py" 2>/dev/null || true
 	@echo "Vulnerable Mock Server stopped."
 

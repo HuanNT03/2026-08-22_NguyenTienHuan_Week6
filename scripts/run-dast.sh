@@ -35,7 +35,12 @@ load_tool_versions "$VERSIONS_FILE"
 
 container_id="$(docker compose --project-directory "$PROJECT_ROOT" -f "$PROJECT_ROOT/docker-compose.yml" ps -q juice-shop)"
 if [[ -z "$container_id" ]] || [[ "$(docker inspect -f '{{.State.Running}}' "$container_id" 2>/dev/null || true)" != "true" ]]; then
-  die "Juice Shop is not running. Run: make target-build && make target-up && make target-wait && make target-smoke && make dast"
+  mock_id="$(docker compose --project-directory "$PROJECT_ROOT" -f "$PROJECT_ROOT/docker-compose.yml" ps -q mock-server)"
+  if [[ -n "$mock_id" ]] && [[ "$(docker inspect -f '{{.State.Running}}' "$mock_id" 2>/dev/null || true)" == "true" ]]; then
+    log "Vulnerable Mock Server container is running as target."
+  else
+    die "Neither Juice Shop nor Mock Server is running. Run: make target-up OR make mock-server-up"
+  fi
 fi
 docker network inspect "$NETWORK_NAME" >/dev/null 2>&1 || \
   die "Docker network '$NETWORK_NAME' does not exist. Run 'make target-up' first."

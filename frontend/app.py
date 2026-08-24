@@ -125,6 +125,7 @@ with tab1:
             "Semgrep SAST (JavaScript / NodeJS Rulesets)": "semgrep",
             "CodeQL SAST (Deep Taint & Data Flow Analysis)": "codeql",
             "OWASP ZAP Baseline DAST (User Auth - user@juice-sh.op)": "zap_baseline",
+            "OWASP ZAP Baseline DAST (Vulnerable Mock Server Target)": "zap_mock",
             "OWASP ZAP Baseline DAST (Admin Auth - admin@juice-sh.op)": "zap_admin",
             "OWASP ZAP Full Scan DAST (User Auth - Active Scan)": "zap_fullscan",
             "OWASP ZAP Full Scan DAST (Admin Auth - Active Scan)": "zap_fullscan_admin",

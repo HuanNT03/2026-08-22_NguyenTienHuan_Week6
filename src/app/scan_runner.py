@@ -8,6 +8,7 @@ TOOL_COMMANDS: Mapping[str, list[str]] = {
     "semgrep": ["./scripts/run-sast.sh"],
     "codeql": ["make", "sast-codeql"],
     "zap_baseline": ["./scripts/run-dast.sh"],
+    "zap_mock": ["make", "dast-mock"],
     "zap_fullscan": ["./scripts/run-dast-zap-fullscan.sh"],
     "zap_admin": ["./scripts/run-dast-admin.sh"],
     "zap_fullscan_admin": ["./scripts/run-dast-zap-fullscan-admin.sh"],
@@ -22,6 +23,8 @@ TARGET_COMMANDS: Mapping[str, list[str]] = {
     "wait": ["make", "target-wait"],
     "down": ["make", "target-down"],
     "status": ["make", "target-status"],
+    "mock_up": ["make", "mock-server-up"],
+    "mock_down": ["make", "mock-server-down"],
 }
 
 

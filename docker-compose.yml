@@ -25,6 +25,37 @@ services:
       retries: 24
       start_period: 15s
 
+  mock-server:
+    image: python:3.12-slim
+    working_dir: /workspace
+    volumes:
+      - ${HOST_PROJECT_PATH:-.}/api-server:/workspace/api-server:ro
+    command:
+      - python
+      - -u
+      - api-server/mock_server.py
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "3000"
+    ports:
+      - "127.0.0.1:${JUICE_SHOP_PORT:-3000}:3000"
+    networks:
+      security:
+        aliases:
+          - juice-shop
+          - mock-server
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:3000/health')"
+      interval: 3s
+      timeout: 2s
+      retries: 5
+      start_period: 2s
+
   codeql-scan:
     profiles: ["scan"]
     build:
