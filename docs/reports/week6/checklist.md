@@ -15,7 +15,10 @@ Bao gồm:
 - [x] Python Tool gửi request.
   - Đường dẫn: `src/agent/tools.py` và `src/gateway/safe_requester.py`
 - [x] Guardrails.
-  - Đường dẫn: `src/guardrails/` và `src/gateway/`
+  - Đường dẫn:
+    - **Gateway Guardrails**: `src/gateway/allowlist.json` (Endpoint Allowlist), `src/gateway/payloads.json` (Safe Payloads Allowlist), `src/gateway/hitl.py` (Human-in-the-Loop 120s Fail-Safe), `src/gateway/safe_requester.py` (Rate Limit & Response Length Guard).
+    - **Data Sanitization & Injection Guardrails**: `src/guardrails/injection.py` (Phát hiện Prompt Injection song ngữ Anh - Việt) và `src/guardrails/redactor.py` (Khử khuẩn PII, mật khẩu, JWT token).
+    - **System Prompt Guardrails**: `src/agent/prompts/system_v2.md` (Quy tắc cách ly `<untrusted_http_response>`, chống chỉ thị ghi đè SYSTEM OVERRIDE và ép buộc Schema Contract).
 - [x] Chức năng che dữ liệu.
   - Đường dẫn: `src/guardrails/redactor.py`
 - [x] Docker Compose.
