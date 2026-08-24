@@ -1,1 +1,108 @@
-
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sentinel.local/schemas/ground-truth/1.0.0/schema.json",
+  "title": "Project Sentinel Ground Truth Dataset Schema",
+  "description": "JSON Schema định nghĩa tập dữ liệu Ground Truth cho ứng dụng mục tiêu được cấp phép (Mock Server hoặc Juice Shop) phục vụ đánh giá định lượng TP/FP/FN của AI Security Agent.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "target_name",
+    "target_version",
+    "provenance",
+    "ground_truth_records"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "target_name": {
+      "type": "string"
+    },
+    "target_version": {
+      "type": "string"
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["source_file", "author", "reviewed_at"],
+      "properties": {
+        "source_file": { "type": "string" },
+        "author": { "type": "string" },
+        "reviewed_at": { "type": "string" },
+        "description": { "type": "string" }
+      }
+    },
+    "ground_truth_records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "ground_truth_id",
+          "endpoint",
+          "method",
+          "primary_cwe_id",
+          "title",
+          "expected_classification",
+          "expected_severity"
+        ],
+        "properties": {
+          "ground_truth_id": {
+            "type": "string",
+            "pattern": "^gt_[a-z0-9_]+$"
+          },
+          "endpoint": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string",
+            "enum": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "ALL"]
+          },
+          "primary_cwe_id": {
+            "type": "string",
+            "pattern": "^(CWE-[0-9]+|None)$"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "expected_classification": {
+            "type": "string",
+            "enum": ["true_positive", "false_positive", "informational"]
+          },
+          "expected_severity": {
+            "type": "string",
+            "enum": ["critical", "high", "medium", "low", "info"]
+          },
+          "is_active_exploit": {
+            "type": "boolean"
+          },
+          "trigger_payload": {
+            "type": ["string", "object", "null"]
+          },
+          "expected_evidence_pattern": {
+            "type": "string"
+          },
+          "has_prompt_injection": {
+            "type": "boolean"
+          },
+          "prompt_injection_type": {
+            "type": "string",
+            "enum": ["english_override", "vietnamese_override", "dan_mode", "none"]
+          },
+          "has_pii_leak": {
+            "type": "boolean"
+          },
+          "pii_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

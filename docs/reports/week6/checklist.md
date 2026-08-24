@@ -35,45 +35,45 @@ Bao gồm:
 - [x] Hướng dẫn chạy demo.
   - Đường dẫn: `README.md` (Mục Hướng dẫn Chạy Demo Thực Nghiệm Với Mock Server & Web UI), `docs/reports/week6/react-agent-evaluation-report.md` (Mục 6) và `scripts/live_mock_probe_demo.py`
 - [x] Các giới hạn của hệ thống.
-  - Đường dẫn: `docs/reports/week6/product-brief.md` (Mục 5) và `docs/reports/week6/react-agent-evaluation-report.md` (Mục 7.1)
+  - Đường dẫn: `docs/reports/week6/product-brief.md` (Mục 5)
 - [x] Các quyết định thiết kế chính.
   - Đường dẫn: `docs/reports/week6/react-agent-architecture-report.md` (Mục 4)
 - [x] Các rủi ro bảo mật còn tồn tại.
-  - Đường dẫn: `docs/reports/week6/product-brief.md` (Mục 5) và `docs/reports/week6/react-agent-evaluation-report.md` (Mục 7.2)
+  - Đường dẫn: `docs/reports/week6/product-brief.md` (Mục 5)
 
 ## 3. Báo cáo kết quả
 
 Bao gồm:
 
 - [x] Các lỗ hổng đã phát hiện.
-  - Đường dẫn: `docs/reports/week6/react-agent-evaluation-report.md` (Mục 2 và Mục 5)
+  - Đường dẫn: `docs/reports/week6/react-agent-evaluation-report.md` (Mục 2 và Mục 3) và `api-server/docs/mock_server_ground_truth.json`
 - [x] Các trường hợp Agent phân tích đúng.
-  - Đường dẫn: `docs/reports/week6/react-agent-evaluation-report.md` (Mục 3.1)
+  - Đường dẫn: `docs/reports/week6/react-agent-evaluation-report.md` (Mục 3 và Mục 4.2)
 - [x] Các trường hợp Agent phân tích sai.
-  - Đường dẫn: `docs/reports/week6/react-agent-evaluation-report.md` (Mục 3.2)
+  - Đường dẫn: `docs/reports/week6/react-agent-evaluation-report.md` (Mục 3 và Mục 4.3)
 - [x] False Positive và False Negative.
   - Đường dẫn: `docs/reports/week6/react-agent-evaluation-report.md` (Mục 4)
 - [x] Đề xuất cải tiến.
-  - Đường dẫn: `docs/reports/week6/react-agent-evaluation-report.md` (Mục 7.3) và `docs/reports/week6/product-brief.md` (Mục 6)
+  - Đường dẫn: `docs/reports/week6/react-agent-evaluation-report.md` (Mục 7) và `docs/reports/week6/product-brief.md` (Mục 6)
 
 ## 4. Bản trình diễn
 
 Bản demo cần thể hiện:
 
 - [x] Một lần chạy công cụ quét.
-  - Đường dẫn: `Makefile` (lệnh `make sast`, `make dast`, `make dast-mock`) và `frontend/app.py` (Tab 1)
+  - Đường dẫn: `Makefile` (lệnh `make sast`, `make dast`, `make dast-mock`),  `frontend/app.py` (Tab 1) và `docs/evidences/Screenshot from 2026-08-24 17-27-58.png`
 - [x] Agent tạo báo cáo.
-  - Đường dẫn: `src/agent/orchestrator.py` và `frontend/app.py` (Tab 5)
+  - Đường dẫn: `docs/evidences/Screenshot from 2026-08-24 17-31-06.png`, `src/agent/orchestrator.py` và `frontend/app.py` (Tab 5)
 - [x] Agent đề xuất request kiểm tra.
-  - Đường dẫn: `schemas/security_analysis_report.schema.json` (trường `proposed_test_request`) và `frontend/app.py` (Tab 5)
+  - Đường dẫn: `docs/evidences/phe-duyet.png` (trường `proposed_test_request`) và `frontend/app.py` (Tab 5)
 - [x] Người dùng Approve hoặc Reject.
-  - Đường dẫn: `frontend/components/hitl_queue.py` và `frontend/app.py` (Hàng đợi phê duyệt HITL Sidebar)
+  - Đường dẫn: `docs/evidences/Screenshot from 2026-08-24 17-33-58.png`, `frontend/components/hitl_queue.py` và `frontend/app.py` (Hàng đợi phê duyệt HITL Sidebar)
 - [x] Request đi qua API Gateway.
   - Đường dẫn: `docker-compose.gateway.yml` và `frontend/app.py` (Tab 4 và Tab 6)
 - [x] Prompt Injection bị chặn.
   - Đường dẫn: `tests/guardrails/test_vulnerable_mock_guardrails.py` và `frontend/app.py` (Tab 6)
 - [x] Dữ liệu nhạy cảm bị che.
-  - Đường dẫn: `src/guardrails/redactor.py` và `frontend/app.py` (Tab 4 và Tab 6)
+  - Đường dẫn: `docs/evidences/redact.png`, `src/guardrails/redactor.py` và `frontend/app.py` (Tab 4 và Tab 6)
 
 ## 5. Bản mô tả sản phẩm ngắn
 
