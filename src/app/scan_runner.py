@@ -8,7 +8,6 @@ TOOL_COMMANDS: Mapping[str, list[str]] = {
     "semgrep": ["./scripts/run-sast.sh"],
     "codeql": ["make", "sast-codeql"],
     "zap_baseline": ["./scripts/run-dast.sh"],
-    "zap_mock": ["make", "dast-mock"],
     "zap_fullscan": ["./scripts/run-dast-zap-fullscan.sh"],
     "zap_admin": ["./scripts/run-dast-admin.sh"],
     "zap_fullscan_admin": ["./scripts/run-dast-zap-fullscan-admin.sh"],
