@@ -41,6 +41,7 @@
 - **Nguy cơ lộ lọt một phần secret**: Việc cắt response ở mốc 2KB trước khi mask có thể làm lộ một phần chuỗi bí mật nếu điểm cắt rơi giữa JWT/email, đây là đánh đổi giữa chống zip-bomb và độ chính xác của redaction.
 - **Vẫn chưa có một bản đánh giá cụ thể**: Do chưa có một bộ dataset chuẩn liệt kê các lỗ hổng được tạo trên Juice Shop nên hiện tại dự án mới chỉ tính toán độ chính xác dựa trên 1 phiên bản mock server để kiểm tra.
 - **Phiên bản này mới chỉ nằm ở mức độ phân tích**: Do các công cụ hiện tại vẫn được cấu hình nằm chung 1 network trong docker nên các công cụ quét vẫn chưa được cấu hình để quét sâu hơn vào các mục tiêu khác.
+- **Bản đánh giá dựa trên mock server có thể chưa thực tế**: Môi trường Mock Server (`api-server/mock_server.py`) sử dụng các phản hồi HTTP giả lập và các kịch bản lỗ hổng định trước (deterministic patterns). Do đó, các chỉ số thực nghiệm (Precision/Recall 100%) chủ yếu mang tính kiểm chứng luồng hoạt động của kiến trúc (pipeline verification), chưa phản ánh toàn diện năng lực của Agent khi đối mặt với các hệ thống thực tế có độ phức tạp cao, tỷ lệ cảnh báo giả lớn (30-50% FP) hoặc các kỹ thuật tấn công trốn tránh (evasion/jailbreak) nâng cao.
 
 ---
 
