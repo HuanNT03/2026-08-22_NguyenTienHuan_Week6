@@ -31,7 +31,7 @@ Báo cáo này tài liệu hóa chi tiết kết quả đánh giá thực nghi�
 
 Tập Ground Truth được lập trình độc lập trong `api-server/mock_server.py` bao gồm **13 bản ghi an ninh chuẩn**, chia làm hai nhóm:
 
-### 2.1. Nhóm Lỗ Hổng Chủ Động (Active Exploits & Deep Probes — 6 Items)
+### 2.1. Nhóm Lỗ Hổng Chủ Động (Active Exploits & Deep Probes — 7 Items)
 Các lỗ hổng backend nghiêm trọng đòi hỏi gửi tải trọng chủ động (Active Fuzzing / Safe Probing qua API Gateway):
 
 1. **`gt_mock_001` (`GET /api/vulnerable/search?q=' OR 1=1--`)**: **CWE-89 (SQL Injection)** — *Critical*. Kích hoạt lỗi SQL syntax error, làm lộ cấu trúc bảng `Users`.
@@ -58,11 +58,11 @@ Các lỗ hổng cấu hình phòng thủ và thông tin được phát hiện b
 
 Bảng đối soát chi tiết từng nhóm lỗ hổng trong tệp báo cáo phân tích `reports/analyzed/security-analysis-report-20260824T100618Z.jsonl` so với Ground Truth:
 
-| Nhóm Phân Tích (Analysis Group ID) | Findings Đầu Vào (ZAP Rule) | Primary CWE | Đánh Giá Của ReAct Agent (Severity & Confidence) | Đối Chiếu Ground Truth | Phân Loại Định Lượng | Nhận Xét Đánh Giá Của Agent |
+| Nhóm Phân Tích (Analysis Group ID) | Findings Đầu Vào (ZAP Rule) | Primary CWE | Đánh Giá Của ReAct Agent (Severity & Confidence) | Đối Chiếu Ground Truth | Phân Loại Định Lượng | Nhận Xét Đánh Giá Của Agent & Ghi Chú Kỹ Thuật |
 | :--- | :--- | :---: | :---: | :---: | :---: | :--- |
 | **`grp_cwe352_001`** (1 finding) | Rule 10202 (Anti-CSRF Missing trên `/`) | **CWE-352** | Severity: **Medium**<br/>Confidence: **Confirmed** | Khớp `gt_mock_008` (CWE-352 Form thiếu token) | **True Positive (TP)** | Agent xác minh chính xác form HTML `<form action="/api/vulnerable/feedback">` thiếu token CSRF và khuyến nghị giải pháp CSRFGuard / SameSite cookie. |
 | **`grp_cwe693_002`** (2 findings) | Rule 10038 (CSP Missing) & Rule 10021 (nosniff) | **CWE-693** | Severity: **Medium / Low**<br/>Confidence: **High** | Khớp `gt_mock_010` (CWE-693 Thiếu CSP & nosniff) | **True Positive (TP)** | Agent phân loại chuẩn xác mức độ rủi ro cấu hình phòng vệ, chỉ rõ nguy cơ MIME-sniffing và XSS. |
-| **`grp_cwe264_003`** (5 findings) | Rule 10098 (CORS Wildcard trên 5 endpoints) | **CWE-264** | Severity: **Medium**<br/>Confidence: **Low** (Fallback) | Khớp `gt_mock_012` (CWE-264 CORS Policy `*`) | **True Positive (TP)** | Agent phát hiện cấu hình `Access-Control-Allow-Origin: *` trên các endpoint nhạy cảm (`/api/vulnerable/env-config`, `/user/profile`). |
+| **`grp_cwe264_003`** (5 findings) | Rule 10098 (CORS Wildcard trên 5 endpoints) | **CWE-264** | Severity: **Medium**<br/>Confidence: **Low** (Fallback) | Khớp `gt_mock_012` (CWE-264 CORS Policy `*`) | **True Positive (TP)** | *Ghi chú Schema Fallback*: Do LLM trả về chuỗi OWASP `A01:2021...` không khớp Regex Schema `^OWASP-A(0[1-9]|10):[0-9]{4}$`, agent kích hoạt cơ chế fallback bảo tồn phát hiện scanner gốc. |
 | **`grp_cwe1021_004`** (1 finding) | Rule 10020 (Clickjacking trên `/`) | **CWE-1021** | Severity: **Medium**<br/>Confidence: **Confirmed** | Khớp `gt_mock_009` (CWE-1021 Thiếu X-Frame-Options) | **True Positive (TP)** | Agent xác nhận trực tiếp qua DAST response thiếu header `X-Frame-Options`, đề xuất bổ sung directive `frame-ancestors 'self'`. |
 | **`grp_cwe497_005`** (5 findings) | Rule 10036 (Server Header Leak trên 5 endpoints) | **CWE-497** | Severity: **Low**<br/>Confidence: **Confirmed** | Khớp `gt_mock_011` (CWE-497 Server Version Leak) | **True Positive (TP)** | Agent đối soát tương quan `sast_dast_confirmed`, xác nhận header `Server: VulnerableTargetMock/20.1.1` rò rỉ phiên bản ứng dụng. |
 | **`grp_general_006`** (1 finding) | Rule 10111 (Authentication Request) | **None** | Severity: **Info**<br/>Confidence: **High** | Khớp `gt_mock_013` (Authentication Identified) | **True Positive (TP-Info)** | Agent phân loại chính xác đây là thông tin nhận diện endpoint login (`/rest/user/login`), không thổi phồng thành lỗ hổng nguy hiểm. |
@@ -74,11 +74,13 @@ Bảng đối soát chi tiết từng nhóm lỗ hổng trong tệp báo cáo ph
 
 ### 4.1. Công Thức & Bảng Ma Trận Nhầm Lẫn (Confusion Matrix)
 
+**Chỉ số trên tập Finding của Scanner (ZAP Baseline — 16 Findings):**
+
 $$ \text{Precision} = \frac{TP}{TP + FP} = \frac{16}{16 + 0} = 100.0\% $$
 
 $$ \text{Recall}_{\text{scanner}} = \frac{TP}{TP + FN_{\text{scanner}}} = \frac{16}{16 + 0} = 100.0\% $$
 
-$$ F_1\text{-Score} = 2 \times \frac{\text{Precision} \times \text{Recall}}{\text{Precision} + \text{Recall}} = 2 \times \frac{1.0 \times 1.0}{1.0 + 1.0} = 1.000 $$
+$$ F_1\text{-Score} = 2 \times \frac{\text{Precision} \times \text{Recall}_{\text{scanner}}}{\text{Precision} + \text{Recall}_{\text{scanner}}} = 2 \times \frac{1.0 \times 1.0}{1.0 + 1.0} = 1.000 $$
 
 ```text
 ┌──────────────────────────────────────┬───────────────────────────────────────────────────────────┐
@@ -92,6 +94,10 @@ $$ F_1\text{-Score} = 2 \times \frac{\text{Precision} \times \text{Recall}}{\tex
 │ F1-Score                             │ 1.000                                                     │
 └──────────────────────────────────────┴───────────────────────────────────────────────────────────┘
 ```
+
+**Đối chiếu Độ Bao Phủ Toàn Diện Trên Toàn Bộ Ground Truth (13 Mục Tiêu):**
+- **Độ bao phủ của Scanner thụ động đơn lẻ (ZAP Baseline)**: Phát hiện được 6/13 mục tiêu Ground Truth ($\text{Recall} = 46.15\%$). Bỏ sót 7 lỗ hổng chủ động tầng sâu (`gt_mock_001` đến `gt_mock_007`).
+- **Độ bao phủ khi tích hợp ReAct Agent Safe Probe**: Phát hiện 13/13 mục tiêu Ground Truth ($\text{Recall} = 100.0\%$).
 
 ### 4.2. Phân Tích Các Trường Hợp Agent Đánh Giá Đúng (True Positives Analysis)
 1. **Xác thực chính xác các lỗ hổng phòng thủ Web (CWE-352, CWE-1021, CWE-693)**:
@@ -132,7 +138,25 @@ Trong quá trình phân tích các endpoint lỗ hổng trên Mock Server, Agent
 
 ---
 
-## 6. HƯỚNG DẪN CHẠY DEMO THỰC TẾ (DEMO RUNBOOK)
+## 6. ĐÁNH GIÁ CỦA SENIOR PENTESTER VỀ TÍNH ĐẠI DIỆN CỦA MOCK DATA & GIỚI HẠN THỰC TẾ (AUDIT CAVEATS)
+
+> [!WARNING]
+> **CẢNH BÁO QUAN TRỌNG VỀ PHẠM VI DỮ LIỆU ĐÁNH GIÁ (MOCK DATA LIMITATION DISCLAIMER)**:
+> Toàn bộ kết quả thực nghiệm và các chỉ số đo lường (Precision 100%, Recall 100% trên scanner findings) trong báo cáo này được tính toán dựa trên **Tập Dữ Liệu Kiểm Thử Giả Lập (Synthetic Vulnerable Mock Server)** tại `api-server/mock_server.py`. Do đó, **báo cáo này chưa phản ánh toàn bộ độ chính xác và năng lực toàn diện của Agent trên các hệ thống mục tiêu thực tế phức tạp**.
+
+### 6.1. Các Giới Hạn Khi Đánh Giá Trên Mock Data
+1. **Tính chất giả lập và định trước (Synthetic & Deterministic)**:
+   - Các phản hồi HTTP trong Mock Server được lập trình cứng (hardcoded patterns), không chứa logic nghiệp vụ động phức tạp, stateful session đa bước, hay các biến thể mã hóa (encoding/obfuscation) thường gặp trong ứng dụng thật.
+2. **Quy mô và tính đa dạng của lỗ hổng**:
+   - Mock Server chỉ cài đặt 13 ca kiểm thử điển hình. Một mục tiêu thực tế (như toàn bộ OWASP Juice Shop `v20.1.1` với hơn 100 thử thách, hoặc các ứng dụng doanh nghiệp) sẽ chứa hàng nghìn API routes, cơ chế xác thực OAuth2/SAML phức tạp, WebSocket, và nhiều tầng WAF/anti-bot mà môi trường mock chưa mô phỏng hết.
+3. **Rủi ro Fallback do lỗi Schema Validation**:
+   - Trong quá trình đánh giá, nhóm CORS (`grp_cwe264_003` - chiếm 5/16 findings ~ 31.25%) đã bị lỗi Pydantic Regex do LLM sinh chuỗi `A01:2021` thay vì `OWASP-A01:2021`. Hệ thống đã kích hoạt cơ chế Fallback an toàn (giữ nguyên phân loại của Scanner với `confidence: low`). Điều này chứng minh cơ chế Fail-Safe hoạt động tốt, nhưng cũng chỉ ra tỷ lệ thành công tuyệt đối của LLM reasoning thuần túy trên nhóm này bị gián đoạn.
+4. **Giới hạn kiểm thử Guardrails**:
+   - Bộ khiên Guardrails (Redactor & Injection Detector) đạt 100% với 3 mẫu tấn công định trước và các định dạng regex chuẩn. Trong thực tế, các cuộc tấn công Adversarial Prompt Injection nâng cao (như Indirect Injection qua cơ sở dữ liệu, đa ngôn ngữ ít phổ biến, ASCII smuggling) đòi hỏi các tầng phòng thủ ngữ nghĩa chuyên sâu hơn.
+
+---
+
+## 7. HƯỚNG DẪN CHẠY DEMO THỰC TẾ (DEMO RUNBOOK)
 
 1. **Khởi động Vulnerable Mock Server**:
    ```bash
@@ -160,7 +184,7 @@ Trong quá trình phân tích các endpoint lỗ hổng trên Mock Server, Agent
 
 ---
 
-## 7. ĐỀ XUẤT CẢI TIẾN & HƯỚNG PHÁT TRIỂN TIẾP THEO
+## 8. ĐỀ XUẤT CẢI TIẾN & HƯỚNG PHÁT TRIỂN TIẾP THEO
 
 1. **Tích hợp Tùy Chọn Mục Tiêu Quét Động (Dynamic Target Onboarding)**:
    - Cho phép người dùng nhập trực tiếp URL/Repository của hệ thống khác thay vì cố định Juice Shop / Mock Server.
@@ -168,4 +192,5 @@ Trong quá trình phân tích các endpoint lỗ hổng trên Mock Server, Agent
 2. **Khắc phục Rủi Ro Cắt Response (Secret Truncation Risk)**:
    - Bổ sung cơ chế Sliding Window Redaction để quét PII trước khi cắt độ dài buffer 2KB, tránh nguy cơ rò rỉ 1 phần secret nằm ngay vị trí cắt.
 3. **Mở rộng Bộ Dataset Ground Truth Chuẩn Hóa**:
-   - Xây dựng thêm bộ Ground Truth cho 100% thử thách của OWASP Juice Shop `v20.1.1` dựa trên `challenges.yml` để nâng cao năng lực kiểm chuẩn diện rộng.
+   - Xây dựng thêm bộ Ground Truth cho 100% thử thách của OWASP Juice Shop `v20.1.1` dựa trên `challenges.yml` để nâng cao năng lực kiểm chuẩn diện rộng trên môi trường ứng dụng thực tế.
+
