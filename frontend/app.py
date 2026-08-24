@@ -480,55 +480,91 @@ with tab5:
 
         with col_exec3:
             max_steps_sel = st.slider("Max ReAct Steps:", min_value=1, max_value=10, value=5)
-            btn_run_agent = st.button("Khởi Chạy Phân Tích (Run Agent)", type="primary", use_container_width=True)
 
-    runner: AsyncAgentRunner = st.session_state.agent_runner
-    runner_state = runner.get_status()
+    @st.fragment(run_every=1.0)
+    def render_agent_live_status(
+        selected_file: str | None,
+        llm_model: str,
+        mode: str,
+        steps: int,
+    ) -> None:
+        """Fragment quản lý trạng thái chạy của Agent và bộ đếm thời gian thực dạng Digital Stopwatch MM:SS."""
+        runner: AsyncAgentRunner = st.session_state.agent_runner
+        runner_state = runner.get_status()
 
-    if runner_state.is_running:
-        st.markdown(
-            f"""
-            <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.35); border-radius: 12px; padding: 14px; margin-top: 12px; margin-bottom: 12px;">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-                    <span style="font-size: 13px; font-weight: 700; color: #3B82F6; display: flex; align-items: center; gap: 8px;">
-                        <span class="material-symbols-outlined">sync</span> AI Security Agent Đang Chạy Phân Tích...
-                    </span>
-                    <span class="bento-badge info">Thời gian: {runner_state.elapsed_seconds:.1f}s</span>
+        if runner_state.is_running:
+            # Tính toán phút:giây chuẩn dạng 00:05, 01:24 (loại bỏ số thập phân gián đoạn)
+            elapsed_sec = max(0, int(time.time() - runner_state.start_time)) if runner_state.start_time > 0 else 0
+            mins = elapsed_sec // 60
+            secs = elapsed_sec % 60
+            formatted_time = f"{mins:02d}:{secs:02d}"
+            start_ts_js = runner_state.start_time
+
+            st.markdown(
+                f"""
+                <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.35); border-radius: 12px; padding: 14px; margin-top: 12px; margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                        <span style="font-size: 13px; font-weight: 700; color: #3B82F6; display: flex; align-items: center; gap: 8px;">
+                            <span class="material-symbols-outlined" style="animation: spin 2s linear infinite;">sync</span> AI Security Agent Đang Chạy Phân Tích...
+                        </span>
+                        <span class="bento-badge info" style="display: flex; align-items: center; gap: 6px; font-family: monospace; font-size: 12px;">
+                            <span class="material-symbols-outlined" style="font-size: 14px;">timer</span>
+                            <span id="agent-stopwatch-text">{formatted_time}</span>
+                        </span>
+                    </div>
+                    <div style="font-size: 12px; color: #cdd6f4;">
+                        Agent đang thực thi chu trình ReAct đa bước. Nếu Agent gọi probe rủi ro cao (POST), yêu cầu duyệt sẽ xuất hiện trên <b>HÀNG ĐỢI PHÊ DUYỆT (Sidebar)</b> để bạn tương tác duyệt thời gian thực (120s Fail-Safe).
+                    </div>
                 </div>
-                <div style="font-size: 12px; color: #cdd6f4;">
-                    Agent đang thực thi chu trình ReAct đa bước. Nếu Agent gọi probe rủi ro cao (POST), yêu cầu duyệt sẽ xuất hiện trên <b>HÀNG ĐỢI PHÊ DUYỆT (Sidebar)</b> để bạn tương tác duyệt thời gian thực (120s Fail-Safe).
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        time.sleep(1.0)
-        st.rerun()
-
-    if runner_state.is_finished:
-        if runner_state.error:
-            st.error(f"Lỗi trong quá trình phân tích: {runner_state.error}")
-        else:
-            st.success(f"Phân tích hoàn tất thành công trong {runner_state.elapsed_seconds:.2f}s!")
-        runner.reset()
-
-    # Trigger Agent Analysis
-    if btn_run_agent:
-        if not selected_findings_file:
-            st.error("Vui lòng chọn hoặc tải lên tệp Unified Findings.")
-        elif runner_state.is_running:
-            st.warning("Agent đang chạy một phiên phân tích khác. Vui lòng chờ hoàn tất.")
-        else:
-            started = runner.start(
-                findings_path=selected_findings_file,
-                model=model_name,
-                agent_mode=agent_mode_sel,
-                max_react_steps=max_steps_sel,
-                approval_callback=hitl_mgr.request_in_flight_approval,
+                <script>
+                (function() {{
+                    var startEpoch = {start_ts_js} * 1000;
+                    function updateClock() {{
+                        var now = Date.now();
+                        var totalSec = Math.max(0, Math.floor((now - startEpoch) / 1000));
+                        var m = String(Math.floor(totalSec / 60)).padStart(2, '0');
+                        var s = String(totalSec % 60).padStart(2, '0');
+                        var target = document.getElementById('agent-stopwatch-text');
+                        if (target) target.innerText = m + ':' + s;
+                    }}
+                    updateClock();
+                }})();
+                </script>
+                """,
+                unsafe_allow_html=True,
             )
-            if started:
-                st.toast("Đã khởi chạy phiên phân tích AI Agent!")
-                st.rerun()
+
+        elif runner_state.is_finished:
+            if runner_state.error:
+                st.error(f"Lỗi trong quá trình phân tích: {runner_state.error}")
+            else:
+                total_sec = max(1, int(runner_state.elapsed_seconds))
+                st.success(f"Phân tích hoàn tất thành công trong {total_sec}s!")
+            runner.reset()
+            st.rerun(scope="app")
+
+        else:
+            if st.button("Khởi Chạy Phân Tích (Run Agent)", type="primary", use_container_width=True, key="btn_run_agent_frag"):
+                if not selected_file:
+                    st.error("Vui lòng chọn hoặc tải lên tệp Unified Findings.")
+                else:
+                    started = runner.start(
+                        findings_path=selected_file,
+                        model=llm_model,
+                        agent_mode=mode,
+                        max_react_steps=steps,
+                        approval_callback=hitl_mgr.request_in_flight_approval,
+                    )
+                    if started:
+                        st.toast("Đã khởi chạy phiên phân tích AI Agent!")
+                        st.rerun(scope="fragment")
+
+    render_agent_live_status(
+        selected_file=selected_findings_file,
+        llm_model=model_name,
+        mode=agent_mode_sel,
+        steps=max_steps_sel,
+    )
 
     st.divider()
 

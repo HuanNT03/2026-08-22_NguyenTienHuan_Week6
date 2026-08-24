@@ -320,6 +320,7 @@ def get_session_hitl_manager() -> HITLQueueManager:
     return st.session_state.hitl_manager
 
 
+@st.fragment(run_every=1.0)
 def render_hitl_sidebar(manager: HITLQueueManager | None = None) -> None:
     """Hiển thị Hàng Đợi Phê Duyệt HITL trên Sidebar Streamlit theo chuẩn Bento Box + Material Symbols."""
     mgr = manager or get_session_hitl_manager()
