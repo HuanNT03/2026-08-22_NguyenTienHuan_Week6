@@ -180,7 +180,7 @@ def render_bento_card(
 def render_bento_header(title: str, subtitle: str = "", icon: str = "security") -> None:
     """Render Section Header chuẩn Bento Style với Material Symbols."""
     icon_html = format_material_icon(icon, size=26, color="#4D8EFF")
-    st.markdown(
+    render_clean_html(
         f"""
         <div style="margin-top: 10px; margin-bottom: 14px;">
             <h2 class="bento-header-title" style="display: flex; align-items: center; gap: 8px; font-size: 22px; font-weight: 700; color: #cdd6f4; margin: 0;">
@@ -188,7 +188,12 @@ def render_bento_header(title: str, subtitle: str = "", icon: str = "security") 
             </h2>
             <p style="color: #a6adc8; font-size: 13px; margin-top: 4px; margin-bottom: 0;">{subtitle}</p>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
     st.divider()
+
+
+def render_clean_html(html_str: str) -> None:
+    """Render HTML an toàn, loại bỏ triệt để khoảng trắng thụt lề nhằm tránh lỗi 4-space code block của Markdown."""
+    lines = [line.strip() for line in html_str.splitlines() if line.strip()]
+    st.markdown("".join(lines), unsafe_allow_html=True)

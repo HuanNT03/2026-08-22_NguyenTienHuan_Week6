@@ -26,6 +26,7 @@ import streamlit as st
 from frontend.components.bento import (
     inject_bento_css,
     render_bento_header,
+    render_clean_html,
     render_guardrails_kpi_grid,
     render_realtime_log_box,
 )
@@ -72,7 +73,7 @@ hitl_mgr = get_session_hitl_manager()
 render_hitl_sidebar(hitl_mgr)
 
 # Brand Header
-st.markdown(
+render_clean_html(
     """
     <div style="background: linear-gradient(135deg, rgba(17, 25, 39, 0.95) 0%, rgba(11, 19, 38, 0.95) 100%); padding: 18px 24px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.08); margin-bottom: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.36);">
         <div style="display: flex; align-items: center; justify-content: space-between;">
@@ -92,14 +93,14 @@ st.markdown(
             <div style="display: flex; gap: 8px;">
                 <span class="bento-badge info"><span class="material-symbols-outlined" style="font-size: 14px;">terminal</span> Gateway :3000</span>
                 <span class="bento-badge success"><span class="material-symbols-outlined" style="font-size: 14px;">smart_toy</span> ReAct Agent v2</span>
+                <span class="bento-badge default"><span class="material-symbols-outlined" style="font-size: 14px;">view_kanban</span> Bento Box</span>
             </div>
         </div>
     </div>
-    """,
-    unsafe_allow_html=True,
+    """
 )
 
-# 6 Navigation Tabs
+# Navigation Tabs Bar
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "Quét Bảo Mật",
     "Quản Lý Dữ Liệu",
@@ -141,36 +142,30 @@ with tab1:
     with col_t2:
         st.markdown("#### 2. Trạng Thái Target App:")
         if is_alive:
-            st.markdown(
-                textwrap.dedent(
-                    f"""
-                    <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 12px; margin-bottom: 10px;">
-                        <div style="display: flex; align-items: center; gap: 8px; color: #10b981; font-weight: 700; font-size: 14px;">
-                            <span class="material-symbols-outlined" style="font-size: 20px;">check_circle</span> Target Online (HTTP {http_code})
-                        </div>
-                        <div style="color: #94a3b8; font-size: 12px; margin-top: 4px; font-family: monospace;">
-                            {target_url}
-                        </div>
+            render_clean_html(
+                f"""
+                <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 12px; margin-bottom: 10px;">
+                    <div style="display: flex; align-items: center; gap: 8px; color: #10b981; font-weight: 700; font-size: 14px;">
+                        <span class="material-symbols-outlined" style="font-size: 20px;">check_circle</span> Target Online (HTTP {http_code})
                     </div>
-                    """
-                ),
-                unsafe_allow_html=True,
+                    <div style="color: #94a3b8; font-size: 12px; margin-top: 4px; font-family: monospace;">
+                        {target_url}
+                    </div>
+                </div>
+                """
             )
         else:
-            st.markdown(
-                textwrap.dedent(
-                    f"""
-                    <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 10px; padding: 12px; margin-bottom: 10px;">
-                        <div style="display: flex; align-items: center; gap: 8px; color: #ef4444; font-weight: 700; font-size: 14px;">
-                            <span class="material-symbols-outlined" style="font-size: 20px;">error</span> Target Offline
-                        </div>
-                        <div style="color: #94a3b8; font-size: 12px; margin-top: 4px; font-family: monospace;">
-                            {target_url}
-                        </div>
+            render_clean_html(
+                f"""
+                <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 10px; padding: 12px; margin-bottom: 10px;">
+                    <div style="display: flex; align-items: center; gap: 8px; color: #ef4444; font-weight: 700; font-size: 14px;">
+                        <span class="material-symbols-outlined" style="font-size: 20px;">error</span> Target Offline
                     </div>
-                    """
-                ),
-                unsafe_allow_html=True,
+                    <div style="color: #94a3b8; font-size: 12px; margin-top: 4px; font-family: monospace;">
+                        {target_url}
+                    </div>
+                </div>
+                """
             )
 
         if st.button("Làm mới Trạng thái", use_container_width=True):
@@ -676,63 +671,54 @@ with tab5:
                     # Header Summary Bento Card
                     injection_badge_html = """<span class="bento-badge critical"><span class="material-symbols-outlined" style="font-size: 14px;">warning</span> Đã Chặn Prompt Injection</span>""" if is_injection else ""
 
-                    st.markdown(
-                        textwrap.dedent(
-                            f"""
-                            <div style="background: rgba(17, 25, 39, 0.7); border-radius: 12px; padding: 14px; margin-bottom: 14px; border: 1px solid rgba(255,255,255,0.06);">
-                                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; align-items: center;">
-                                    <span class="bento-badge info"><span class="material-symbols-outlined" style="font-size: 14px;">tag</span> Primary: {safe_primary_cwe}</span>
-                                    <span class="bento-badge default"><span class="material-symbols-outlined" style="font-size: 14px;">category</span> OWASP: {safe_owasp_cat}</span>
-                                    <span class="bento-badge {sev_badge_variant}"><span class="material-symbols-outlined" style="font-size: 14px;">shield</span> Severity: {safe_agent_sev} (Gốc: {safe_orig_sev})</span>
-                                    <span class="bento-badge success"><span class="material-symbols-outlined" style="font-size: 14px;">verified</span> Confidence: {safe_conf_lvl}</span>
-                                    <span class="bento-badge default"><span class="material-symbols-outlined" style="font-size: 14px;">sync_alt</span> Tương Quan: {safe_corr_type}</span>
-                                    {injection_badge_html}
-                                </div>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 12px; color: #94a3b8; margin-bottom: 8px;">
-                                    <div><b>Lý do đánh giá mức độ:</b> {safe_sev_rat}</div>
-                                    <div><b>Căn cứ mức độ tin cậy:</b> {safe_conf_rat}</div>
-                                </div>
-                                <div style="font-size: 11px; color: #6c7086;">
-                                    <b>Tất cả CWE liên quan:</b> <code>{safe_all_cwes_str}</code>
-                                </div>
+                    render_clean_html(
+                        f"""
+                        <div style="background: rgba(17, 25, 39, 0.7); border-radius: 12px; padding: 14px; margin-bottom: 14px; border: 1px solid rgba(255,255,255,0.06);">
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; align-items: center;">
+                                <span class="bento-badge info"><span class="material-symbols-outlined" style="font-size: 14px;">tag</span> Primary: {safe_primary_cwe}</span>
+                                <span class="bento-badge default"><span class="material-symbols-outlined" style="font-size: 14px;">category</span> OWASP: {safe_owasp_cat}</span>
+                                <span class="bento-badge {sev_badge_variant}"><span class="material-symbols-outlined" style="font-size: 14px;">shield</span> Severity: {safe_agent_sev} (Gốc: {safe_orig_sev})</span>
+                                <span class="bento-badge success"><span class="material-symbols-outlined" style="font-size: 14px;">verified</span> Confidence: {safe_conf_lvl}</span>
+                                <span class="bento-badge default"><span class="material-symbols-outlined" style="font-size: 14px;">sync_alt</span> Tương Quan: {safe_corr_type}</span>
+                                {injection_badge_html}
                             </div>
-                            """
-                        ),
-                        unsafe_allow_html=True,
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 12px; color: #94a3b8; margin-bottom: 8px;">
+                                <div><b>Lý do đánh giá mức độ:</b> {safe_sev_rat}</div>
+                                <div><b>Căn cứ mức độ tin cậy:</b> {safe_conf_rat}</div>
+                            </div>
+                            <div style="font-size: 11px; color: #6c7086;">
+                                <b>Tất cả CWE liên quan:</b> <code>{safe_all_cwes_str}</code>
+                            </div>
+                        </div>
+                        """
                     )
 
                     # Section A: Explanation (Root cause)
-                    st.markdown(
-                        textwrap.dedent(
-                            f"""
-                            <div style="background: rgba(30, 41, 59, 0.6); border-left: 4px solid #3B82F6; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px;">
-                                <div style="font-size: 12px; font-weight: 700; color: #60A5FA; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
-                                    <span class="material-symbols-outlined" style="font-size: 16px;">psychology</span> NGUYÊN NHÂN GỐC RỄ & PHÂN TÍCH TÁC ĐỘNG (EXPLANATION)
-                                </div>
-                                <div style="font-size: 13px; color: #e2e8f0; line-height: 1.6;">
-                                    {safe_expl}
-                                </div>
+                    render_clean_html(
+                        f"""
+                        <div style="background: rgba(30, 41, 59, 0.6); border-left: 4px solid #3B82F6; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px;">
+                            <div style="font-size: 12px; font-weight: 700; color: #60A5FA; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                                <span class="material-symbols-outlined" style="font-size: 16px;">psychology</span> NGUYÊN NHÂN GỐC RỄ & PHÂN TÍCH TÁC ĐỘNG (EXPLANATION)
                             </div>
-                            """
-                        ),
-                        unsafe_allow_html=True,
+                            <div style="font-size: 13px; color: #e2e8f0; line-height: 1.6;">
+                                {safe_expl}
+                            </div>
+                        </div>
+                        """
                     )
 
                     # Section B: Recommended Action (Remediation)
-                    st.markdown(
-                        textwrap.dedent(
-                            f"""
-                            <div style="background: rgba(6, 78, 59, 0.3); border-left: 4px solid #10B981; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px;">
-                                <div style="font-size: 12px; font-weight: 700; color: #34D399; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
-                                    <span class="material-symbols-outlined" style="font-size: 16px;">build</span> KHUYẾN NGHỊ KHẮC PHỤC (RECOMMENDED ACTIONS)
-                                </div>
-                                <div style="font-size: 13px; color: #e2e8f0; line-height: 1.6;">
-                                    {safe_rec_act}
-                                </div>
+                    render_clean_html(
+                        f"""
+                        <div style="background: rgba(6, 78, 59, 0.3); border-left: 4px solid #10B981; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px;">
+                            <div style="font-size: 12px; font-weight: 700; color: #34D399; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                                <span class="material-symbols-outlined" style="font-size: 16px;">build</span> KHUYẾN NGHỊ KHẮC PHỤC (RECOMMENDED ACTIONS)
                             </div>
-                            """
-                        ),
-                        unsafe_allow_html=True,
+                            <div style="font-size: 13px; color: #e2e8f0; line-height: 1.6;">
+                                {safe_rec_act}
+                            </div>
+                        </div>
+                        """
                     )
 
                     # Section C: Proposed Test Request
@@ -753,26 +739,23 @@ with tab5:
                         safe_ptr_endpoint = html.escape(str(ptr.get("endpoint", "/")))
                         safe_ptr_rationale = html.escape(str(ptr.get("rationale", "N/A")))
 
-                        st.markdown(
-                            textwrap.dedent(
-                                f"""
-                                <div style="background: rgba(250, 179, 135, 0.08); border: 1px solid rgba(250, 179, 135, 0.25); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                        <div style="font-size: 12px; font-weight: 700; color: #fab387; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px;">
-                                            <span class="material-symbols-outlined" style="font-size: 16px;">science</span> ĐỀ XUẤT KIỂM THỬ AN TOÀN (PROPOSED TEST REQUEST)
-                                        </div>
-                                        <span class="bento-badge {ptr_status_badge}">Trạng thái: {ptr_status.upper()}</span>
+                        render_clean_html(
+                            f"""
+                            <div style="background: rgba(250, 179, 135, 0.08); border: 1px solid rgba(250, 179, 135, 0.25); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <div style="font-size: 12px; font-weight: 700; color: #fab387; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px;">
+                                        <span class="material-symbols-outlined" style="font-size: 16px;">science</span> ĐỀ XUẤT KIỂM THỬ AN TOÀN (PROPOSED TEST REQUEST)
                                     </div>
-                                    <div style="font-size: 12px; color: #cdd6f4; margin-bottom: 6px;">
-                                        <b>Request:</b> <code>{safe_ptr_method} {safe_ptr_endpoint}</code>
-                                    </div>
-                                    <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">
-                                        <b>Căn cứ & Mục đích probe:</b> {safe_ptr_rationale}
-                                    </div>
+                                    <span class="bento-badge {ptr_status_badge}">Trạng thái: {ptr_status.upper()}</span>
                                 </div>
-                                """
-                            ),
-                            unsafe_allow_html=True,
+                                <div style="font-size: 12px; color: #cdd6f4; margin-bottom: 6px;">
+                                    <b>Request:</b> <code>{safe_ptr_method} {safe_ptr_endpoint}</code>
+                                </div>
+                                <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">
+                                    <b>Căn cứ & Mục đích probe:</b> {safe_ptr_rationale}
+                                </div>
+                            </div>
+                            """
                         )
                         col_p1, col_p2 = st.columns(2)
                         with col_p1:
@@ -795,29 +778,23 @@ with tab5:
 
                     # Section D: Knowledge References
                     if kb_refs:
-                        st.markdown(
-                            textwrap.dedent(
-                                """
-                                <div style="font-size: 12px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-top: 10px; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
-                                    <span class="material-symbols-outlined" style="font-size: 16px;">menu_book</span> TÀI LIỆU TRI THỨC THAM CHIẾU (KNOWLEDGE REFERENCES)
-                                </div>
-                                """
-                            ),
-                            unsafe_allow_html=True,
+                        render_clean_html(
+                            """
+                            <div style="font-size: 12px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-top: 10px; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                                <span class="material-symbols-outlined" style="font-size: 16px;">menu_book</span> TÀI LIỆU TRI THỨC THAM CHIẾU (KNOWLEDGE REFERENCES)
+                            </div>
+                            """
                         )
                         for ref in kb_refs:
                             safe_doc_id = html.escape(str(ref.get("doc_id", "N/A")))
                             safe_doc_title = html.escape(str(ref.get("title", "N/A")))
                             safe_doc_rel = html.escape(str(ref.get("relevance", "N/A")))
-                            st.markdown(
-                                textwrap.dedent(
-                                    f"""
-                                    <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 6px 10px; margin-bottom: 4px; font-size: 12px;">
-                                        <span class="bento-badge info">[{safe_doc_id}]</span> <b>{safe_doc_title}</b>: <span style="color: #94a3b8;">{safe_doc_rel}</span>
-                                    </div>
-                                    """
-                                ),
-                                unsafe_allow_html=True,
+                            render_clean_html(
+                                f"""
+                                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 6px 10px; margin-bottom: 4px; font-size: 12px;">
+                                    <span class="bento-badge info">[{safe_doc_id}]</span> <b>{safe_doc_title}</b>: <span style="color: #94a3b8;">{safe_doc_rel}</span>
+                                </div>
+                                """
                             )
 
                     # Section E: Sub-findings
@@ -874,21 +851,18 @@ with tab6:
                 for rec in reversed(audit_records[-10:]):
                     status = rec.get("status_code", 0)
                     st_badge = "success" if status == 200 else ("high" if status in (405, 429, 413) else "critical")
-                    st.markdown(
-                        textwrap.dedent(
-                            f"""
-                            <div style="background: rgba(17, 25, 39, 0.8); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 10px; margin-bottom: 8px;">
-                                <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
-                                    <span><b>{rec.get('method')}</b> <code>{rec.get('endpoint')}</code></span>
-                                    <span class="bento-badge {st_badge}">HTTP {status}</span>
-                                </div>
-                                <div style="font-size: 11px; color: #94a3b8;">
-                                    Latency: <b>{rec.get('duration_ms', 0):.1f}ms</b> | Approval: <b>{rec.get('approval_status')}</b> | PII Redacted: <b>{rec.get('guardrails', {}).get('redaction_count', 0)}</b>
-                                </div>
+                    render_clean_html(
+                        f"""
+                        <div style="background: rgba(17, 25, 39, 0.8); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 10px; margin-bottom: 8px;">
+                            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+                                <span><b>{rec.get('method')}</b> <code>{rec.get('endpoint')}</code></span>
+                                <span class="bento-badge {st_badge}">HTTP {status}</span>
                             </div>
-                            """
-                        ),
-                        unsafe_allow_html=True,
+                            <div style="font-size: 11px; color: #94a3b8;">
+                                Latency: <b>{rec.get('duration_ms', 0):.1f}ms</b> | Approval: <b>{rec.get('approval_status')}</b> | PII Redacted: <b>{rec.get('guardrails', {}).get('redaction_count', 0)}</b>
+                            </div>
+                        </div>
+                        """
                     )
 
     with col_m2:
@@ -918,21 +892,18 @@ with tab6:
                     tokens = span.get("token_usage", {})
                     token_str = f" | Tokens: <b>{tokens.get('total_tokens', 0)}</b>" if tokens else ""
 
-                    st.markdown(
-                        textwrap.dedent(
-                            f"""
-                            <div style="background: rgba(17, 25, 39, 0.8); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 10px; margin-bottom: 8px;">
-                                <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
-                                    <span><span class="bento-badge info">{rtype}</span> <b>{span.get('name')}</b> (Step {span.get('step_index')})</span>
-                                    <span class="bento-badge {s_badge}">{st_val.upper()}</span>
-                                </div>
-                                <div style="font-size: 11px; color: #94a3b8;">
-                                    Nhóm: <code>{span.get('group_id')}</code> | Latency: <b>{dur:.1f}ms</b>{token_str}
-                                </div>
+                    render_clean_html(
+                        f"""
+                        <div style="background: rgba(17, 25, 39, 0.8); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 10px; margin-bottom: 8px;">
+                            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+                                <span><span class="bento-badge info">{rtype}</span> <b>{span.get('name')}</b> (Step {span.get('step_index')})</span>
+                                <span class="bento-badge {s_badge}">{st_val.upper()}</span>
                             </div>
-                            """
-                        ),
-                        unsafe_allow_html=True,
+                            <div style="font-size: 11px; color: #94a3b8;">
+                                Nhóm: <code>{span.get('group_id')}</code> | Latency: <b>{dur:.1f}ms</b>{token_str}
+                            </div>
+                        </div>
+                        """
                     )
                 with st.expander("Xem toàn văn log thô (Raw JSONL Trace)", expanded=False):
                     preview_log = "\n".join(lines[-30:]) if lines else "File log trống."
