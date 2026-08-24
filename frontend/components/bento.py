@@ -6,6 +6,10 @@ và Executive Threat & Guardrails KPI Grids.
 
 from __future__ import annotations
 
+import html
+import json
+from typing import Any
+
 import streamlit as st
 
 
@@ -197,3 +201,161 @@ def render_clean_html(html_str: str) -> None:
     """Render HTML an toàn, loại bỏ triệt để khoảng trắng thụt lề nhằm tránh lỗi 4-space code block của Markdown."""
     lines = [line.strip() for line in html_str.splitlines() if line.strip()]
     st.markdown("".join(lines), unsafe_allow_html=True)
+
+
+def render_agent_span_card(span: dict[str, Any]) -> None:
+    """Render a rich, interactive Bento Card for a single Agent execution span."""
+    step_idx = span.get("step_index", 0)
+    run_type = str(span.get("run_type", "tool")).lower()
+    name = html.escape(str(span.get("name", "Unknown Step")))
+    status = str(span.get("status", "success")).lower()
+    duration_ms = float(span.get("duration_ms", 0.0))
+    group_id = html.escape(str(span.get("group_id", "N/A")))
+    start_time = html.escape(str(span.get("start_time", "N/A")))
+    token_usage = span.get("token_usage") or {}
+    total_tokens = token_usage.get("total_tokens", 0)
+    prompt_tokens = token_usage.get("prompt_tokens", 0)
+    completion_tokens = token_usage.get("completion_tokens", 0)
+    error_obj = span.get("error")
+
+    status_badge_class = {
+        "success": "success",
+        "running": "high",
+        "error": "critical",
+        "rejected": "critical",
+        "timed_out": "high",
+    }.get(status, "default")
+
+    type_badge_class = {
+        "chain": "info",
+        "llm": "success",
+        "tool": "high",
+        "retriever": "info",
+        "guardrail": "default",
+        "hitl": "critical",
+    }.get(run_type, "default")
+
+    token_info_html = ""
+    if total_tokens > 0:
+        token_info_html = (
+            f'<span style="margin-left: 10px; color: #a6adc8;">'
+            f'Tokens: <b>{total_tokens}</b> (Prompt: {prompt_tokens}, Completion: {completion_tokens})'
+            f'</span>'
+        )
+
+    error_banner_html = ""
+    if error_obj and isinstance(error_obj, dict):
+        err_type = html.escape(str(error_obj.get("error_type", "Error")))
+        err_msg = html.escape(str(error_obj.get("message", "Unknown error")))
+        error_banner_html = f"""
+        <div style="background: rgba(243, 139, 168, 0.15); border: 1px solid rgba(243, 139, 168, 0.4); border-radius: 8px; padding: 8px 12px; margin-top: 8px; font-size: 12px; color: #f38ba8;">
+            <b>[{err_type}]:</b> {err_msg}
+        </div>
+        """
+
+    card_html = f"""
+    <div style="background: rgba(17, 25, 39, 0.8); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="bento-badge {type_badge_class}">{run_type.upper()}</span>
+                <span style="font-weight: 700; font-size: 13px; color: #cdd6f4;">{name} <span style="font-size: 11px; color: #6c7086;">(Step {step_idx})</span></span>
+            </div>
+            <span class="bento-badge {status_badge_class}">{status.upper()}</span>
+        </div>
+        <div style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">
+            Nhóm: <code>{group_id}</code> | Độ trễ: <b>{duration_ms:.1f}ms</b>{token_info_html}
+        </div>
+        <div style="font-size: 10px; color: #6c7086;">
+            Bắt đầu: {start_time}
+        </div>
+        {error_banner_html}
+    </div>
+    """
+    render_clean_html(card_html)
+
+    # Expander for Inputs & Outputs
+    inputs = span.get("inputs")
+    outputs = span.get("outputs")
+    if inputs or outputs:
+        with st.expander(f"Chi tiết Arguments & Observation (Step {step_idx} - {name})", expanded=False):
+            c_in, c_out = st.columns(2)
+            with c_in:
+                st.caption("**Inputs / Tool Arguments:**")
+                st.code(
+                    json.dumps(inputs, indent=2, ensure_ascii=False) if isinstance(inputs, (dict, list)) else str(inputs),
+                    language="json" if isinstance(inputs, (dict, list)) else "text",
+                )
+            with c_out:
+                st.caption("**Outputs / Tool Results / Observations:**")
+                st.code(
+                    json.dumps(outputs, indent=2, ensure_ascii=False) if isinstance(outputs, (dict, list)) else str(outputs),
+                    language="json" if isinstance(outputs, (dict, list)) else "text",
+                )
+
+
+def render_gateway_audit_card(rec: dict[str, Any]) -> None:
+    """Render a rich, interactive Bento Card for a single Gateway network audit record."""
+    method = html.escape(str(rec.get("method", "GET")))
+    endpoint = html.escape(str(rec.get("endpoint", "/")))
+    status_code = int(rec.get("status_code", 0))
+    duration_ms = float(rec.get("duration_ms", 0.0))
+    approval = str(rec.get("approval_status", "NOT_REQUIRED"))
+    timestamp = html.escape(str(rec.get("timestamp", "N/A")))
+    guardrails = rec.get("guardrails") or {}
+    redaction_count = guardrails.get("redaction_count", 0)
+    redacted_types = guardrails.get("redacted_types") or []
+    injection_detected = guardrails.get("prompt_injection_detected", False)
+    injection_risk = str(guardrails.get("prompt_injection_risk", "NONE"))
+
+    status_badge = "success" if status_code == 200 else ("high" if status_code in (405, 429, 413) else "critical")
+    approval_badge = "success" if approval in ("APPROVED", "AUTO_APPROVED") else ("default" if approval == "NOT_REQUIRED" else "critical")
+
+    pii_tags_html = ""
+    if redaction_count > 0:
+        tags = "".join([f'<span class="bento-badge high" style="font-size: 10px; padding: 1px 6px;">{html.escape(str(t))}</span>' for t in redacted_types])
+        pii_tags_html = f'<div style="margin-top: 4px; font-size: 11px; color: #fab387;">Đã che {redaction_count} PII: {tags}</div>'
+
+    injection_banner_html = ""
+    if injection_detected or injection_risk == "SUSPICIOUS_INJECTION_DETECTED":
+        injection_banner_html = """
+        <div style="background: rgba(243, 139, 168, 0.15); border: 1px solid rgba(243, 139, 168, 0.4); border-radius: 8px; padding: 6px 10px; margin-top: 6px; font-size: 11px; color: #f38ba8; display: flex; align-items: center; gap: 6px;">
+            <span class="material-symbols-outlined" style="font-size: 16px;">warning</span>
+            <b>Cảnh báo:</b> Phát hiện dấu hiệu Prompt Injection trong dữ liệu phản hồi!
+        </div>
+        """
+
+    card_html = f"""
+    <div style="background: rgba(17, 25, 39, 0.8); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="bento-badge info">{method}</span>
+                <code style="color: #cdd6f4; font-size: 12px;">{endpoint}</code>
+            </div>
+            <span class="bento-badge {status_badge}">HTTP {status_code}</span>
+        </div>
+        <div style="font-size: 11px; color: #94a3b8; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+            <span>Độ trễ: <b>{duration_ms:.1f}ms</b></span>
+            <span>Phê duyệt: <span class="bento-badge {approval_badge}" style="font-size: 10px; padding: 1px 6px;">{approval}</span></span>
+            <span style="color: #6c7086;">Thời gian: {timestamp}</span>
+        </div>
+        {pii_tags_html}
+        {injection_banner_html}
+    </div>
+    """
+    render_clean_html(card_html)
+
+    # Expander for Headers & Response Preview
+    req_headers = rec.get("request_headers")
+    resp_headers = rec.get("response_headers")
+    body_snippet = rec.get("response_body_snippet")
+    if req_headers or resp_headers or body_snippet:
+        with st.expander(f"Inspector Payload & Headers ({method} {endpoint})", expanded=False):
+            if req_headers:
+                st.caption("**Outbound Request Headers:**")
+                st.code(json.dumps(req_headers, indent=2, ensure_ascii=False), language="json")
+            if resp_headers:
+                st.caption("**Inbound Response Headers:**")
+                st.code(json.dumps(resp_headers, indent=2, ensure_ascii=False), language="json")
+            if body_snippet:
+                st.caption("**Response Body Snippet (Sanitized):**")
+                st.code(body_snippet, language="json" if body_snippet.startswith(("{", "[")) else "text")

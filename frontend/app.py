@@ -25,8 +25,10 @@ import streamlit as st
 
 from frontend.components.bento import (
     inject_bento_css,
+    render_agent_span_card,
     render_bento_header,
     render_clean_html,
+    render_gateway_audit_card,
     render_guardrails_kpi_grid,
     render_realtime_log_box,
 )
@@ -422,15 +424,15 @@ with tab4:
 
             badge_color = "success" if 200 <= status_code < 300 else ("high" if status_code == 429 else "critical")
 
-            st.markdown(
+            render_clean_html(
                 f"""
-                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; align-items: center;">
                     <span class="bento-badge {badge_color}">HTTP {status_code}</span>
                     <span class="bento-badge info">Latency: {latency:.1f}ms</span>
                     <span class="bento-badge default">{res.get('method')} {res.get('endpoint')}</span>
+                    <span class="bento-badge success">Guardrails Protected</span>
                 </div>
-                """,
-                unsafe_allow_html=True,
+                """
             )
 
             st.markdown("**Sanitized Headers:**")
@@ -625,9 +627,83 @@ with tab5:
             )
 
             # Section 3: Unified Grouped Analysis Table
-            st.markdown(f"### Bảng Tổng Hợp Phân Tích Lỗ Hổng Theo Nhóm ({len(groups_dict)} Nhóm — {total_entries} Findings):")
+            groups_list = list(groups_dict.items())
+            total_groups_count = len(groups_list)
 
-            for grp_idx, (grp_id, items) in enumerate(groups_dict.items(), 1):
+            # Pagination & Display Controls State
+            if "report_groups_page" not in st.session_state:
+                st.session_state["report_groups_page"] = 1
+            if "report_groups_per_page" not in st.session_state:
+                st.session_state["report_groups_per_page"] = 5
+            if "report_groups_expand_all" not in st.session_state:
+                st.session_state["report_groups_expand_all"] = False
+
+            col_h3, col_ctrl = st.columns([1, 1])
+            with col_h3:
+                st.markdown(f"### Bảng Tổng Hợp Phân Tích Lỗ Hổng ({total_groups_count} Nhóm — {total_entries} Findings):")
+
+            # Pagination Bar Controls
+            per_page_options = [5, 10, 20, "Tất cả"]
+            current_per_page_idx = per_page_options.index(st.session_state["report_groups_per_page"]) if st.session_state["report_groups_per_page"] in per_page_options else 0
+
+            c_size, c_prev, c_info, c_next, c_toggle = st.columns([1.2, 0.8, 1.4, 0.8, 1.2])
+            with c_size:
+                selected_per_page = st.selectbox(
+                    "Số nhóm / trang:",
+                    per_page_options,
+                    index=current_per_page_idx,
+                    key="sel_report_per_page",
+                    label_visibility="collapsed",
+                )
+                if selected_per_page != st.session_state["report_groups_per_page"]:
+                    st.session_state["report_groups_per_page"] = selected_per_page
+                    st.session_state["report_groups_page"] = 1
+                    st.rerun()
+
+            # Calculate pages
+            if selected_per_page == "Tất cả":
+                total_pages = 1
+                page_size = total_groups_count if total_groups_count > 0 else 1
+            else:
+                page_size = int(selected_per_page)
+                total_pages = max(1, (total_groups_count + page_size - 1) // page_size)
+
+            if st.session_state["report_groups_page"] > total_pages:
+                st.session_state["report_groups_page"] = total_pages
+            if st.session_state["report_groups_page"] < 1:
+                st.session_state["report_groups_page"] = 1
+
+            current_page = st.session_state["report_groups_page"]
+            start_idx = (current_page - 1) * page_size
+            end_idx = min(start_idx + page_size, total_groups_count)
+            current_page_groups = groups_list[start_idx:end_idx]
+
+            with c_prev:
+                if st.button("Trang Trước", disabled=(current_page <= 1), use_container_width=True, key="btn_grp_prev"):
+                    st.session_state["report_groups_page"] -= 1
+                    st.rerun()
+
+            with c_info:
+                render_clean_html(
+                    f"""
+                    <div style="text-align: center; font-size: 13px; font-weight: 700; color: #cdd6f4; line-height: 2.4;">
+                        Trang {current_page} / {total_pages} ({start_idx + 1}-{end_idx} / {total_groups_count})
+                    </div>
+                    """
+                )
+
+            with c_next:
+                if st.button("Trang Sau", disabled=(current_page >= total_pages), use_container_width=True, key="btn_grp_next"):
+                    st.session_state["report_groups_page"] += 1
+                    st.rerun()
+
+            with c_toggle:
+                toggle_btn_label = "Đóng tất cả" if st.session_state["report_groups_expand_all"] else "Mở tất cả"
+                if st.button(toggle_btn_label, use_container_width=True, key="btn_grp_toggle_all"):
+                    st.session_state["report_groups_expand_all"] = not st.session_state["report_groups_expand_all"]
+                    st.rerun()
+
+            for grp_idx, (grp_id, items) in enumerate(current_page_groups, start=start_idx + 1):
                 first_item = items[0]
                 corr_type = first_item.get("correlation_type", "sast_only")
                 primary_cwe = first_item.get("primary_cwe_id") or "N/A"
@@ -667,7 +743,8 @@ with tab5:
                 safe_expl = html.escape(str(expl))
                 safe_rec_act = html.escape(str(rec_act))
 
-                with st.expander(f"[{grp_id}] {grp_title} ({primary_cwe}) — {len(items)} findings | Severity: {agent_sev.upper()}", expanded=True):
+                is_expanded = st.session_state.get("report_groups_expand_all", False)
+                with st.expander(f"[{grp_id}] {grp_title} ({primary_cwe}) — {len(items)} findings | Severity: {agent_sev.upper()}", expanded=is_expanded):
                     # Header Summary Bento Card
                     injection_badge_html = """<span class="bento-badge critical"><span class="material-symbols-outlined" style="font-size: 14px;">warning</span> Đã Chặn Prompt Injection</span>""" if is_injection else ""
 
@@ -847,23 +924,40 @@ with tab6:
             if not audit_records:
                 st.info("File audit log đang trống.")
             else:
-                st.caption(f"Tổng số lượt probe ghi nhận: **{len(audit_records)}** (Hiển thị 10 bản ghi mới nhất)")
-                for rec in reversed(audit_records[-10:]):
-                    status = rec.get("status_code", 0)
-                    st_badge = "success" if status == 200 else ("high" if status in (405, 429, 413) else "critical")
-                    render_clean_html(
-                        f"""
-                        <div style="background: rgba(17, 25, 39, 0.8); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 10px; margin-bottom: 8px;">
-                            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
-                                <span><b>{rec.get('method')}</b> <code>{rec.get('endpoint')}</code></span>
-                                <span class="bento-badge {st_badge}">HTTP {status}</span>
-                            </div>
-                            <div style="font-size: 11px; color: #94a3b8;">
-                                Latency: <b>{rec.get('duration_ms', 0):.1f}ms</b> | Approval: <b>{rec.get('approval_status')}</b> | PII Redacted: <b>{rec.get('guardrails', {}).get('redaction_count', 0)}</b>
-                            </div>
-                        </div>
-                        """
+                # Filter row
+                f_c1, f_c2 = st.columns(2)
+                with f_c1:
+                    filter_status = st.selectbox(
+                        "Lọc theo HTTP Status:",
+                        ["Tất cả", "2xx (Thành công)", "4xx (Lỗi Client / Guardrails)", "5xx (Lỗi Server / Lỗ hổng)"],
+                        key="sel_audit_status_filter",
                     )
+                with f_c2:
+                    filter_approval = st.selectbox(
+                        "Lọc theo Phê duyệt:",
+                        ["Tất cả", "APPROVED", "AUTO_APPROVED", "REJECTED_BY_USER", "REJECTED_BY_TIMEOUT", "NOT_REQUIRED"],
+                        key="sel_audit_approval_filter",
+                    )
+
+                filtered_audit = audit_records
+                if filter_status == "2xx (Thành công)":
+                    filtered_audit = [r for r in filtered_audit if 200 <= r.get("status_code", 0) < 300]
+                elif filter_status == "4xx (Lỗi Client / Guardrails)":
+                    filtered_audit = [r for r in filtered_audit if 400 <= r.get("status_code", 0) < 500]
+                elif filter_status == "5xx (Lỗi Server / Lỗ hổng)":
+                    filtered_audit = [r for r in filtered_audit if 500 <= r.get("status_code", 0) < 600]
+
+                if filter_approval != "Tất cả":
+                    filtered_audit = [r for r in filtered_audit if r.get("approval_status") == filter_approval]
+
+                st.caption(f"Hiển thị **{min(len(filtered_audit), 15)}** / **{len(filtered_audit)}** bản ghi (Tổng toàn bộ: {len(audit_records)})")
+                for rec in reversed(filtered_audit[-15:]):
+                    render_gateway_audit_card(rec)
+
+                with st.expander("Xem toàn văn audit log thô (Raw JSONL)", expanded=False):
+                    raw_audit_lines = audit_log_path.read_text(encoding="utf-8", errors="ignore").splitlines()
+                    preview_audit = "\n".join(raw_audit_lines[-30:]) if raw_audit_lines else "File log trống."
+                    render_realtime_log_box(preview_audit, max_height="240px")
 
     with col_m2:
         st.markdown("#### 2. Agent Execution Logs (`logs/agent-runner.log`):")
@@ -882,32 +976,36 @@ with tab6:
                 except Exception:  # noqa: BLE001, S110
                     pass
 
-            if parsed_spans:
-                st.caption(f"Tổng số execution spans: **{len(parsed_spans)}** (Hiển thị 10 spans mới nhất)")
-                for span in reversed(parsed_spans[-10:]):
-                    rtype = str(span.get("run_type", "tool")).upper()
-                    st_val = span.get("status", "success")
-                    s_badge = "success" if st_val == "success" else ("high" if st_val == "running" else "critical")
-                    dur = span.get("duration_ms", 0.0)
-                    tokens = span.get("token_usage", {})
-                    token_str = f" | Tokens: <b>{tokens.get('total_tokens', 0)}</b>" if tokens else ""
-
-                    render_clean_html(
-                        f"""
-                        <div style="background: rgba(17, 25, 39, 0.8); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 10px; margin-bottom: 8px;">
-                            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
-                                <span><span class="bento-badge info">{rtype}</span> <b>{span.get('name')}</b> (Step {span.get('step_index')})</span>
-                                <span class="bento-badge {s_badge}">{st_val.upper()}</span>
-                            </div>
-                            <div style="font-size: 11px; color: #94a3b8;">
-                                Nhóm: <code>{span.get('group_id')}</code> | Latency: <b>{dur:.1f}ms</b>{token_str}
-                            </div>
-                        </div>
-                        """
-                    )
-                with st.expander("Xem toàn văn log thô (Raw JSONL Trace)", expanded=False):
-                    preview_log = "\n".join(lines[-30:]) if lines else "File log trống."
-                    render_realtime_log_box(preview_log, max_height="260px")
-            else:
+            if not parsed_spans:
+                st.info("Chưa có execution spans nào được ghi nhận.")
                 preview_log = "\n".join(lines[-30:]) if lines else "File log trống."
                 render_realtime_log_box(preview_log, max_height="320px")
+            else:
+                # Filter row
+                sp_f1, sp_f2 = st.columns(2)
+                with sp_f1:
+                    filter_type = st.selectbox(
+                        "Lọc theo Run Type:",
+                        ["Tất cả", "tool", "llm", "chain", "retriever", "guardrail", "hitl"],
+                        key="sel_span_type_filter",
+                    )
+                with sp_f2:
+                    filter_span_status = st.selectbox(
+                        "Lọc theo Status:",
+                        ["Tất cả", "success", "error", "running", "rejected"],
+                        key="sel_span_status_filter",
+                    )
+
+                filtered_spans = parsed_spans
+                if filter_type != "Tất cả":
+                    filtered_spans = [s for s in filtered_spans if str(s.get("run_type", "")).lower() == filter_type]
+                if filter_span_status != "Tất cả":
+                    filtered_spans = [s for s in filtered_spans if str(s.get("status", "")).lower() == filter_span_status]
+
+                st.caption(f"Hiển thị **{min(len(filtered_spans), 15)}** / **{len(filtered_spans)}** spans (Tổng toàn bộ: {len(parsed_spans)})")
+                for span in reversed(filtered_spans[-15:]):
+                    render_agent_span_card(span)
+
+                with st.expander("Xem toàn văn agent log thô (Raw JSONL Trace)", expanded=False):
+                    preview_log = "\n".join(lines[-30:]) if lines else "File log trống."
+                    render_realtime_log_box(preview_log, max_height="240px")

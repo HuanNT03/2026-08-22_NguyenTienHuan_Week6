@@ -1,10 +1,14 @@
-"""Unit tests for Bento Box components, Material Symbols renderers, and HITL Queue."""
+import pytest
+import streamlit as st
 
 from frontend.components.bento import (
     build_guardrails_kpi_grid_html,
     build_realtime_log_box_html,
     build_security_badge_html,
     format_material_icon,
+    render_agent_span_card,
+    render_clean_html,
+    render_gateway_audit_card,
 )
 from frontend.components.hitl_queue import HITLQueueManager
 
@@ -219,4 +223,112 @@ def test_hitl_queue_manager_in_flight_timeout() -> None:
     assert res is False
     assert len(mgr.rejected_actions) == 1
     assert mgr.rejected_actions[0].status == "TIMED_OUT"
+
+
+def test_render_clean_html_behavior(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify render_clean_html strips leading whitespace on every line and calls st.markdown."""
+    captured_html = []
+
+    def mock_markdown(content: str, unsafe_allow_html: bool = False) -> None:
+        captured_html.append((content, unsafe_allow_html))
+
+    monkeypatch.setattr(st, "markdown", mock_markdown)
+
+    sample_html = """
+        <div style="padding: 10px;">
+            <span>Nested content</span>
+        </div>
+    """
+    render_clean_html(sample_html)
+
+    assert len(captured_html) == 1
+    rendered_text, allow_html = captured_html[0]
+    assert allow_html is True
+    assert '<div style="padding: 10px;"><span>Nested content</span></div>' in rendered_text
+    assert "    <div" not in rendered_text
+
+
+def test_render_agent_span_card_behavior(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify render_agent_span_card formats badges, error alerts, and tokens correctly."""
+    captured_html = []
+
+    def mock_markdown(content: str, unsafe_allow_html: bool = False) -> None:
+        captured_html.append(content)
+
+    monkeypatch.setattr(st, "markdown", mock_markdown)
+
+    span = {
+        "step_index": 2,
+        "run_type": "tool",
+        "name": "lookup_safe_payloads",
+        "status": "error",
+        "duration_ms": 142.5,
+        "group_id": "GRP-01",
+        "start_time": "2026-08-24T14:00:00Z",
+        "token_usage": {
+            "prompt_tokens": 120,
+            "completion_tokens": 45,
+            "total_tokens": 165,
+        },
+        "inputs": {"category": "sqli"},
+        "outputs": {"results": []},
+        "error": {
+            "error_type": "ConnectionTimeout",
+            "message": "Gateway timed out after 7.0s",
+        },
+    }
+
+    render_agent_span_card(span)
+
+    assert len(captured_html) >= 1
+    html_output = captured_html[0]
+    assert "TOOL" in html_output
+    assert "lookup_safe_payloads" in html_output
+    assert "ERROR" in html_output
+    assert "165" in html_output
+    assert "Prompt: 120" in html_output
+    assert "ConnectionTimeout" in html_output
+    assert "Gateway timed out" in html_output
+
+
+def test_render_gateway_audit_card_behavior(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify render_gateway_audit_card formats HTTP status, PII tags, and injection alerts."""
+    captured_html = []
+
+    def mock_markdown(content: str, unsafe_allow_html: bool = False) -> None:
+        captured_html.append(content)
+
+    monkeypatch.setattr(st, "markdown", mock_markdown)
+
+    rec = {
+        "method": "POST",
+        "endpoint": "/rest/user/login",
+        "status_code": 200,
+        "duration_ms": 88.4,
+        "approval_status": "AUTO_APPROVED",
+        "timestamp": "2026-08-24T14:05:00Z",
+        "guardrails": {
+            "redaction_applied": True,
+            "redaction_count": 2,
+            "redacted_types": ["EMAIL", "PASSWORD"],
+            "prompt_injection_detected": True,
+            "prompt_injection_risk": "SUSPICIOUS_INJECTION_DETECTED",
+        },
+        "request_headers": {"Content-Type": "application/json"},
+        "response_headers": {"Set-Cookie": "[REDACTED]"},
+        "response_body_snippet": '{"token": "[REDACTED]"}',
+    }
+
+    render_gateway_audit_card(rec)
+
+    assert len(captured_html) >= 1
+    html_output = captured_html[0]
+    assert "POST" in html_output
+    assert "/rest/user/login" in html_output
+    assert "HTTP 200" in html_output
+    assert "AUTO_APPROVED" in html_output
+    assert "EMAIL" in html_output
+    assert "PASSWORD" in html_output
+    assert "Prompt Injection" in html_output
+
 
