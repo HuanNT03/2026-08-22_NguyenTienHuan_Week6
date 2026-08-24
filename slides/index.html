@@ -716,12 +716,13 @@
 
                         <div style="display: flex; flex-direction: column; justify-content: space-between;">
                             <div class="ledger-card" style="margin-bottom: 16px;">
-                                <div class="step-num">CANONICAL HASHING FORMULA</div>
+                                <div class="step-num">CANONICAL HASHING FORMULA (SRC/NORMALIZERS/COMMON/HASHING.PY)</div>
                                 <div class="code-box" style="font-size: 14px; margin-top: 8px;">
-fingerprint = "fp_sha256:v1:" + sha256(
-    tool_name + "|" + rule_id + "|" + 
-    primary_cwe + "|" + location_key + "|" + evidence_hash
-)
+# Canonical JSON (sorted keys, compact separators)
+canonical_str = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+fingerprint = f"fp_sha256:v1:{sha256(canonical_str.encode('utf-8'))}"
+
+# Payload gồm: target, tool, rule/plugin_id, location, native_hash
                                 </div>
                             </div>
                             <div class="ledger-card">
